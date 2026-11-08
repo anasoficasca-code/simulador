@@ -1250,7 +1250,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=50'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=51'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1356,10 +1356,10 @@ async function initTodoReal() {
         // árboles de la antigua fábrica de Bavaria (masas de follaje de la imagen satelital): mismos modelos reales que el resto del territorio
         let TT = T;
         try { const [BA, BV] = await Promise.all([window.cargarJSON('data3d/bavaria_arboles.json?v=2'), pBav]); if (BA && BA.arboles) { const lib = (BV && BV.libres) || []; TT = { ...T, t: T.t.concat(BA.arboles.filter(a => !lib.some(z => enPoli(z, a[0], a[1]))).map(a => [a[0], a[1], a[2], 0])) }; } } catch (e) { console.warn('árboles de Bavaria:', e); }
+        T3.kenArboles = KEN; // simulador: copas opacas, especies de Bogotá y más árboles 3D reales, como el render de Unreal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
-        if (KEN && T3.trees && T3.trees.opacidad) T3.trees.opacidad(0.62); // vista de simulación: copas semitransparentes
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
       marcarPaso('arboles'); T3.arbolesOk();
       if (!REALISTA) try { if (!T3.movil) T3.plants = await T3.R.buildNearPlants(T3, W, lw, T3.env, P); } // en celular no se descargan las plantas 3D (varios MB)

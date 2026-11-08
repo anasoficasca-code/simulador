@@ -184,10 +184,25 @@ const ESPECIES_ARBOL = [
   { base: 'jacaranda', peso: 0.30, ancho: 13 }, { base: 'arbolpeq', peso: 0.25, ancho: 9 },
   { base: 'island_tree_01', peso: 0.25, ancho: 12 }, { base: 'island_tree_02', peso: 0.20, ancho: 12 }
 ];
+// Especies del arbolado de Bogotá armadas sobre los 4 modelos reales (misma geometría, distinto follaje y porte):
+// base = índice en ESPECIES_ARBOL · h = tinte de las hojas (multiplica la textura) · sx, sy = proporción de la copa (ancho, alto)
+const VARIEDADES = [
+  { n: 'Jacaranda (en flor)', base: 0, peso: 0.07, h: [1.12, 0.78, 1.18], sx: 1.05, sy: 1.0 },  // copa lila
+  { n: 'Jacaranda', base: 0, peso: 0.08, h: [0.92, 1.02, 0.86], sx: 1.0, sy: 1.0 },
+  { n: 'Urapán', base: 2, peso: 0.16, h: [0.74, 0.92, 0.72], sx: 0.9, sy: 1.25 },                // verde oscuro, alto
+  { n: 'Eucalipto', base: 3, peso: 0.10, h: [0.82, 0.95, 0.98], sx: 0.62, sy: 1.6 },             // verde azulado, alto y delgado
+  { n: 'Caucho sabanero', base: 2, peso: 0.10, h: [0.62, 0.80, 0.58], sx: 1.35, sy: 0.95 },      // copa ancha, muy oscura
+  { n: 'Acacia', base: 3, peso: 0.12, h: [1.05, 1.08, 0.66], sx: 1.15, sy: 0.85 },               // verde amarillento
+  { n: 'Sauco', base: 1, peso: 0.12, h: [0.9, 1.04, 0.8], sx: 1.0, sy: 0.9 },
+  { n: 'Chicalá (en flor)', base: 1, peso: 0.06, h: [1.25, 1.12, 0.55], sx: 0.95, sy: 1.0 },     // flor amarilla
+  { n: 'Holly liso', base: 2, peso: 0.07, h: [0.8, 0.9, 0.62], sx: 0.8, sy: 1.05 },
+  { n: 'Cerezo', base: 3, peso: 0.06, h: [0.98, 0.9, 0.86], sx: 1.05, sy: 1.0 },
+  { n: 'Pino patula', base: 0, peso: 0.06, h: [0.66, 0.84, 0.66], sx: 0.6, sy: 1.7 }             // oscuro y columnar
+];
 function realzarMaterial(m, env, hoja) {
   ajustarMat(m, env, { roughness: 0.9, tinte: hoja ? 1.25 : 1.0, env: 0.4 });
   // las caras que no miran al sol no se ven negras: la textura aporta un poco de luz propia
-  if (m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = hoja ? 0.42 : 0.18; }
+  if (m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = hoja ? (realzarMaterial.ken ? 0.3 : 0.42) : 0.18; }
   m.needsUpdate = true; return m;
 }
 function dibujarSiluetas(T3, partes, alto, ancho) {
@@ -307,6 +322,7 @@ function geometriaCopaDeModelo(niveles, alto, ancho, detalle = 1) {
   return g;
 }
 export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
+  const api0 = {}; realzarMaterial.ken = !!T3.kenArboles;
   const stride = Math.max(1, Math.ceil(T.t.length / 130000)); // se muestran todos los arboles de los datos
   const X = [], Z = [], Hh = [], SP = [], pesoTot = ESPECIES_ARBOL.reduce((a, e) => a + e.peso, 0);
   const elegir = (r) => { r *= pesoTot; for (let k = 0; k < ESPECIES_ARBOL.length; k++) { r -= ESPECIES_ARBOL[k].peso; if (r < 0) return k; } return ESPECIES_ARBOL.length - 1; };
@@ -355,6 +371,10 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
     }
   }
   const N = X.length, ROT = new Float32Array(N); for (let i = 0; i < N; i++) ROT[i] = hash(i * 41 + 11) * Math.PI * 2;
+  // especie de Bogotá de cada árbol (VARIEDADES): fija el modelo base, el color del follaje y el porte
+  const VAR = new Uint8Array(N), pesoV = VARIEDADES.reduce((a, v) => a + v.peso, 0);
+  for (let i = 0; i < N; i++) { let r = hash(i * 7 + 3) * pesoV, k = 0; for (; k < VARIEDADES.length - 1; k++) { r -= VARIEDADES[k].peso; if (r < 0) break; } VAR[i] = k; SP[i] = VARIEDADES[k].base; }
+  api0.variedades = VARIEDADES.map(v => v.n);
   const especies = [], MV = !!T3.movil; // celular: sólo el modelo reducido de cada árbol (se descarga mucho menos)
   const NIVELES = MV ? ['L1'] : ['L0', 'L1'];
   // todas las especies, niveles y partes se descargan A LA VEZ (antes era una tras otra: 8 esperas seguidas)
@@ -376,9 +396,9 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   }
   // L0 modelo real completo (cerca) · L1 modelo real reducido (medio) · L2 arbol 3D de bajos poligonos (lejos) · siluetas sólo más allá de R2 o si se llena el cupo
   // la versión ligera (gafas VR, celulares: T3.liviano) usa menos árboles detallados y copas más simples; la completa muestra más modelos reales
-  const LV = !!T3.liviano, CAP2 = LV ? 5000 : 10000, R0 = MV ? 0 : LV ? 40 : 100, R1 = MV ? 260 : LV ? 400 : 1000, R2 = LV ? 1200 : 2200, d = new THREE.Object3D(), col = new THREE.Color();
-  const CAP0S = especies.map(e => MV ? 1 : e.base === 'arbolpeq' ? (LV ? 4 : 10) : (LV ? 10 : 32)); // el arbolpeq tiene 83.000 triángulos en el nivel 0
-  const CAP1S = especies.map(e => MV ? (e.base === 'arbolpeq' ? 25 : 90) : e.base === 'arbolpeq' ? (LV ? 40 : 200) : (LV ? 240 : 1100)); // el arbolpeq tiene 14.000 triángulos en el nivel 1: menos copias
+  const KA = !!T3.kenArboles, LV = !!T3.liviano, CAP2 = LV ? 5000 : 10000, R0 = MV ? 0 : LV ? 40 : KA ? 150 : 100, R1 = MV ? (KA ? 380 : 260) : LV ? 400 : KA ? 1400 : 1000, R2 = LV ? 1200 : 2200, d = new THREE.Object3D(), col = new THREE.Color();
+  const CAP0S = especies.map(e => MV ? 1 : e.base === 'arbolpeq' ? (LV ? 4 : 10) : (LV ? 10 : KA ? 48 : 32)); // el arbolpeq tiene 83.000 triángulos en el nivel 0
+  const CAP1S = especies.map(e => MV ? (e.base === 'arbolpeq' ? 25 : 90) : e.base === 'arbolpeq' ? (LV ? 40 : KA ? 320 : 200) : (LV ? 240 : KA ? 1700 : 1100)); // el arbolpeq tiene 14.000 triángulos en el nivel 1: menos copias
   const TIPO_BAJO = especies.map(e => (e.base === 'arbolpeq' || e.base === 'island_tree_02') ? 1 : 0);
   const matBajo = materialArbolBajo(T3), REF = [0.17, 0.255, 0.0875]; // REF = verde medio del degradado de vértices
   const USAR_BAJOS = false; // las copas de bajos polígonos se veían como bolas verdes al alejar la cámara: lejos ahora se dibuja el mismo árbol real (fotos desde el lado y desde arriba)
@@ -396,9 +416,11 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   especies.forEach(e => { e.ancho0 = e.ancho; });
   const esc = (i) => { const e = especies[SP[i]]; return Math.min(Hh[i] / e.alto, ESPECIES_ARBOL[SP[i]].ancho / e.ancho); };
   const FM = new Float32Array(N * 16), FC = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); d.scale.setScalar(esc(i)); d.updateMatrix(); FM.set(d.matrix.elements, i * 16); const tv = 0.88 + hash(i * 19) * 0.24; FC[i * 3] = tv; FC[i * 3 + 1] = tv; FC[i * 3 + 2] = tv; }
+  const porte = (i) => { const v = VARIEDADES[VAR[i]], s = esc(i); d.scale.set(s * v.sx, s * v.sy, s * v.sx); };
+  for (let i = 0; i < N; i++) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); FM.set(d.matrix.elements, i * 16); const tv = 0.88 + hash(i * 19) * 0.24, h = VARIEDADES[VAR[i]].h; FC[i * 3] = tv * h[0]; FC[i * 3 + 1] = tv * h[1]; FC[i * 3 + 2] = tv * h[2]; }
+  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) col.setRGB(tv * 1.18 * h[0], tv * 1.2 * j * h[1], tv * 1.12 * h[2]); else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
   const ult = { x: 1e9, z: 1e9, t: 0 }, cand = [];
-  const api = { N, ribera, enParques, deCalle, especies: especies.map(e => e.base + ':' + e.niveles.L0.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0) + '/' + e.niveles.L1.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0)) };
+  const api = { ...api0, N, ribera, enParques, deCalle, especies: especies.map(e => e.base + ':' + e.niveles.L0.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0) + '/' + e.niveles.L1.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0)) };
   api.pos = { X, Z, Hh }; // posiciones y alturas de los árboles (el modo pájaro pone los nidos en las copas)
   api.update = (cam, force) => {
     const now = performance.now(), dx = cam.position.x - ult.x, dz = cam.position.z - ult.z, U = api.umbral || 6;
@@ -411,8 +433,8 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
     let tot2 = 0;
     for (const [i, d2] of cand) {
       const s = SP[i], sc = esc(i), tv = 0.82 + hash(i * 19) * 0.34;
-      if (d2 < R0 * R0 && n0[s] < CAP0S[s]) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); d.scale.setScalar(sc); d.updateMatrix(); col.setRGB(tv * 0.74, tv * 0.88 * (0.96 + hash(i) * 0.08), tv * 0.76); const k = n0[s]++; lod[s].L0.forEach(m => { m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); asignado[i] = 1; }
-      else if (d2 < R1 * R1 && n1[s] < CAP1S[s]) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); d.scale.setScalar(sc); d.updateMatrix(); col.setRGB(tv * 0.74, tv * 0.88 * (0.96 + hash(i) * 0.08), tv * 0.76); const k = n1[s]++; lod[s].L1.forEach(m => { m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); asignado[i] = 1; }
+      if (d2 < R0 * R0 && n0[s] < CAP0S[s]) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); const k = n0[s]++; pintar(lod[s].L0, especies[s].niveles.L0, k, i, tv); asignado[i] = 1; }
+      else if (d2 < R1 * R1 && n1[s] < CAP1S[s]) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); const k = n1[s]++; pintar(lod[s].L1, especies[s].niveles.L1, k, i, tv); asignado[i] = 1; }
       else if (USAR_BAJOS && tot2 < CAP2) { // arbol 3D de bajos poligonos con el mismo alto y ancho de copa que tendria el modelo real
         const e = especies[s], w = e.ancho * sc, h = e.alto * sc, ti = TINTE_BAJO[s], hv = 0.96 + hash(i) * 0.08;
         d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); d.scale.set(w, h, w); d.updateMatrix(); col.setRGB(tv * ti[0] * 0.86, tv * hv * ti[1] * 1.0, tv * 0.94 * ti[2] * 0.86);
