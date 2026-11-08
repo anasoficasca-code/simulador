@@ -133,6 +133,7 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     colibri: { n: 'Colibrí chillón', sci: 'Colibri coruscans', c: '#2fae6e', v: 9, cant: movil ? 14 : 36, liba: [1.2, 3.2], salto: 70, rol: 'Poliniza las flores de albahaca, rúcula y caléndula de las huertas; vuelve a las mismas flores cada pocos minutos (rutas de trapline)' },
     abeja: { n: 'Abeja de miel', sci: 'Apis mellifera', c: '#f2c230', v: 4.5, cant: movil ? 40 : 120, liba: [2, 6], salto: 35, rol: 'Poliniza hortalizas y aromáticas; la colmena de barrio las conecta con parques y humedales' },
     mariposa: { n: 'Mariposas', sci: 'Anartia amathea · Ascia monuste', c: '#ff8a3d', v: 2.4, cant: movil ? 16 : 50, liba: [3, 8], salto: 25, rol: 'Visitan flores de la huerta; su presencia indica una huerta sin plaguicidas' },
+    abejorro: { n: 'Abejorro', sci: 'Bombus atratus', c: '#3a3a3a', v: 3.6, cant: movil ? 14 : 40, liba: [2, 5], salto: 30, rol: 'Abejorro nativo de la sabana: poliniza tomate, fresa y uchuva por vibración, aun con frío y llovizna' },
     copeton: { n: 'Copetón', sci: 'Zonotrichia capensis', c: '#b48a5a', v: 6, cant: movil ? 6 : 18, liba: [4, 10], salto: 45, rol: 'Come insectos y semillas de maleza entre los racks: control natural de plagas sin dañar la huerta' }
   };
   // modelos (1 unidad = 1 m), hechos de piezas simples pero con su silueta y color reales
@@ -146,6 +147,8 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     abeja: limpio([elip(0.004, 0.004, 0.004, 0.004, 0, 0, '#5a4524'), elip(0.0065, 0.0045, 0.0045, -0.005, -0.0005, 0, '#e0a52a'), elip(0.0066, 0.0046, 0.0046, -0.006, -0.0005, 0, '#2a2016').scale(0.45, 1.02, 1.02).translate(-0.003, 0, 0), elip(0.0066, 0.0046, 0.0046, -0.008, -0.0005, 0, '#2a2016').scale(0.3, 1.02, 1.02).translate(-0.006, 0, 0), elip(0.0032, 0.003, 0.003, 0.0095, 0.0005, 0, '#2a2016')]),
     // mariposa: cuerpo delgado oscuro (las alas son aparte)
     mariposa: limpio([elip(0.014, 0.0025, 0.0025, 0, 0, 0, '#2a2520'), elip(0.0035, 0.003, 0.003, 0.016, 0.001, 0, '#2a2520')]),
+    // abejorro: negro y velludo con la punta del abdomen amarillenta (2 cm)
+    abejorro: limpio([elip(0.006, 0.0055, 0.0055, 0.005, 0, 0, '#1d1b18'), elip(0.009, 0.0068, 0.0068, -0.007, -0.0005, 0, '#24211d'), elip(0.004, 0.0045, 0.0045, -0.015, -0.001, 0, '#d9b43a'), elip(0.0038, 0.0035, 0.0035, 0.012, 0, 0, '#141210')]),
     // copetón: pardo con rayas, cresta gris y collar rufo (15 cm)
     copeton: limpio([elip(0.055, 0.032, 0.03, 0, 0, 0, '#8a6a48'), elip(0.03, 0.025, 0.026, 0.05, 0.022, 0, '#7d7a72'), elip(0.02, 0.018, 0.028, 0.03, 0.002, 0, '#b0643a'), elip(0.03, 0.022, 0.024, 0.005, -0.012, 0, '#ddd6c8'), cono(0.006, 0.016, 0.083, 0.02, 0, -Math.PI / 2, '#3b3631'), cono(0.014, 0.05, -0.075, 0.004, 0, Math.PI / 2 + 0.15, '#5a4636'), cono(0.008, 0.025, 0.045, 0.05, 0, 0.5, '#6f6a62'), elip(0.004, 0.004, 0.004, 0.067, 0.03, 0.013, '#050505'), elip(0.004, 0.004, 0.004, 0.067, 0.03, -0.013, '#050505')])
   };
@@ -155,6 +158,7 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
   const ala = (largo, ancho, x) => new THREE.PlaneGeometry(ancho, largo).rotateX(-Math.PI / 2).translate(x, 0, largo / 2);
   const ALAS = {
     colibri: [ala(0.06, 0.022, 0.005), new THREE.MeshBasicMaterial({ color: 0x9fb8b0, transparent: true, opacity: 0.32, side: THREE.DoubleSide, depthWrite: false }), 42],
+    abejorro: [ala(0.014, 0.007, 0.004), new THREE.MeshBasicMaterial({ color: 0xc9d2dc, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }), 30],
     abeja: [ala(0.011, 0.005, 0.003), new THREE.MeshBasicMaterial({ color: 0xdfe8f2, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false }), 34],
     mariposa: [ala(0.035, 0.04, 0.002), null, 6],
     copeton: [ala(0.085, 0.045, 0), new THREE.MeshStandardMaterial({ color: 0x6e5238, side: THREE.DoubleSide, roughness: 0.8 }), 14]
@@ -213,7 +217,7 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     const sube = Math.min(6, d * 0.15) * Math.min(1, d / 20), v = e.v * (a.e === 'mariposa' ? 0.7 + 0.5 * Math.sin(a.fase * 0.7) : 1);
     let tx = dx / d * v, ty = (dy + sube) / Math.max(1, d) * v, tz = dz / d * v;
     if (a.e === 'mariposa') { tx += Math.sin(a.fase * 1.9) * 0.9; ty += Math.cos(a.fase * 2.3) * 0.8; tz += Math.cos(a.fase * 1.7) * 0.9; }
-    if (a.e === 'abeja') { tx += Math.sin(a.fase * 5) * 0.4; tz += Math.cos(a.fase * 4) * 0.4; }
+    if (a.e === 'abeja' || a.e === 'abejorro') { tx += Math.sin(a.fase * 5) * 0.4; tz += Math.cos(a.fase * 4) * 0.4; }
     const k = Math.min(1, dt * (a.e === 'colibri' ? 7 : 3.5));
     a.vx += (tx - a.vx) * k; a.vy += (ty - a.vy) * k; a.vz += (tz - a.vz) * k;
     const paso = Math.min(d, Math.hypot(a.vx, a.vy, a.vz) * dt) / Math.max(1e-6, Math.hypot(a.vx, a.vy, a.vz) * dt);
@@ -224,13 +228,13 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     const m = MESH[a.e], e = ESP[a.e];
     a.fase += dt * (a.st === 'liba' ? 1.3 : 1);
     // tamaño real de cerca; de lejos se agrandan para seguir viéndose (como un marcador), sin pasar de 25 veces
-    const dist = Math.hypot(a.x - cam.position.x, a.y - cam.position.y, a.z - cam.position.z), base = { colibri: 0.1, abeja: 0.016, mariposa: 0.07, copeton: 0.16 }[a.e];
-    const s = Math.min(25, Math.max(1, dist * 0.007 / base));
+    const dist = Math.hypot(a.x - cam.position.x, a.y - cam.position.y, a.z - cam.position.z), base = { colibri: 0.1, abeja: 0.016, abejorro: 0.022, mariposa: 0.07, copeton: 0.16 }[a.e];
+    const s = Math.min(25, Math.max(a.e === 'colibri' || a.e === 'copeton' ? 1.4 : 2.2, dist * 0.007 / base)); // de cerca un poco más grandes que en la realidad para poder verlos
     const yaw = Math.atan2(-a.vz, a.vx), cabeceo = a.st === 'liba' ? (a.e === 'colibri' ? 0.35 : 0) : Math.atan2(a.vy, Math.hypot(a.vx, a.vz)) * 0.5;
     eu.set(0, yaw, cabeceo, 'YZX'); q.setFromEuler(eu); pos.set(a.x, a.y, a.z); esc.set(s, s, s); M4.compose(pos, q, esc);
     m.cuerpo.setMatrixAt(a.i, M4);
     // aleteo: colibrí y abeja muy rápido (borroso), mariposa lento y amplio, copetón con pausas
-    const posado = a.st === 'liba' && (a.e === 'mariposa' || a.e === 'copeton' || a.e === 'abeja');
+    const posado = a.st === 'liba' && (a.e === 'mariposa' || a.e === 'copeton' || a.e === 'abeja' || a.e === 'abejorro');
     const f = ALAS[a.e][2], amp = posado ? (a.e === 'mariposa' ? 0.5 + 0.4 * Math.sin(a.fase * 2) : 0.05) : a.e === 'mariposa' ? 1.1 : 0.9;
     const angA = posado && a.e === 'mariposa' ? 1.2 + 0.3 * Math.sin(a.fase * 2) : Math.sin(performance.now() / 1000 * f * 6.283 + a.i) * amp;
     m.alas.forEach((par, vi) => par.forEach((im, lado) => {

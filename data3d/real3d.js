@@ -202,7 +202,7 @@ const VARIEDADES = [
 function realzarMaterial(m, env, hoja) {
   ajustarMat(m, env, { roughness: 0.9, tinte: hoja ? 1.25 : 1.0, env: 0.4 });
   // las caras que no miran al sol no se ven negras: la textura aporta un poco de luz propia
-  if (m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = hoja ? (realzarMaterial.ken ? 0.3 : 0.42) : 0.18; }
+  if (m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = hoja ? (realzarMaterial.ken ? 0.46 : 0.42) : (realzarMaterial.ken ? 0.26 : 0.18); } // simulador: luz de relleno en la copa (sin el interior negro): árboles suaves
   m.needsUpdate = true; return m;
 }
 function dibujarSiluetas(T3, partes, alto, ancho) {
@@ -419,7 +419,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   const FM = new Float32Array(N * 16), FC = new Float32Array(N * 3);
   const porte = (i) => { const v = VARIEDADES[VAR[i]], s = esc(i); d.scale.set(s * v.sx, s * v.sy, s * v.sx); };
   for (let i = 0; i < N; i++) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); FM.set(d.matrix.elements, i * 16); const tv = 0.88 + hash(i * 19) * 0.24, h = VARIEDADES[VAR[i]].h; FC[i * 3] = tv * h[0]; FC[i * 3 + 1] = tv * h[1]; FC[i * 3 + 2] = tv * h[2]; }
-  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) { const g = (h[0] + h[1] + h[2]) / 3; col.setRGB(tv * 1.22 * (0.55 * h[0] + 0.45 * g), tv * 1.22 * j * (0.55 * h[1] + 0.45 * g), tv * 1.2 * (0.55 * h[2] + 0.45 * g)); } else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
+  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) { const g = (h[0] + h[1] + h[2]) / 3; col.setRGB(tv * 1.16 * (0.45 * h[0] + 0.55 * g) + 0.06, tv * 1.14 * j * (0.45 * h[1] + 0.55 * g) + 0.07, tv * 1.12 * (0.45 * h[2] + 0.55 * g) + 0.07); } else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
   const ult = { x: 1e9, z: 1e9, t: 0 }, cand = [];
   const api = { ...api0, N, ribera, enParques, deCalle, especies: especies.map(e => e.base + ':' + e.niveles.L0.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0) + '/' + e.niveles.L1.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0)) };
   api.pos = { X, Z, Hh }; // posiciones y alturas de los árboles (el modo pájaro pone los nidos en las copas)

@@ -53,9 +53,9 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0, dentro = nul
   const hidroponia = (on) => {
     if (T3.huertas && T3.huertas.grupo) T3.huertas.grupo.visible = !on; // con E8 prendida, las terrazas de camas de tierra (huertas_techo.js) se vuelven hidropónicas
     if (HIDRO) { HIDRO.ver(on); return; } if (!on) return;
-    if (!HIDRO_P) HIDRO_P = import('./huertas_hidro.js?v=1').then(m => { const e = D.estrategias.find(x => x.id === 'E8'), c = e && e.capas.find(x => /cubiertas/i.test(x.n)); if (!c) return null;
+    if (!HIDRO_P) HIDRO_P = import('./huertas_hidro.js?v=2').then(m => { const e = D.estrategias.find(x => x.id === 'E8'), c = e && e.capas.find(x => /cubiertas/i.test(x.n)); if (!c) return null;
       const techos = (c.techos || []).map(t => ({ W: W2(t.slice(0, -1)), h: t[t.length - 1] / 10 })).filter(t => !dentro || dentro(t.W[0][0], t.W[0][1]));
-      return m.iniciarHidroponia({ THREE, T3, techos, movil }); }).then(h => { HIDRO = h; if (h) h.ver(!!PREN.E8); return h; }).catch(er => console.warn('huertas hidropónicas:', er));
+      return m.iniciarHidroponia({ THREE, T3, techos, movil }); }).then(h => { HIDRO = h; if (h) h.ver(true); return h; }).catch(er => console.warn('huertas hidropónicas:', er));
   };
   for (const e of D.estrategias) {
     const gr = new THREE.Group(); gr.visible = false; grupo.add(gr); // al iniciar, todas apagadas
@@ -163,9 +163,10 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0, dentro = nul
   });
   return {
     lista,
-    ver: (id, on) => { PREN[id] = on; conexiones(); if (id === 'E8') hidroponia(on); const k = CAPA[id]; if (!k) return; if (on && !k.lista) { armar(k.e, k.gr); k.lista = true; } k.gr.visible = on; },
+    ver: (id, on) => { PREN[id] = on; conexiones(); const k = CAPA[id]; if (!k) return; if (on && !k.lista) { armar(k.e, k.gr); k.lista = true; } k.gr.visible = on; },
     marcar: (id, on) => { PREN[id] = on; conexiones(); }, // E1 y E3 tienen su propio plan: solo cuentan para las conexiones
     // sitios de huerta en el suelo (lotes baldíos) para las colmenas y lombrices de la red biótica
+    hidroponia: () => hidroponia(true), // huertas hidropónicas en techos y balcones con sus polinizadores: siempre a la vista
     sitios: () => { const e = D.estrategias.find(x => x.id === 'E8'); const c = e && e.capas.find(x => /baldío/i.test(x.n)); return c ? c.lotes.map(l => ({ id: 'E8', n: 'Huerta en lote baldío', poly: W2(l) })) : []; }
   };
 }

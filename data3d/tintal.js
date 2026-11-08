@@ -103,39 +103,76 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
     const m = new THREE.Mesh(g, MAT[k]); m.castShadow = !movil; m.receiveShadow = !movil; m.name = 'tintal-' + k; grupo.add(m);
   }
 
-  // ---------- palmas de la plaza (Phoenix canariensis): tronco grueso anillado y corona de hojas pinnadas arqueadas ----------
-  const texHoja = lienzo(128, 512, (g, w, h) => { // hoja pinnada: raquis central y folíolos a los dos lados (alfa)
+  // ---------- palmas de la plaza (Phoenix canariensis, palma de Canarias) ----------
+  // tronco grueso con las cicatrices de las hojas en rombo, "piña" de bases foliares bajo la corona, y corona densa de ~44 hojas
+  // pinnadas largas: folíolos finos y rígidos, hoja doblada en V a lo largo del raquis, las de arriba erguidas, las de abajo colgando
+  // y algunas secas (pajizas) en el anillo inferior, como en la plaza de la biblioteca. Tres variantes de corona.
+  const texHoja = lienzo(256, 1024, (g, w, h) => { // hoja vista de frente: raquis amarillento y folíolos finos hacia la punta (alfa)
     g.clearRect(0, 0, w, h);
-    for (let y = 8; y < h; y += 5) { const t = y / h, lf = (w / 2 - 4) * Math.sin(Math.PI * Math.min(1, t * 1.15)) * (1 - 0.35 * t); for (const sd of [-1, 1]) { g.strokeStyle = `rgba(${60 + 30 * Math.random()},${92 + 30 * Math.random()},${38 + 15 * Math.random()},1)`; g.lineWidth = 2.2; g.beginPath(); g.moveTo(w / 2, y); g.lineTo(w / 2 + sd * lf, y + 9 + 6 * t); g.stroke(); } }
-    g.strokeStyle = '#8a8a4e'; g.lineWidth = 4; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, h); g.stroke();
-  });
-  const texTronco = lienzo(64, 256, (g, w, h) => { g.fillStyle = '#7a6a55'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 9) { g.fillStyle = 'rgba(40,30,22,.55)'; g.fillRect(0, y, w, 3); g.fillStyle = 'rgba(170,150,120,.35)'; for (let x = 0; x < w; x += 8) g.fillRect(x + (y % 18 ? 4 : 0), y + 3, 5, 5); } }, true);
-  // una corona: 26 hojas en espiral, cada una una cinta curvada de 8 tramos (4,2 m), arqueada hacia abajo
-  const corona = (() => {
-    const P = [], U = [], I = [];
-    for (let k = 0; k < 26; k++) {
-      const az = k * 2.39996, el = 0.55 - (k % 3) * 0.32 - (k > 18 ? 0.35 : 0), Lh = 3.6 + (k % 4) * 0.25, base = P.length / 3, ancho = 0.75;
-      const dx = Math.cos(az), dz = Math.sin(az), px = -dz, pz = dx;
-      for (let j = 0; j <= 8; j++) {
-        const t = j / 8, d = Lh * t, y = Math.sin(el) * d - 0.55 * d * d / Lh, r = Math.cos(el) * d, wv = ancho * (0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, t * 1.1)));
-        for (const sd of [-1, 1]) { P.push(dx * r + px * sd * wv / 2, y + Math.abs(sd) * 0.05 * t, dz * r + pz * sd * wv / 2); U.push(sd < 0 ? 0 : 1, t); }
-        if (j) { const b = base + (j - 1) * 2; I.push(b, b + 2, b + 1, b + 1, b + 2, b + 3); }
+    for (let y = 30; y < h - 6; y += 3.2) {
+      const t = y / h, lf = (w / 2 - 6) * Math.pow(Math.sin(Math.PI * Math.min(1, 0.08 + t * 1.02)), 0.7) * (1 - 0.45 * t);
+      for (const sd of [-1, 1]) {
+        const v = Math.random(), r = 74 + 26 * v + 18 * t, gg = 104 + 30 * v + 10 * t, b = 52 + 14 * v;
+        const grd = g.createLinearGradient(w / 2, y, w / 2 + sd * lf, y + 22 + 10 * t); grd.addColorStop(0, `rgb(${r - 18},${gg - 16},${b - 10})`); grd.addColorStop(1, `rgb(${r + 22},${gg + 20},${b + 8})`);
+        g.strokeStyle = grd; g.lineWidth = 1.6 + 0.8 * (1 - t); g.beginPath(); g.moveTo(w / 2 + sd * 2, y); g.quadraticCurveTo(w / 2 + sd * lf * 0.55, y + 6, w / 2 + sd * lf, y + 22 + 10 * t); g.stroke();
       }
     }
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals(); return g;
-  })();
-  const tronco = new THREE.CylinderGeometry(0.52, 0.66, 1, 12, 1, true).translate(0, 0.5, 0);
-  { const uv = tronco.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * 3); }
-  const matHoja = new THREE.MeshStandardMaterial({ map: texHoja, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.75 });
-  const matTronco = new THREE.MeshStandardMaterial({ map: texTronco, roughness: 0.95 });
-  const palmas = D.palmas || [], nP = palmas.length;
-  const mT = new THREE.InstancedMesh(tronco, matTronco, nP), mC = new THREE.InstancedMesh(corona, matHoja, nP), o3 = new THREE.Object3D();
-  palmas.forEach(([X, Y, r], i) => {
-    const h = Math.max(3, Math.min(6.5, 1.6 + r * 1.1)), esc = Math.max(0.85, Math.min(1.45, r / 2.4)), giro = (X * 13.1 + Y * 7.7) % 6.28;
-    o3.position.set(X + OX, Y0, Y + OZ); o3.rotation.set(0, giro, 0); o3.scale.set(1, h, 1); o3.updateMatrix(); mT.setMatrixAt(i, o3.matrix);
-    o3.position.y = Y0 + h - 0.2; o3.scale.set(esc, esc, esc); o3.updateMatrix(); mC.setMatrixAt(i, o3.matrix);
+    for (let y = 0; y < 30; y += 6) for (const sd of [-1, 1]) { g.strokeStyle = 'rgba(150,140,90,.9)'; g.lineWidth = 2; g.beginPath(); g.moveTo(w / 2, y); g.lineTo(w / 2 + sd * 10, y + 12); g.stroke(); } // espinas de la base
+    const rq = g.createLinearGradient(0, 0, 0, h); rq.addColorStop(0, '#c9b46a'); rq.addColorStop(1, '#8e9a52');
+    g.strokeStyle = rq; g.lineWidth = 6; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, h - 4); g.stroke();
   });
-  mT.castShadow = mC.castShadow = !movil; mT.frustumCulled = mC.frustumCulled = false; grupo.add(mT, mC);
+  const texSeca = lienzo(128, 512, (g, w, h) => { g.clearRect(0, 0, w, h); for (let y = 14; y < h - 4; y += 3.5) { const t = y / h, lf = (w / 2 - 4) * Math.sin(Math.PI * Math.min(1, 0.08 + t)) * (1 - 0.5 * t); for (const sd of [-1, 1]) { const v = Math.random(); g.strokeStyle = `rgb(${150 + 40 * v},${126 + 30 * v},${78 + 20 * v})`; g.lineWidth = 1.4; g.beginPath(); g.moveTo(w / 2, y); g.lineTo(w / 2 + sd * lf, y + 14); g.stroke(); } } g.strokeStyle = '#a08c5c'; g.lineWidth = 4; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, h); g.stroke(); });
+  const texTronco = lienzo(128, 512, (g, w, h) => { // cicatrices en rombo de las bases foliares
+    g.fillStyle = '#6f5f4c'; g.fillRect(0, 0, w, h);
+    const cw = w / 6, ch = 22;
+    for (let fy = -1; fy < h / ch + 1; fy++) for (let fx = -1; fx < 7; fx++) {
+      const cx = fx * cw + (fy % 2 ? cw / 2 : 0), cy = fy * ch, v = Math.random();
+      g.fillStyle = `rgb(${120 + 30 * v},${104 + 26 * v},${84 + 20 * v})`; g.beginPath(); g.moveTo(cx, cy - ch * 0.48); g.lineTo(cx + cw * 0.46, cy); g.lineTo(cx, cy + ch * 0.48); g.lineTo(cx - cw * 0.46, cy); g.closePath(); g.fill();
+      g.fillStyle = 'rgba(40,30,22,.5)'; g.fillRect(cx - cw * 0.3, cy + ch * 0.12, cw * 0.6, 2.5);
+    }
+  }, true);
+  // hoja: cinta doblada en V (dos medias hojas a ±32° del plano), arqueada con su peso; 14 tramos
+  const hoja = (P, U, I, az, el, Lh, ancho, caida, u0) => {
+    const dx = Math.cos(az), dz = Math.sin(az), px = -dz, pz = dx, V = 0.32, N = 14, base = P.length / 3;
+    for (let j = 0; j <= N; j++) {
+      const t = j / N, d = Lh * t, y = Math.sin(el) * d - caida * d * d / Lh, r = Math.cos(el) * d, wv = ancho * Math.pow(Math.sin(Math.PI * Math.min(1, 0.06 + t)), 0.7) * (1 - 0.4 * t);
+      for (const sd of [-1, 0, 1]) { const ww = sd * wv / 2; P.push(dx * r + px * ww * Math.cos(V), y + Math.abs(sd) * wv / 2 * Math.sin(V), dz * r + pz * ww * Math.cos(V)); U.push(u0 + (sd + 1) / 2 * 0.5, t); }
+      if (j) { const b = base + (j - 1) * 3; I.push(b, b + 3, b + 1, b + 1, b + 3, b + 4, b + 1, b + 4, b + 2, b + 2, b + 4, b + 5); }
+    }
+  };
+  const corona = (sem) => {
+    let s = sem; const rn = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+    const P = [], U = [], I = [], Ps = [], Us = [], Is = [];
+    for (let k = 0; k < 44; k++) {
+      const az = k * 2.39996 + rn() * 0.2, piso = k / 44; // las primeras arriba (erguidas), las últimas abajo (colgando)
+      const el = 1.15 - piso * 1.75 + (rn() - 0.5) * 0.18, Lh = 4.2 + rn() * 1.1 - piso * 0.4, caida = 0.35 + piso * 0.6;
+      if (piso > 0.86 && rn() < 0.55) hoja(Ps, Us, Is, az, el - 0.3, Lh * 0.9, 0.8, caida + 0.25, 0); // seca, del anillo inferior
+      else hoja(P, U, I, az, el, Lh, 1.0, caida, 0);
+    }
+    const mk = (P, U, I) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U.map((v, i) => i % 2 ? v : v * 2), 2)); g.setIndex(I); g.computeVertexNormals(); return g; };
+    return [mk(P, U, I), mk(Ps, Us, Is)];
+  };
+  const CORONAS = [corona(11), corona(29), corona(53)];
+  const tronco = new THREE.CylinderGeometry(0.6, 0.72, 1, 16, 4, true);
+  { const p = tronco.attributes.position, uv = tronco.attributes.uv; for (let i = 0; i < p.count; i++) { const y = p.getY(i) + 0.5, k = 1 + 0.08 * Math.sin(y * 9) ; p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); p.setY(i, y); uv.setY(i, uv.getY(i) * 4); } tronco.computeVertexNormals(); }
+  const pina = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.62).scale(0.95, 0.9, 0.95); // bases foliares bajo la corona
+  const matHoja = new THREE.MeshStandardMaterial({ map: texHoja, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.62, emissive: 0xffffff, emissiveMap: texHoja, emissiveIntensity: 0.22 });
+  const matSeca = new THREE.MeshStandardMaterial({ map: texSeca, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.9, emissive: 0xffffff, emissiveMap: texSeca, emissiveIntensity: 0.15 });
+  const matTronco = new THREE.MeshStandardMaterial({ map: texTronco, roughness: 0.95 });
+  const matPina = new THREE.MeshStandardMaterial({ map: texTronco, roughness: 0.95, color: 0x9a8a6a });
+  const palmas = D.palmas || [], nP = palmas.length;
+  const mT = new THREE.InstancedMesh(tronco, matTronco, nP), mP = new THREE.InstancedMesh(pina, matPina, nP), o3 = new THREE.Object3D(), col = new THREE.Color();
+  const mC = CORONAS.map(([v, s]) => [new THREE.InstancedMesh(v, matHoja, nP), new THREE.InstancedMesh(s, matSeca, nP)]), nC = [0, 0, 0];
+  palmas.forEach(([X, Y, r], i) => {
+    const h = Math.max(3.2, Math.min(7.5, 2 + r * 1.2)), esc = Math.max(0.9, Math.min(1.4, r / 2.5)), giro = (X * 13.1 + Y * 7.7) % 6.28, vk = Math.abs(Math.floor(X * 3 + Y * 7)) % 3;
+    o3.position.set(X + OX, Y0, Y + OZ); o3.rotation.set(0, giro, 0); o3.scale.set(esc, h, esc); o3.updateMatrix(); mT.setMatrixAt(i, o3.matrix);
+    o3.position.y = Y0 + h - 0.15; o3.scale.set(esc * 0.85, esc * 0.85, esc * 0.85); o3.updateMatrix(); mP.setMatrixAt(i, o3.matrix);
+    o3.position.y = Y0 + h + 0.35; o3.scale.set(esc, esc, esc); o3.updateMatrix();
+    const k = nC[vk]++, tv = 0.88 + ((X * 7.3 + Y) % 1 + 1) % 1 * 0.24; col.setRGB(tv, tv * (0.97 + 0.06 * (i % 3) / 2), tv * 0.95);
+    mC[vk].forEach(m => { m.setMatrixAt(k, o3.matrix); m.setColorAt(k, col); });
+  });
+  mC.forEach((par, vk) => par.forEach(m => { m.count = nC[vk]; }));
+  for (const m of [mT, mP, ...mC.flat()]) { m.castShadow = !movil; m.receiveShadow = !movil; m.frustumCulled = false; grupo.add(m); }
   T3.tintal = grupo;
   return { grupo, palmas: nP };
 }
