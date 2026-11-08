@@ -1269,7 +1269,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=51'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=52'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');

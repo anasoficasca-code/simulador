@@ -326,7 +326,8 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   const stride = Math.max(1, Math.ceil(T.t.length / 130000)); // se muestran todos los arboles de los datos
   const X = [], Z = [], Hh = [], SP = [], pesoTot = ESPECIES_ARBOL.reduce((a, e) => a + e.peso, 0);
   const elegir = (r) => { r *= pesoTot; for (let k = 0; k < ESPECIES_ARBOL.length; k++) { r -= ESPECIES_ARBOL[k].peso; if (r < 0) return k; } return ESPECIES_ARBOL.length - 1; };
-  for (let i = 0; i < T.t.length; i += stride) { const t = T.t[i], w = lw(t[0], t[1]); X.push(w[0]); Z.push(w[1]); Hh.push(Math.max(4, Math.min(16, t[2] || 6))); SP.push(elegir(hash(i * 3 + 1))); }
+  const KEN_A = !!T3.kenArboles; // simulador: alturas como el render de Unreal (6 a 14 m, copas grandes); el censo marca muchos de 1-2 m y se veían como matas
+  for (let i = 0; i < T.t.length; i += stride) { const t = T.t[i], w = lw(t[0], t[1]); X.push(w[0]); Z.push(w[1]); Hh.push(KEN_A ? Math.max(6, Math.min(14, 6.5 + (t[2] || 4) * 0.8 + hash(i * 5 + 2) * 3)) : Math.max(4, Math.min(16, t[2] || 6))); SP.push(elegir(hash(i * 3 + 1))); }
   const aguas = cuerposDeAgua(W, lw); let ribera = 0;
   for (const a of aguas) {
     for (let i = 0; i < a.pts.length && ribera < 30000; i += 2) {
@@ -414,11 +415,11 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   const techos = especies.map((e, ei) => { const g = new THREE.PlaneGeometry(e.sil.lado, e.sil.lado); g.rotateX(-Math.PI / 2); g.translate(0, e.alto * 0.62, 0); const mat = new THREE.MeshBasicMaterial({ map: e.sil.texTop, alphaTest: 0.42, side: THREE.DoubleSide }); const cap = lejos[ei].instanceMatrix.count; const m = new THREE.InstancedMesh(g, mat, cap); m.count = 0; m.frustumCulled = false; m.castShadow = false; m.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3); m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); T3.scene.add(m); return m; });
   const escala = (i) => { const e = especies[SP[i]]; return Math.min(Hh[i] / e.alto, e.ancho / e.ancho0 || Hh[i] / e.alto); };
   especies.forEach(e => { e.ancho0 = e.ancho; });
-  const esc = (i) => { const e = especies[SP[i]]; return Math.min(Hh[i] / e.alto, ESPECIES_ARBOL[SP[i]].ancho / e.ancho); };
+  const esc = (i) => { const e = especies[SP[i]]; return KEN_A ? Hh[i] / e.alto : Math.min(Hh[i] / e.alto, ESPECIES_ARBOL[SP[i]].ancho / e.ancho); }; // simulador: la copa conserva la proporción del modelo real (llena, como en Unreal)
   const FM = new Float32Array(N * 16), FC = new Float32Array(N * 3);
   const porte = (i) => { const v = VARIEDADES[VAR[i]], s = esc(i); d.scale.set(s * v.sx, s * v.sy, s * v.sx); };
   for (let i = 0; i < N; i++) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); FM.set(d.matrix.elements, i * 16); const tv = 0.88 + hash(i * 19) * 0.24, h = VARIEDADES[VAR[i]].h; FC[i * 3] = tv * h[0]; FC[i * 3 + 1] = tv * h[1]; FC[i * 3 + 2] = tv * h[2]; }
-  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) col.setRGB(tv * 1.18 * h[0], tv * 1.2 * j * h[1], tv * 1.12 * h[2]); else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
+  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) { const g = (h[0] + h[1] + h[2]) / 3; col.setRGB(tv * 1.22 * (0.55 * h[0] + 0.45 * g), tv * 1.22 * j * (0.55 * h[1] + 0.45 * g), tv * 1.2 * (0.55 * h[2] + 0.45 * g)); } else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
   const ult = { x: 1e9, z: 1e9, t: 0 }, cand = [];
   const api = { ...api0, N, ribera, enParques, deCalle, especies: especies.map(e => e.base + ':' + e.niveles.L0.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0) + '/' + e.niveles.L1.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0)) };
   api.pos = { X, Z, Hh }; // posiciones y alturas de los árboles (el modo pájaro pone los nidos en las copas)
