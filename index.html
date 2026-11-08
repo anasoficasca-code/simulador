@@ -561,6 +561,25 @@ function buildPoiList() {
   });
 }
 
+/* Compilación de shaders en paralelo: cuando aparecen materiales nuevos (al cargar edificios, árboles, capas...) se compilan con
+   renderer.compileAsync (KHR_parallel_shader_compile, en hilos de la tarjeta gráfica) y mientras tanto se deja quieta la última imagen.
+   Antes cada programa nuevo se compilaba al dibujarlo y congelaba la página (13 s de los 35 s de carga). La imagen final no cambia. */
+let gpuCompilando = false, gpuRevisar = 0;
+function compilandoGPU(cam) {
+  if (gpuCompilando) return true;
+  const r = T3 && T3.renderer; if (!r || !r.compileAsync) return false;
+  const ahora = performance.now(); if (ahora < gpuRevisar) return false; gpuRevisar = ahora + 350;
+  let nuevo = false;
+  T3.scene.traverseVisible(o => { if (nuevo || !o.material) return; const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) if (!r.properties.get(m).currentProgram) { nuevo = true; break; } });
+  if (!nuevo) return false;
+  gpuCompilando = true;
+  const fin = () => { gpuCompilando = false; gpuRevisar = 0; };
+  const rtPrev = r.getRenderTarget(); if (T3.composer) r.setRenderTarget(T3.composer.readBuffer); // con el compositor la escena se dibuja en su búfer (otro programa que en pantalla)
+  const pc = r.compileAsync(T3.scene, cam); r.setRenderTarget(rtPrev);
+  Promise.race([pc, new Promise(res => setTimeout(res, 20000))]).then(fin, fin);
+  return true;
+}
+
 let idx = 0;
 /* pasos de carga de la portada (y de la píldora que queda arriba mientras termina lo pesado) */
 const PASOS = ['edif', 'capas', 'arboles', 'trafico', 'foto'];
@@ -786,7 +805,7 @@ function flight(ms) {
     actualizarMalla(T3, dt);
     if (SIM) SIM.update(dt); // HUD, detección y seguimiento tipo God's Eye
     if (PROP) PROP.update(dt); // propuesta: mercados de barrio, huertas y abastecimiento (data3d/propuesta.js)
-    if (!(SIM && SIM.render(cam))) { if (T3.composer) T3.composer.render(); else T3.renderer.render(T3.scene, cam); } // con un sensor (CRT, NVG, FLIR) dibuja el simulador; si no, render con oclusión ambiental
+    if (!compilandoGPU(cam)) if (!(SIM && SIM.render(cam))) { if (T3.composer) T3.composer.render(); else T3.renderer.render(T3.scene, cam); } // con un sensor (CRT, NVG, FLIR) dibuja el simulador; si no, render con oclusión ambiental
     requestAnimationFrame(flight); return;
   }
   acc = Math.min(acc + ms, 60);
