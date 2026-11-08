@@ -1,0 +1,36 @@
+REN3D - creditos de modelos, texturas e imagenes
+
+ARBOLES Y PLANTAS (modelos 3D reales, licencia CC0, Poly Haven - polyhaven.com)
+  Arboles: Jacaranda Tree (Rob Tuytel, Rico Cilliers), Tree Small 02 (Rico Cilliers), Island Tree 01 y 02 (Rob Tuytel, Rico Cilliers)
+           -> data3d/models/jacaranda_*, arbolpeq_*, island_tree_01_*, island_tree_02_*  (versiones reducidas para la web; de lejos se usan siluetas dibujadas desde el propio modelo)
+  Plantas: Fern 02, Celandine 01, Nettle Plant, Periwinkle Plant, Calathea Orbifolia 01 (Rico Cilliers, Rob Tuytel, Amal Kumar)
+           -> data3d/models/fern_02.glb, celandine_01.glb, nettle_plant.glb, periwinkle_plant.glb, calathea_orbifolia_01.glb
+  Las hojas de los arboles se redujeron conservando una de cada N y agrandandolas; la madera se simplifico y se quito el parche de suelo del escaneo. No son los modelos originales.
+  El pasto y los juncos 3D se generan por codigo en data3d/real3d.js (no usan modelos descargados).
+
+AGUA
+  data3d/waternormals.jpg: mapa de normales de los ejemplos de three.js (https://github.com/mrdoob/three.js, licencia MIT).
+
+AVES (fotos recortadas)
+  data3d/aves/pato.png, garza.png, tingua.png: tomadas del repositorio humedalburro (anasoficasca-code/humedalburro, carpeta assets).
+  Los creditos de las fotos de iNaturalist del proyecto estan en humedalburro/assets/CREDITOS-inaturalist.txt.
+
+CARROS
+  Los carros (sedan, hatchback, camioneta, taxi y van) estan construidos por codigo en data3d/real3d.js; no usan modelos descargados.
+
+OTROS
+  data3d/tree_skp.glb y roble.*: arbol entregado por el autor del proyecto.
+  data3d/poliigon/*: texturas Poliigon GrassPatchyGround_4585 (segun su licencia).
+
+TEXTURAS DEL SUELO (data3d/textures)
+  via_*, piso_*, acera_*: Poly Haven (polyhaven.com), licencia CC0 - rough_concrete, granular_concrete, concrete_pavement (1k, color y normales).
+  pasto_*: Poliigon GrassPatchyGround_4585 reducida a 1024 px (segun su licencia).
+
+FOTOS DE AVES DEL MENU (data3d/aves/foto_*.jpg, Wikimedia Commons, reducidas a 800 px)
+  foto_garza.jpg: "Great egret in GWC (43539)", CC BY-SA 4.0.
+  foto_gaviota.jpg: Andean Gull (Chroicocephalus serranus), (4856332949), CC BY-SA 2.0.
+  foto_tingua.jpg: "Tingua de Pico Rojo.jpg", CC BY-SA 4.0.
+  Autores y enlaces: commons.wikimedia.org/wiki/File:<nombre del archivo>
+
+LADRILLO DE FACHADAS (textura PBR fotografica, licencia CC0, Poly Haven - polyhaven.com/a/brick_4)
+  Brick 4: color, normales (OpenGL) y rugosidad a 1K -> data3d/textures/ladrillo_color.jpg, ladrillo_normal.jpg, ladrillo_rugosidad.jpg

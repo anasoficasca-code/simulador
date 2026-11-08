@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Red de Actores de Kennedy — 9 Estrategias</title>
+<meta name="description" content="Red de actores, organismos, entorno y relaciones de las nueve estrategias de la Federación Policéntrica de Kennedy.">
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+</script>
+<style>
+:root{--bg:#000;--pan:rgba(10,14,20,.94);--borde:#1f2937;--txt:#e5e7eb;--mut:#94a3b8;--suave:#64748b;--acento:#fbbf24}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font:12px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#lienzo{position:fixed;inset:0}
+button{font:inherit}
+.chip{height:30px;padding:0 11px;border-radius:8px;border:1px solid var(--borde);background:rgba(15,20,28,.9);color:var(--txt);font-weight:600;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.chip:hover{border-color:#334155}.chip.on{background:#1e293b;border-color:#475569}.chip.am{color:#fde68a;border-color:#78350f;background:rgba(120,53,15,.35)}
+#barra{position:fixed;top:10px;left:10px;right:10px;z-index:5;display:flex;gap:6px;align-items:center;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+#barra::-webkit-scrollbar{display:none}
+#barra .tit{height:30px;display:flex;align-items:center;padding:0 12px;border-radius:8px;border:1px solid var(--borde);background:rgba(15,20,28,.9);font-weight:800;font-size:11.5px;letter-spacing:.06em;white-space:nowrap}
+#barra .esp{flex:1;min-width:6px}
+#buscar{height:30px;width:190px;padding:0 10px;border-radius:8px;border:1px solid var(--borde);background:rgba(15,20,28,.9);color:var(--txt);font:inherit;font-size:11.5px;outline:none}
+#buscar:focus{border-color:#475569}
+.pan{position:fixed;z-index:4;background:var(--pan);border:1px solid var(--borde);border-radius:12px;overflow:auto;scrollbar-width:thin;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+#izq{left:10px;top:50px;bottom:60px;width:310px;padding:12px}
+#der{right:10px;top:50px;width:360px;max-height:calc(100vh - 120px);padding:12px 14px}
+.h{display:flex;align-items:center;justify-content:space-between;margin:2px 0 8px;font-size:10px;letter-spacing:.16em;font-weight:800;color:#cbd5e1}
+.h .g{display:flex;gap:4px}.h .g button{height:22px;padding:0 8px;border-radius:6px;border:1px solid var(--borde);background:#0f172a;color:var(--mut);font-size:10px;font-weight:700;letter-spacing:0;cursor:pointer}
+.sep{height:1px;background:var(--borde);margin:12px 0}
+.est{display:flex;flex-direction:column;gap:5px}
+.est button{display:flex;align-items:center;gap:9px;width:100%;padding:7px 9px;border-radius:9px;border:1px solid var(--borde);border-left:3px solid var(--c);background:rgba(15,23,42,.6);color:var(--txt);text-align:left;cursor:pointer}
+.est button b{display:grid;place-items:center;flex:none;width:28px;height:28px;border-radius:50%;background:#0b1220;border:2px solid var(--c);font-size:10.5px}
+.est button span{flex:1;font-weight:650;font-size:12px}.est button small{display:block;color:var(--suave);font-weight:500;font-size:10px}
+.est button.on{background:rgba(30,41,59,.95);border-color:#475569;border-left-color:var(--c)}
+.cap{display:flex;flex-direction:column;gap:5px}
+.cap button{display:flex;align-items:center;gap:9px;width:100%;padding:6px 9px;border-radius:9px;border:1px solid var(--borde);border-left:3px solid var(--c);background:rgba(15,23,42,.6);color:var(--txt);text-align:left;cursor:pointer}
+.cap button canvas{flex:none;width:30px;height:30px}
+.cap button span{flex:1}.cap button span b{display:block;font-size:12px}.cap button span small{color:var(--suave);font-size:10px}
+.cap button em{font-style:normal;font-weight:700;font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid var(--borde);color:var(--c)}
+.cap button.off{opacity:.38}
+.tags{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.tags button{padding:6px 4px;border-radius:8px;border:1px solid var(--borde);background:rgba(15,23,42,.6);color:var(--txt);cursor:pointer;text-align:center}
+.tags button i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
+.tags button b{display:block;font-size:11px}.tags button small{display:block;color:var(--c);font-weight:700;font-size:10.5px}
+.tags button.off{opacity:.35}
+#der h3{margin:0 0 2px;font-size:15px}#der .sub{color:var(--mut);font-size:11px;margin-bottom:8px}
+.ficha{display:grid;gap:7px}.ficha div{padding:8px 10px;border-radius:9px;background:rgba(15,23,42,.7);border:1px solid var(--borde)}
+.ficha b{display:block;font-size:9.5px;letter-spacing:.14em;color:var(--mut);margin-bottom:2px}
+.ficha .ri{border-color:rgba(248,113,113,.35);background:rgba(127,29,29,.18)}
+.cr{padding:7px 0;border-bottom:1px solid var(--borde);font-size:11.5px}.cr b{color:#fde68a}.cr small{display:block;color:var(--mut)}
+.nodo{display:flex;gap:10px;align-items:center;margin-bottom:8px}.nodo canvas{width:46px;height:46px;flex:none}
+.re{padding:7px 0;border-bottom:1px solid var(--borde);font-size:11.5px;cursor:pointer}.re:hover{background:rgba(148,163,184,.06)}
+.re .tg{display:inline-block;padding:0 6px;border-radius:5px;color:#0b1220;font-weight:800;font-size:9.5px;margin-right:6px}
+.re small{display:block;color:var(--mut);font-size:10.5px}
+.av{padding:8px 10px;border-radius:9px;background:rgba(120,53,15,.25);border:1px solid rgba(217,119,6,.35);color:#fde68a;font-size:10.5px;margin:8px 0}
+#estado{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:4;padding:7px 14px;border-radius:999px;background:var(--pan);border:1px solid var(--borde);color:var(--mut);font:11px ui-monospace,Menlo,monospace;white-space:nowrap}
+#tip{position:fixed;z-index:9;pointer-events:none;display:none;max-width:280px;padding:7px 10px;border-radius:9px;background:rgba(2,6,12,.96);border:1px solid #334155;font-size:11.5px}
+#tip small{display:block;color:var(--mut)}
+.et{position:fixed;z-index:3;pointer-events:none;transform:translate(-50%,-50%);text-align:center;font:800 9.5px system-ui,sans-serif;color:#e5e7eb;text-shadow:0 1px 3px #000,0 0 6px #000;white-space:nowrap}
+.et small{display:block;font-weight:500;font-size:8.5px;color:#cbd5e1}
+#modal{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:rgba(0,0,0,.6)}
+#modal.on{display:grid}
+#modal .v{width:min(760px,calc(100vw - 24px));max-height:calc(100vh - 40px);overflow:auto;padding:16px 18px;border-radius:14px;background:#0b1018;border:1px solid #334155}
+#modal h3{margin:0 0 8px;font-size:16px}#modal h4{margin:14px 0 6px;font-size:11px;letter-spacing:.14em;color:var(--mut)}
+#modal p{margin:5px 0;color:#cbd5e1}#modal table{width:100%;border-collapse:collapse;font-size:11.5px}#modal td,#modal th{padding:5px 6px;border-bottom:1px solid var(--borde);text-align:left;vertical-align:top}#modal th{color:var(--mut);font-weight:700}
+#modal .x{float:right}
+#tog{display:none}
+@media(max-width:820px){
+  #izq{top:auto;bottom:0;left:0;right:0;width:auto;max-height:52vh;border-radius:14px 14px 0 0;display:none}
+  body.capas #izq{display:block}
+  #der{top:auto;bottom:0;left:0;right:0;width:auto;max-height:52vh;border-radius:14px 14px 0 0;display:none}
+  body.ficha #der{display:block}
+  #tog{display:flex;position:fixed;z-index:6;left:10px;bottom:calc(14px + env(safe-area-inset-bottom));gap:6px}
+  #estado{display:none}#buscar{width:130px}
+}
+</style>
+</head>
+<body>
+<div id="lienzo"></div>
+<div id="barra">
+  <div class="tit">RED DE ACTORES DE KENNEDY</div>
+  <button class="chip am" id="b-leer">Cómo leer</button>
+  <button class="chip" id="b-met">Métricas</button>
+  <button class="chip" id="b-rest">Restablecer (0)</button>
+  <input id="buscar" placeholder="Buscar actor u organismo…" aria-label="Buscar nodo">
+  <div class="esp"></div>
+  <button class="chip on" data-l="esfera">Esfera</button><button class="chip" data-l="procesos">Por procesos</button><button class="chip" data-l="anillos">Anillos</button><button class="chip" data-l="fuerza">Fuerza</button>
+  <button class="chip on" id="b-giro">Giro 3D</button><button class="chip" id="b-reset">Reset</button>
+  <a class="chip" href="index.html?modo=kennedy" style="display:flex;align-items:center;text-decoration:none">← Territorio</a>
+</div>
+<div class="pan" id="izq"></div>
+<div class="pan" id="der"></div>
+<div id="estado">Cargando…</div>
+<div id="tip"></div>
+<div id="tog"><button class="chip" id="b-capas">Capas</button><button class="chip" id="b-ficha">Ficha</button></div>
+<div id="modal"><div class="v"></div></div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const CLASE = {
+  'Estrategia': { c: '#fbbf24', n: 'Estrategias (red integrada)', ic: 'est' },
+  'Rol previo': { c: '#f59e0b', n: 'Roles previos', d: 'Actores del catálogo anterior', ic: 'persona' },
+  'Rol humano propuesto': { c: '#60a5fa', n: 'Roles propuestos', d: 'Ciclos por proceso (hipótesis de rol)', ic: 'rol' },
+  'Organismo': { c: '#34d399', n: 'Organismos', d: 'Fauna, flora, hongos y microorganismos', ic: 'hoja' },
+  'Entorno': { c: '#94a3b8', n: 'Entorno', d: 'Variables ambientales (no deciden)', ic: 'onda' },
+  'Recurso': { c: '#22d3ee', n: 'Recursos', d: 'Agua, energía, materiales', ic: 'gota' },
+  'Infraestructura': { c: '#c084fc', n: 'Infraestructura', d: 'Edificios, vías, redes', ic: 'edif' }
+};
+const TAGC = { INF: '#7dd3fc', CONS: '#a78bfa', AUT: '#f472b6', CTRL: '#fbbf24', RET: '#34d399', DEP: '#fb923c', BIO: '#86efac', AMB: '#cbd5e1', MAT: '#22d3ee', EST: '#475569', CRUCE: '#fde68a' };
+const COLE = { E1: '#ef4444', E2: '#f472b6', E3: '#fb923c', E4: '#a78bfa', E5: '#34d399', E6: '#e879f9', E7: '#facc15', E8: '#84cc16', E9: '#fb7185' };
+const $ = (s) => document.querySelector(s), esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const A = await (await fetch('data3d/actores.json?v=2')).json();
+const DOC = A.doc || {};
+
+/* ---------- íconos por clase (lienzo) ---------- */
+function icono(cl, tam = 128, txt = '') {
+  const cv = document.createElement('canvas'); cv.width = cv.height = tam; const g = cv.getContext('2d'), k = CLASE[cl] || CLASE['Entorno'], m = tam / 2, r = tam * 0.44;
+  g.fillStyle = '#0b1220'; g.beginPath(); g.arc(m, m, r, 0, 6.283); g.fill();
+  g.lineWidth = tam * 0.06; g.strokeStyle = k.c; g.stroke();
+  g.fillStyle = k.c; g.strokeStyle = k.c; g.lineWidth = tam * 0.045; g.lineCap = 'round'; g.lineJoin = 'round';
+  const s = tam / 128;
+  if (k.ic === 'est') { g.fillStyle = '#fef3c7'; g.font = `800 ${46 * s}px system-ui`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt || 'E', m, m + 2 * s); }
+  else if (k.ic === 'persona' || k.ic === 'rol') {
+    g.beginPath(); g.arc(m, m - 16 * s, 13 * s, 0, 6.283); k.ic === 'persona' ? g.fill() : g.stroke();
+    g.beginPath(); g.moveTo(m - 26 * s, m + 30 * s); g.quadraticCurveTo(m - 26 * s, m + 2 * s, m, m + 2 * s); g.quadraticCurveTo(m + 26 * s, m + 2 * s, m + 26 * s, m + 30 * s); k.ic === 'persona' ? (g.closePath(), g.fill()) : g.stroke();
+  } else if (k.ic === 'hoja') { g.beginPath(); g.moveTo(m - 22 * s, m + 24 * s); g.quadraticCurveTo(m - 26 * s, m - 24 * s, m + 26 * s, m - 26 * s); g.quadraticCurveTo(m + 22 * s, m + 22 * s, m - 22 * s, m + 24 * s); g.globalAlpha = 0.9; g.fill(); g.globalAlpha = 1; g.strokeStyle = '#0b1220'; g.beginPath(); g.moveTo(m - 20 * s, m + 22 * s); g.lineTo(m + 16 * s, m - 16 * s); g.stroke(); }
+  else if (k.ic === 'onda') { for (const dy of [-14, 0, 14]) { g.beginPath(); g.moveTo(m - 28 * s, m + dy * s); g.bezierCurveTo(m - 14 * s, m + (dy - 10) * s, m + 0, m + (dy + 10) * s, m + 14 * s, m + dy * s); g.quadraticCurveTo(m + 21 * s, m + (dy - 6) * s, m + 28 * s, m + dy * s); g.stroke(); } }
+  else if (k.ic === 'gota') { g.beginPath(); g.moveTo(m, m - 30 * s); g.bezierCurveTo(m + 26 * s, m, m + 22 * s, m + 28 * s, m, m + 28 * s); g.bezierCurveTo(m - 22 * s, m + 28 * s, m - 26 * s, m, m, m - 30 * s); g.fill(); }
+  else if (k.ic === 'edif') { g.strokeRect(m - 24 * s, m - 14 * s, 22 * s, 40 * s); g.strokeRect(m + 2 * s, m - 30 * s, 22 * s, 56 * s); }
+  return cv;
+}
+const TEX = {}; const tex = (cl, txt) => { const k = cl + (txt || ''); if (!TEX[k]) { const t = new THREE.CanvasTexture(icono(cl, 128, txt)); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; TEX[k] = t; } return TEX[k]; };
+
+/* ---------- escena ---------- */
+const rend = new THREE.WebGLRenderer({ antialias: true }); rend.setPixelRatio(Math.min(devicePixelRatio, 2)); rend.setSize(innerWidth, innerHeight); $('#lienzo').appendChild(rend.domElement);
+const esc3 = new THREE.Scene(); esc3.background = new THREE.Color(0x000000);
+const cam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 2000); cam.position.set(0, 0, 150);
+const orb = new OrbitControls(cam, rend.domElement); orb.enableDamping = true; orb.dampingFactor = 0.08; orb.autoRotate = true; orb.autoRotateSpeed = 0.45;
+addEventListener('resize', () => { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); rend.setSize(innerWidth, innerHeight); });
+const grupo = new THREE.Group(); esc3.add(grupo);
+
+/* ---------- estado ---------- */
+const P = new URLSearchParams(location.search);
+const ST = { e: (P.get('e') || 'E1').toUpperCase(), lay: 'esfera', clases: new Set(Object.keys(CLASE)), tags: new Set(Object.keys(TAGC)), ocultos: new Set(), sel: null, hover: null };
+if (ST.e !== 'ALL' && !A.estrategias.some(e => e.id === ST.e)) ST.e = 'E1';
+let G = null; // { nodos:[{id,n,cl,proc,fn,est,orig,estr,grado,obj}], rel:[...], idx:Map }
+
+function armar() {
+  const nodos = new Map(), rel = [];
+  const add = (n, estr) => { if (!nodos.has(n.id)) nodos.set(n.id, { ...n, estr: [estr] }); else if (!nodos.get(n.id).estr.includes(estr)) nodos.get(n.id).estr.push(estr); };
+  const lista = ST.e === 'ALL' ? A.estrategias : A.estrategias.filter(e => e.id === ST.e);
+  for (const E of lista) { for (const n of E.nodos) add(n, E.id); for (const r of E.rel) rel.push({ ...r, estr: E.id }); }
+  if (ST.e === 'ALL') { // centro de cada estrategia, unido a sus roles previos, y las conexiones entre estrategias del documento maestro
+    for (const E of A.estrategias) { nodos.set(E.id, { id: E.id, n: E.n, cl: 'Estrategia', proc: 'Estrategia', fn: (DOC.fichas && DOC.fichas[E.id] || {}).mecanismo || '', est: 'Estrategia', estr: [E.id] }); for (const n of E.nodos) if (n.cl === 'Rol previo') rel.push({ id: 'H-' + E.id + n.id, o: E.id, d: n.id, tag: 'EST', rel: 'Pertenece a ' + E.n, estr: E.id }); }
+    for (const c of DOC.cruces || []) {
+      // "E1 → E2 / E8", "E2 ↔ E3", "E9 ↔ E1–E8": lado izquierdo y derecho, con rangos
+      const lado = (s) => [...s.matchAll(/E(\d)(?:\s*[–-]\s*E(\d))?/g)].flatMap(m => m[2] ? Array.from({ length: +m[2] - +m[1] + 1 }, (_, k) => 'E' + (+m[1] + k)) : ['E' + m[1]]);
+      const bi = c.par.includes('↔'), [si, sd] = c.par.split(/→|↔/), O = lado(si || ''), D = lado(sd || '');
+      for (const o of O) for (const d of D) if (o !== d) rel.push({ id: 'X-' + o + d, o, d, tag: 'CRUCE', rel: c.mecanismo, act: '', falla: 'No puede suponerse: ' + c.no_suponer, ev: '', est: 'Hipótesis que debe probarse (' + c.par + ')', bi, estr: o });
+    }
+  }
+  const L = [...nodos.values()], idx = new Map(L.map((n, i) => [n.id, i]));
+  L.forEach(n => { n.grado = 0; n.ent = 0; n.sal = 0; });
+  for (const r of rel) { const a = idx.get(r.o), b = idx.get(r.d); if (a === undefined || b === undefined) continue; L[a].grado++; L[b].grado++; L[a].sal++; L[b].ent++; }
+  G = { nodos: L, rel: rel.filter(r => idx.has(r.o) && idx.has(r.d)), idx };
+}
+
+/* ---------- distribuciones ---------- */
+const orden = (n) => (n.cl === 'Estrategia' ? 0 : n.cl === 'Rol previo' ? 1 : n.cl === 'Rol humano propuesto' ? 2 : 3);
+function posiciones(lay) {
+  const L = G.nodos, N = L.length, R = Math.max(42, Math.sqrt(N) * 6.2), pos = new Array(N);
+  const procs = [...new Set(L.map(n => (n.estr[0] || '') + '·' + n.proc))];
+  if (lay === 'esfera') {
+    const o = L.map((n, i) => i).sort((a, b) => (L[a].estr[0] || '').localeCompare(L[b].estr[0] || '') || orden(L[a]) - orden(L[b]) || L[a].proc.localeCompare(L[b].proc) || L[a].id.localeCompare(L[b].id));
+    o.forEach((i, k) => { const y = 1 - (k + 0.5) / N * 2, r = Math.sqrt(1 - y * y), t = k * 2.39996; pos[i] = new THREE.Vector3(Math.cos(t) * r * R, y * R, Math.sin(t) * r * R); });
+  } else if (lay === 'procesos') {
+    const C = procs.length; const centro = {}; procs.forEach((p, k) => { const y = 1 - (k + 0.5) / C * 2, r = Math.sqrt(1 - y * y), t = k * 2.39996; centro[p] = new THREE.Vector3(Math.cos(t) * r, y, Math.sin(t) * r).multiplyScalar(R * 1.05); });
+    const cuenta = {}; L.forEach((n, i) => { const p = (n.estr[0] || '') + '·' + n.proc, k = cuenta[p] = (cuenta[p] || 0) + 1, tot = L.filter(m => (m.estr[0] || '') + '·' + m.proc === p).length, rr = 3 + Math.sqrt(tot) * 2.4, y = 1 - (k - 0.5) / tot * 2, r = Math.sqrt(Math.max(0, 1 - y * y)); pos[i] = centro[p].clone().add(new THREE.Vector3(Math.cos(k * 2.39996) * r * rr, y * rr, Math.sin(k * 2.39996) * r * rr)); });
+  } else if (lay === 'anillos') {
+    const grupos = [[], [], [], []]; L.forEach((n, i) => grupos[orden(n)].push(i));
+    const radio = [R * 0.18, R * 0.45, R * 0.95, R * 1.25], alto = [R * 0.5, R * 0.25, 0, -R * 0.35];
+    grupos.forEach((g, k) => { g.sort((a, b) => (L[a].estr[0] || '').localeCompare(L[b].estr[0] || '') || L[a].proc.localeCompare(L[b].proc)); g.forEach((i, j) => { const t = j / Math.max(1, g.length) * 6.283; pos[i] = new THREE.Vector3(Math.cos(t) * radio[k], alto[k] + (k === 2 ? Math.sin(t * 13) * 3 : 0), Math.sin(t) * radio[k]); }); });
+  } else { // fuerza: resortes en las relaciones y repulsión entre todos
+    const p = posiciones('esfera').map(v => v.clone().multiplyScalar(0.6)), v = p.map(() => new THREE.Vector3()), d = new THREE.Vector3();
+    const iter = N > 400 ? 90 : 220, k0 = 7;
+    for (let it = 0; it < iter; it++) {
+      for (let a = 0; a < N; a++) for (let b = a + 1; b < N; b++) { d.subVectors(p[a], p[b]); const l2 = Math.max(1, d.lengthSq()), f = 60 / l2; d.multiplyScalar(f / Math.sqrt(l2)); v[a].add(d); v[b].sub(d); }
+      for (const r of G.rel) { const a = G.idx.get(r.o), b = G.idx.get(r.d); d.subVectors(p[b], p[a]); const l = d.length() || 1, f = (l - k0) * 0.02; d.multiplyScalar(f / l); v[a].add(d); v[b].sub(d); }
+      for (let a = 0; a < N; a++) { v[a].add(p[a].clone().multiplyScalar(-0.004)); v[a].clampLength(0, 3); p[a].add(v[a]); v[a].multiplyScalar(0.55); }
+    }
+    return p;
+  }
+  return pos;
+}
+
+/* ---------- dibujo ---------- */
+let SPR = [], lineas = null, pulsos = null, META = [], ETQ = [];
+function construir() {
+  armar();
+  for (const c of [...grupo.children]) { grupo.remove(c); if (c.geometry) c.geometry.dispose(); if (c.material && !c.isSprite) c.material.dispose(); }
+  ETQ.forEach(e => e.d.remove()); ETQ = [];
+  const max = Math.max(...G.nodos.map(n => n.grado), 1);
+  SPR = G.nodos.map((n, i) => {
+    const m = new THREE.SpriteMaterial({ map: tex(n.cl, n.cl === 'Estrategia' ? n.id : ''), transparent: true, depthWrite: false });
+    const s = new THREE.Sprite(m), base = n.cl === 'Estrategia' ? 9 : n.cl === 'Rol previo' ? 4.2 : n.cl === 'Rol humano propuesto' ? 2.6 : 3.4;
+    s.userData = { i, base: base * (0.5 + 2.1 * Math.sqrt(n.grado / max)) } // los más conectados, mucho más grandes; s.scale.setScalar(s.userData.base); grupo.add(s); return s;
+  });
+  META = posiciones(ST.lay); SPR.forEach((s, i) => s.position.copy(META[i]));
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(G.rel.length * 6), 3)); g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(G.rel.length * 8), 4));
+  lineas = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false })); grupo.add(lineas);
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(G.rel.length * 3), 3)); pg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(G.rel.length * 4), 4));
+  pulsos = new THREE.Points(pg, new THREE.PointsMaterial({ size: 3, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false })); grupo.add(pulsos);
+  // etiquetas: los nodos con más relaciones (y los centros de estrategia)
+  const top = G.nodos.map((n, i) => i).sort((a, b) => (G.nodos[b].cl === 'Estrategia') - (G.nodos[a].cl === 'Estrategia') || G.nodos[b].grado - G.nodos[a].grado).slice(0, ST.e === 'ALL' ? 30 : 16);
+  for (const i of top) { const n = G.nodos[i], d = document.createElement('div'); d.className = 'et'; d.innerHTML = `${esc(n.cl === 'Estrategia' ? n.id : n.id)}<small>${esc(n.n.length > 22 ? n.n.slice(0, 21) + '…' : n.n)}</small>`; document.body.appendChild(d); ETQ.push({ d, i }); }
+  colorear(); panelIzq(); panelDer(); estado();
+}
+function visible(n) { return ST.clases.has(n.cl) && !ST.ocultos.has(n.id); }
+function colorear() {
+  if (!G) return; const L = G.nodos, foco = ST.sel ?? ST.hover, vec = new Set();
+  if (foco) for (const r of G.rel) { if (r.o === foco) vec.add(r.d); if (r.d === foco) vec.add(r.o); }
+  SPR.forEach((s, i) => { const n = L[i], vis = visible(n); s.visible = vis; s.material.opacity = !foco || n.id === foco || vec.has(n.id) ? 1 : 0.22; s.scale.setScalar(s.userData.base * (n.id === foco ? 1.6 : 1)); });
+  const c = lineas.geometry.attributes.color.array;
+  G.rel.forEach((r, k) => { const col = new THREE.Color(TAGC[r.tag] || '#e5e7eb'), a = L[G.idx.get(r.o)], b = L[G.idx.get(r.d)], on = ST.tags.has(r.tag) && visible(a) && visible(b), f = !foco || r.o === foco || r.d === foco; const al = !on ? 0 : foco ? (f ? 0.95 : 0.05) : r.tag === 'EST' ? 0.25 : 0.55; c.set([col.r, col.g, col.b, al, col.r, col.g, col.b, al], k * 8); });
+  lineas.geometry.attributes.color.needsUpdate = true;
+}
+function estado() { const vis = G.nodos.filter(visible).length, rv = G.rel.filter(r => ST.tags.has(r.tag) && visible(G.nodos[G.idx.get(r.o)]) && visible(G.nodos[G.idx.get(r.d)])).length; $('#estado').textContent = `Nodos visibles: ${vis} | Relaciones: ${rv} | Ocultos: ${ST.ocultos.size} • Doble clic: ocultar nodo`; $('#b-rest').textContent = `Restablecer (${ST.ocultos.size})`; }
+
+/* ---------- paneles ---------- */
+function panelIzq() {
+  const cl = {}, tg = {}; for (const n of G.nodos) cl[n.cl] = (cl[n.cl] || 0) + 1; for (const r of G.rel) tg[r.tag] = (tg[r.tag] || 0) + 1;
+  $('#izq').innerHTML = `<div class="h">ESTRATEGIAS</div><div class="est">${A.estrategias.map(e => `<button data-e="${e.id}" class="${ST.e === e.id ? 'on' : ''}" style="--c:${COLE[e.id]}"><b>${e.id}</b><span>${esc(e.n)}<small>${e.nodos.length} nodos · ${e.rel.length} relaciones</small></span></button>`).join('')}
+      <button data-e="ALL" class="${ST.e === 'ALL' ? 'on' : ''}" style="--c:#fbbf24"><b>9</b><span>Red integrada<small>Las nueve estrategias y sus conexiones del documento maestro</small></span></button></div>
+    <div class="sep"></div><div class="h">CAPAS DE ACTORES<span class="g"><button data-c="todas">Todas</button><button data-c="ninguna">Ninguna</button></span></div>
+    <div class="cap">${Object.keys(CLASE).filter(k => cl[k]).map(k => `<button data-cl="${esc(k)}" class="${ST.clases.has(k) ? '' : 'off'}" style="--c:${CLASE[k].c}"><canvas data-ic="${esc(k)}" width="60" height="60"></canvas><span><b>${esc(CLASE[k].n)}</b><small>${esc(CLASE[k].d || '')}</small></span><em>${cl[k]}</em></button>`).join('')}</div>
+    <div class="sep"></div><div class="h">TIPOS DE RELACIÓN<span class="g"><button data-t="todas">Todas</button><button data-t="ninguna">Ninguna</button></span></div>
+    <div class="tags">${Object.keys(TAGC).filter(t => tg[t]).map(t => `<button data-tag="${t}" class="${ST.tags.has(t) ? '' : 'off'}" style="--c:${TAGC[t]}" title="${esc((A.tags[t] || {}).cuando || '')}"><b><i style="background:${TAGC[t]}"></i>${esc((A.tags[t] || {}).n || (t === 'CRUCE' ? 'Entre estrategias' : t === 'EST' ? 'Pertenece a' : t))}</b><small>${t} · ${tg[t]}</small></button>`).join('')}</div>`;
+  $('#izq').querySelectorAll('canvas[data-ic]').forEach(c => c.getContext('2d').drawImage(icono(c.dataset.ic, 60), 0, 0));
+  $('#izq').querySelectorAll('[data-e]').forEach(b => b.onclick = () => { ST.e = b.dataset.e; ST.sel = null; ST.ocultos.clear(); history.replaceState(null, '', '?e=' + ST.e); construir(); encuadrar(); });
+  $('#izq').querySelectorAll('[data-cl]').forEach(b => b.onclick = () => { const k = b.dataset.cl; ST.clases.has(k) ? ST.clases.delete(k) : ST.clases.add(k); b.classList.toggle('off'); colorear(); estado(); });
+  $('#izq').querySelectorAll('[data-tag]').forEach(b => b.onclick = () => { const k = b.dataset.tag; ST.tags.has(k) ? ST.tags.delete(k) : ST.tags.add(k); b.classList.toggle('off'); colorear(); estado(); });
+  $('#izq').querySelector('[data-c="todas"]').onclick = () => { Object.keys(CLASE).forEach(k => ST.clases.add(k)); panelIzq(); colorear(); estado(); };
+  $('#izq').querySelector('[data-c="ninguna"]').onclick = () => { ST.clases.clear(); panelIzq(); colorear(); estado(); };
+  $('#izq').querySelector('[data-t="todas"]').onclick = () => { Object.keys(TAGC).forEach(k => ST.tags.add(k)); panelIzq(); colorear(); estado(); };
+  $('#izq').querySelector('[data-t="ninguna"]').onclick = () => { ST.tags.clear(); panelIzq(); colorear(); estado(); };
+}
+function panelDer() {
+  const n = ST.sel && G.nodos[G.idx.get(ST.sel)];
+  if (n) {
+    const rs = G.rel.filter(r => r.o === n.id || r.d === n.id), nom = (id) => (G.nodos[G.idx.get(id)] || {}).n || id;
+    $('#der').innerHTML = `<div class="h">FICHA DEL NODO<span class="g"><button id="vol">← Estrategia</button></span></div>
+      <div class="nodo"><canvas width="92" height="92"></canvas><div><h3>${esc(n.n)}</h3><div class="sub">${esc(n.id)} · ${esc(n.cl)}${n.estr.length > 1 ? ' · en ' + n.estr.join(', ') : ''}</div></div></div>
+      <div class="ficha"><div><b>PROCESO</b>${esc(n.proc)}</div><div><b>QUÉ HACE / QUÉ REPRESENTA</b>${esc(n.fn)}</div><div><b>ESTADO DE EVIDENCIA</b>${esc(n.est)}${n.orig ? ' · ' + esc(n.orig) : ''}</div><div><b>RELACIONES</b>${n.grado} (${n.sal} salen · ${n.ent} llegan)</div></div>
+      <div class="h" style="margin-top:12px">SUS RELACIONES</div>${rs.map(r => `<div class="re" data-ir="${esc(r.o === n.id ? r.d : r.o)}"><span class="tg" style="background:${TAGC[r.tag] || '#e5e7eb'}">${r.tag}</span><b>${esc(nom(r.o))} ${r.bi ? '↔' : '→'} ${esc(nom(r.d))}</b><small>${esc(r.rel)}</small>${r.act ? `<small>Se activa si: ${esc(r.act)}</small>` : ''}${r.falla ? `<small>Si falla: ${esc(r.falla)}</small>` : ''}${r.ev ? `<small>Evidencia pendiente: ${esc(r.ev)}</small>` : ''}${r.est ? `<small style="color:#fde68a">${esc(r.est)}</small>` : ''}</div>`).join('')}`;
+    $('#der canvas').getContext('2d').drawImage(icono(n.cl, 92, n.cl === 'Estrategia' ? n.id : ''), 0, 0);
+    $('#vol').onclick = () => { ST.sel = null; colorear(); panelDer(); };
+    $('#der').querySelectorAll('[data-ir]').forEach(d => d.onclick = () => elegir(d.dataset.ir, true));
+    document.body.classList.add('ficha'); return;
+  }
+  const f = (DOC.fichas || {})[ST.e], E = A.estrategias.find(e => e.id === ST.e);
+  const cruces = (DOC.cruces || []).filter(c => ST.e === 'ALL' || new RegExp(ST.e.replace('E', 'E') + '(?!\\d)').test(c.par.replace(/E1–E8/, 'E1 E2 E3 E4 E5 E6 E7 E8')));
+  $('#der').innerHTML = ST.e === 'ALL'
+    ? `<div class="h">RED INTEGRADA</div><h3>Federación Policéntrica · 9 estrategias</h3><div class="sub">${G.nodos.length} nodos · ${G.rel.length} relaciones · los nodos de entorno compartidos se unen por su ID</div>
+       <div class="av">${esc((DOC.que_es || [])[0] || A.avisos.join(' '))}</div><div class="h">CONEXIONES ENTRE ESTRATEGIAS · hipótesis</div>${cruces.map(c => `<div class="cr"><b>${esc(c.par)}</b> ${esc(c.mecanismo)}<small>No puede suponerse: ${esc(c.no_suponer)}</small></div>`).join('')}`
+    : `<div class="h">FICHA DE LA ESTRATEGIA<span style="color:${COLE[ST.e]}">${ST.e}</span></div><h3>${esc(E.n)}</h3><div class="sub">${E.nodos.length} nodos · ${E.rel.length} relaciones · documento maestro</div>
+       ${f ? `<div class="ficha"><div><b>MECANISMO</b>${esc(f.mecanismo)}</div><div><b>CONDICIONES QUE DEBEN COMPROBARSE</b>${esc(f.condiciones)}</div><div><b>ACTORES Y NO HUMANOS A DISTINGUIR</b>${esc(f.distinguir)}</div><div class="ri"><b>RIESGO DE SUPOSICIÓN</b>${esc(f.riesgo)}</div></div>` : ''}
+       <div class="h" style="margin-top:12px">CONEXIONES CON OTRAS ESTRATEGIAS</div>${cruces.length ? cruces.map(c => `<div class="cr"><b>${esc(c.par)}</b> ${esc(c.mecanismo)}<small>No puede suponerse: ${esc(c.no_suponer)}</small></div>`).join('') : '<div class="cr">Sin conexiones registradas en el documento.</div>'}
+       <div class="av">${esc(A.avisos[1] || '')} Toca un nodo para ver su ficha y sus relaciones.</div>`;
+  document.body.classList.remove('ficha');
+}
+function elegir(id, volar) {
+  ST.sel = id; colorear(); panelDer();
+  if (volar) { const i = G.idx.get(id); if (i !== undefined) { const p = SPR[i].position; orb.target.copy(p); cam.position.copy(p.clone().add(cam.position.clone().sub(orb.target).setLength(85))); } }
+}
+function encuadrar() { const R = Math.max(42, Math.sqrt(G.nodos.length) * 6.2); orb.target.set(0, 0, 0); cam.position.set(0, R * 0.35, R * 3.1); }
+
+/* ---------- modales ---------- */
+function modal(html) { $('#modal .v').innerHTML = `<button class="chip x">Cerrar</button>` + html; $('#modal').classList.add('on'); $('#modal .x').onclick = () => $('#modal').classList.remove('on'); }
+$('#modal').onclick = (e) => { if (e.target.id === 'modal') $('#modal').classList.remove('on'); };
+$('#b-leer').onclick = () => {
+  const pares = (L) => { const r = []; for (let k = 2; k + 1 < L.length; k += 2) r.push(`<tr><td><b>${esc(L[k])}</b></td><td>${esc(L[k + 1])}</td></tr>`); return r.join(''); };
+  modal(`<h3>Cómo leer esta red</h3>${(DOC.que_es || []).map(p => `<p>${esc(p)}</p>`).join('')}
+    <h4>CÓMO LEER UN NODO</h4><table>${pares(DOC.leer_nodo || [])}</table>
+    <h4>CÓMO LEER UNA RELACIÓN</h4>${(DOC.leer_relacion || []).map(p => `<p>${esc(p)}</p>`).join('')}
+    <h4>ETIQUETAS DE ESTA RED (EXCEL)</h4><table>${Object.entries(A.tags).map(([k, v]) => `<tr><td><b style="color:${TAGC[k] || '#e5e7eb'}">${k}</b></td><td>${esc(v.n)}</td><td>${esc(v.cuando)}</td></tr>`).join('')}</table>
+    <h4>ETIQUETAS RECOMENDADAS POR EL DOCUMENTO MAESTRO</h4><table><tr><th>Tag</th><th>Relación</th><th>Condición mínima</th></tr>${(DOC.tags_recomendados || []).map(t => `<tr><td><b>${esc(t.tag)}</b></td><td>${esc(t.n)}</td><td>${esc(t.min)}</td></tr>`).join('')}</table>
+    <h4>REGLA MÍNIMA DE SIMULACIÓN</h4>${(DOC.regla || []).map(p => `<p>${esc(p)}</p>`).join('')}<p style="color:#64748b">Fuentes: ${esc(A.fuente)} · ${esc(DOC.fuente || '')}</p>`);
+};
+$('#b-met').onclick = () => {
+  const L = G.nodos, N = L.length, M = G.rel.length, top = L.slice().sort((a, b) => b.grado - a.grado).slice(0, 12);
+  // puentes: nodos cuyas relaciones tocan más procesos distintos
+  const puentes = L.map(n => ({ n, k: new Set(G.rel.filter(r => r.o === n.id || r.d === n.id).map(r => (G.nodos[G.idx.get(r.o === n.id ? r.d : r.o)] || {}).proc)).size })).sort((a, b) => b.k - a.k).slice(0, 8);
+  modal(`<h3>Métricas · ${ST.e === 'ALL' ? 'red integrada' : esc(ST.e + ' ' + A.estrategias.find(e => e.id === ST.e).n)}</h3>
+    <table><tr><td>Nodos</td><td><b>${N}</b></td><td>Relaciones</td><td><b>${M}</b></td></tr><tr><td>Densidad (relaciones / posibles)</td><td><b>${(M / (N * (N - 1)) * 100).toFixed(2)} %</b></td><td>Grado medio</td><td><b>${(2 * M / N).toFixed(2)}</b></td></tr></table>
+    <h4>NODOS CON MÁS RELACIONES</h4><table>${top.map(n => `<tr><td>${esc(n.id)}</td><td>${esc(n.n)}</td><td>${esc(n.cl)}</td><td><b>${n.grado}</b></td></tr>`).join('')}</table>
+    <h4>PUENTES (conectan más procesos distintos)</h4><table>${puentes.map(p => `<tr><td>${esc(p.n.id)}</td><td>${esc(p.n.n)}</td><td><b>${p.k}</b> procesos</td></tr>`).join('')}</table>
+    <p style="color:#64748b">Una línea de la red no prueba una interacción: son hipótesis por verificar (documento maestro, sección 9).</p>`);
+};
+
+/* ---------- controles ---------- */
+document.querySelectorAll('[data-l]').forEach(b => b.onclick = () => { ST.lay = b.dataset.l; document.querySelectorAll('[data-l]').forEach(x => x.classList.toggle('on', x === b)); META = posiciones(ST.lay); });
+$('#b-giro').onclick = (e) => { orb.autoRotate = !orb.autoRotate; e.currentTarget.classList.toggle('on', orb.autoRotate); };
+$('#b-reset').onclick = () => { ST.sel = null; ST.ocultos.clear(); Object.keys(CLASE).forEach(k => ST.clases.add(k)); Object.keys(TAGC).forEach(k => ST.tags.add(k)); panelIzq(); colorear(); panelDer(); estado(); encuadrar(); };
+$('#b-rest').onclick = () => { ST.ocultos.clear(); colorear(); estado(); };
+$('#b-capas').onclick = () => document.body.classList.toggle('capas');
+$('#b-ficha').onclick = () => document.body.classList.toggle('ficha');
+$('#buscar').oninput = (e) => { const q = e.target.value.trim().toLowerCase(); if (q.length < 2) return; const n = G.nodos.find(n => n.n.toLowerCase().includes(q) || n.id.toLowerCase() === q); if (n) elegir(n.id, true); };
+
+/* ---------- puntero ---------- */
+const ray = new THREE.Raycaster(), v2 = new THREE.Vector2(); let pd = null;
+const bajo = (e) => { v2.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(v2, cam); const h = ray.intersectObjects(SPR.filter(s => s.visible), false); return h.length ? G.nodos[h[0].object.userData.i] : null; };
+rend.domElement.addEventListener('pointermove', (e) => { const n = bajo(e), t = $('#tip'); if (n) { t.style.display = 'block'; t.style.left = Math.min(e.clientX + 14, innerWidth - 290) + 'px'; t.style.top = (e.clientY + 12) + 'px'; t.innerHTML = `<b>${esc(n.n)}</b><small>${esc(n.id)} · ${esc(n.cl)} · ${esc(n.proc)}</small><small>${esc(n.fn)}</small><small>${n.grado} relaciones · toca para ver su ficha</small>`; } else t.style.display = 'none'; const id = n ? n.id : null; if (id !== ST.hover) { ST.hover = id; if (!ST.sel) colorear(); } rend.domElement.style.cursor = n ? 'pointer' : 'grab'; });
+rend.domElement.addEventListener('pointerdown', (e) => { pd = [e.clientX, e.clientY]; });
+rend.domElement.addEventListener('pointerup', (e) => { if (!pd || Math.hypot(e.clientX - pd[0], e.clientY - pd[1]) > 5) return; const n = bajo(e); if (n) elegir(n.id); else if (ST.sel) { ST.sel = null; colorear(); panelDer(); } });
+rend.domElement.addEventListener('dblclick', (e) => { const n = bajo(e); if (n) { ST.ocultos.add(n.id); if (ST.sel === n.id) ST.sel = null; colorear(); estado(); panelDer(); } });
+
+/* ---------- bucle ---------- */
+const vv = new THREE.Vector3();
+function cuadro(t) {
+  orb.update();
+  if (G) {
+    SPR.forEach((s, i) => s.position.lerp(META[i], 0.08));
+    const P = lineas.geometry.attributes.position.array, pp = pulsos.geometry.attributes.position.array, pc = pulsos.geometry.attributes.color.array, lc = lineas.geometry.attributes.color.array;
+    G.rel.forEach((r, k) => { const a = SPR[G.idx.get(r.o)].position, b = SPR[G.idx.get(r.d)].position; P.set([a.x, a.y, a.z, b.x, b.y, b.z], k * 6); const u = ((t / 1000) * 0.3 + k * 0.137) % 1, w = r.bi && (k % 2) ? 1 - u : u; pp[k * 3] = a.x + (b.x - a.x) * w; pp[k * 3 + 1] = a.y + (b.y - a.y) * w; pp[k * 3 + 2] = a.z + (b.z - a.z) * w; pc[k * 4] = lc[k * 8]; pc[k * 4 + 1] = lc[k * 8 + 1]; pc[k * 4 + 2] = lc[k * 8 + 2]; pc[k * 4 + 3] = Math.min(1, lc[k * 8 + 3] * 1.4); });
+    lineas.geometry.attributes.position.needsUpdate = true; pulsos.geometry.attributes.position.needsUpdate = true; pulsos.geometry.attributes.color.needsUpdate = true;
+    for (const e of ETQ) { const s = SPR[e.i]; if (!s.visible) { e.d.style.display = 'none'; continue; } vv.copy(s.position).project(cam); const fuera = vv.z > 1 || Math.abs(vv.x) > 1.02 || Math.abs(vv.y) > 1.02; e.d.style.display = fuera ? 'none' : 'block'; if (!fuera) { e.d.style.left = ((vv.x + 1) / 2 * innerWidth) + 'px'; e.d.style.top = ((1 - vv.y) / 2 * innerHeight + s.scale.x * 2.2) + 'px'; e.d.style.opacity = (!ST.sel || ST.sel === G.nodos[e.i].id) ? 1 : 0.35; } }
+  }
+  rend.render(esc3, cam); requestAnimationFrame(cuadro);
+}
+construir(); encuadrar(); requestAnimationFrame(cuadro);
+window.RED = { G: () => G, ST };
+</script>
+</body>
+</html>
