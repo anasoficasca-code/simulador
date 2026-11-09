@@ -9,7 +9,7 @@
    La foto de Google se recorta en esta zona (tools/mascara_build.py) para que su versión "derretida" no tape el modelo.
    Marco: u a lo largo del edificio, v perpendicular (la plaza hacia v negativo); mundo x = X + OX, z = Y + OZ. */
 export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }) {
-  const D = await (window.cargarJSON || ((u) => fetch(u).then(r => r.json())))('data3d/tintal.json?v=1');
+  const D = await (window.cargarJSON || ((u) => fetch(u).then(r => r.json())))('data3d/tintal.json?v=2');
   const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
   const grupo = new THREE.Group(); grupo.name = 'biblioteca-tintal'; T3.scene.add(grupo);
   const a = D.a, ca = Math.cos(a), sa = Math.sin(a), L = D.L, W = D.W, s = D.lado; // s = -1: la plaza hacia v negativo
@@ -173,6 +173,96 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
   });
   mC.forEach((par, vk) => par.forEach(m => { m.count = nC[vk]; }));
   for (const m of [mT, mP, ...mC.flat()]) { m.castShadow = !movil; m.receiveShadow = !movil; m.frustumCulled = false; grupo.add(m); }
+  let semH = 31; const rnd = () => ((semH = (semH * 16807) % 2147483647) / 2147483647);
+  // ---------- suelo de la plaza: foto satelital de la zona (tapa la base gris que dejaba el recorte de los árboles de Google) ----------
+  if (D.suelo && D.zona_giro) {
+    const [sx0, sy0, sx1, sy1] = D.suelo, sh = new THREE.Shape(D.zona_giro.map(p => new THREE.Vector2(p[0], p[1])));
+    const g = new THREE.ShapeGeometry(sh, 4), p = g.attributes.position, uv = g.attributes.uv;
+    for (let i = 0; i < p.count; i++) { const X = p.getX(i), Y = p.getY(i); uv.setXY(i, (X - sx0) / (sx1 - sx0), 1 - (Y - sy0) / (sy1 - sy0)); p.setXYZ(i, X + OX, Y0 + 0.12, Y + OZ); }
+    g.computeVertexNormals(); if (g.attributes.normal.getY(0) < 0) g.index.array.reverse();
+    const tex = new THREE.TextureLoader().load('data3d/tintal_suelo.jpg'); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = ANIS;
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }));
+    m.receiveShadow = !movil; m.renderOrder = 1; m.name = 'tintal-suelo'; grupo.add(m);
+  }
+
+  // ---------- HUERTA PARAMÉTRICA del prado circular: espiral de bancales que atrae polinizadores, aves e insectos ----------
+  // 11 bancales curvos en espiral de Fermat que crecen y se levantan hacia el centro (ancho y alto variables), cubiertos de
+  // hortalizas y flores melíferas; en el centro un pabellón de retícula de madera (gridshell) sobre un espejo de agua;
+  // hoteles de insectos y bebederos de aves en el borde, y caminos de gravilla entre los brazos.
+  if (D.huerta) {
+    const HC = [D.huerta.c[0] + OX, D.huerta.c[1] + OZ], R = D.huerta.r - 2, BR = 11;
+    const PAL = ['#8d5bc4', '#b07ad9', '#f2c230', '#f08a24', '#e34b5a', '#f4f1e6', '#d95fa8', '#5aa83c', '#7fbf4a', '#3f7d2c'].map(h => new THREE.Color(h));
+    const madera = new THREE.Color('#8a6a48'), tierra = new THREE.Color('#5a4030');
+    const P = [], N = [], Cc = [], I = []; let vc = 0;
+    const v = (x, y, z, c) => { P.push(x, y, z); Cc.push(c.r, c.g, c.b); return vc++; };
+    const brazos = [];
+    for (let b = 0; b < BR; b++) {
+      const a0 = b / BR * Math.PI * 2, pts = [];
+      for (let k = 0; k <= 40; k++) { const t = k / 40, r = 7.5 + t * (R - 9), th = a0 + t * 2.1; pts.push({ x: HC[0] + Math.cos(th) * r, z: HC[1] + Math.sin(th) * r, w: 1.1 + 1.6 * Math.sin(Math.PI * Math.pow(t, 0.8)), h: 0.35 + 0.75 * (1 - t) * Math.sin(Math.PI * Math.min(1, t * 1.8 + 0.1)), t }); }
+      brazos.push(pts);
+      // bancal: cinta con lados de madera y tapa de tierra
+      for (let k = 0; k < pts.length - 1; k++) {
+        const A = pts[k], B = pts[k + 1], dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L;
+        const q = (p, s, y) => [p.x + nx * s * p.w / 2, y, p.z + nz * s * p.w / 2];
+        for (const s of [-1, 1]) { const a = q(A, s, Y0), b2 = q(B, s, Y0), c2 = q(B, s, Y0 + B.h), d = q(A, s, Y0 + A.h); const i0 = v(...a, madera), i1 = v(...b2, madera), i2 = v(...c2, madera), i3 = v(...d, madera); I.push(...(s > 0 ? [i0, i2, i1, i0, i3, i2] : [i0, i1, i2, i0, i2, i3])); }
+        const t0 = v(...q(A, -1, Y0 + A.h), tierra), t1 = v(...q(A, 1, Y0 + A.h), tierra), t2 = v(...q(B, 1, Y0 + B.h), tierra), t3 = v(...q(B, -1, Y0 + B.h), tierra); I.push(t0, t2, t1, t0, t3, t2);
+      }
+    }
+    const gB = new THREE.BufferGeometry(); gB.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); gB.setAttribute('color', new THREE.Float32BufferAttribute(Cc, 3)); gB.setIndex(I); gB.computeVertexNormals();
+    const bancales = new THREE.Mesh(gB, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 })); bancales.castShadow = bancales.receiveShadow = !movil; grupo.add(bancales);
+    // plantas: matas instanciadas sobre cada bancal (hortalizas verdes y flores melíferas en franjas de color que cambian por brazo)
+    const mata = new THREE.IcosahedronGeometry(0.42, 1), flor = new THREE.ConeGeometry(0.11, 0.7, 6).translate(0, 0.35, 0);
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.8 }), XM = [], XF = [], CM = [], CF = [], o3 = new THREE.Object3D();
+    brazos.forEach((pts, b) => {
+      for (let k = 1; k < pts.length - 1; k++) { const p = pts[k], n = Math.max(1, Math.round(p.w / 0.55));
+        for (let j = 0; j < n; j++) {
+          const s = (j + 0.5) / n - 0.5, A = pts[k - 1], dx = p.x - A.x, dz = p.z - A.z, L = Math.hypot(dx, dz) || 1, x = p.x - dz / L * s * p.w * 0.9, z = p.z + dx / L * s * p.w * 0.9;
+          const zona = (b + Math.floor(p.t * 4)) % 5, florido = zona === 0 || zona === 2 || ((k + j) % 4 === 0);
+          o3.position.set(x + (rnd() - 0.5) * 0.2, Y0 + p.h, z + (rnd() - 0.5) * 0.2); o3.rotation.set(0, rnd() * 6, 0); const e = 0.7 + rnd() * 0.6; o3.scale.set(e, e * (0.6 + rnd() * 0.5), e); o3.updateMatrix(); XM.push(o3.matrix.clone()); CM.push(PAL[7 + Math.floor(rnd() * 3)]);
+          if (florido) { o3.position.y += 0.25; o3.scale.setScalar(0.8 + rnd() * 0.7); o3.updateMatrix(); XF.push(o3.matrix.clone()); CF.push(PAL[(b * 2 + Math.floor(p.t * 3)) % 7]); }
+        }
+      }
+    });
+    const inst = (g, L, C) => { const m = new THREE.InstancedMesh(g, mat, L.length); L.forEach((M, i) => { m.setMatrixAt(i, M); m.setColorAt(i, C[i]); }); m.castShadow = !movil; m.frustumCulled = false; grupo.add(m); };
+    inst(mata, XM, CM); inst(flor, XF, CF);
+    // espejo de agua central y pabellón gridshell de madera (retícula torcida en dos direcciones)
+    const agua = new THREE.Mesh(new THREE.CircleGeometry(4.6, 40).rotateX(-Math.PI / 2).translate(HC[0], Y0 + 0.18, HC[1]), new THREE.MeshStandardMaterial({ color: 0x3f7f95, roughness: 0.08, metalness: 0.3 })); grupo.add(agua);
+    const RC = 6.6, HD = 5.2, NU = 18, NV = 7, nodo = (i, j, tw) => { const u = i / NU * Math.PI * 2 + tw * j / NV * 0.9, f = j / NV, r = RC * Math.sin(Math.PI / 2 * (1 - f)) + 0.4; return new THREE.Vector3(HC[0] + Math.cos(u) * r, Y0 + HD * Math.sin(Math.PI / 2 * f) * (1 + 0.12 * Math.sin(u * 3)), HC[1] + Math.sin(u) * r); };
+    const varas = []; for (const tw of [1, -1]) for (let i = 0; i < NU; i++) for (let j = 0; j < NV; j++) varas.push([nodo(i, j, tw), nodo(i, j + 1, tw)]);
+    for (let j = 1; j < NV; j += 2) for (let i = 0; i < NU; i++) varas.push([nodo(i, j, 1), nodo(i + 1, j, 1)]);
+    const cil = new THREE.CylinderGeometry(0.07, 0.07, 1, 6).translate(0, 0.5, 0), mV = new THREE.InstancedMesh(cil, new THREE.MeshStandardMaterial({ color: 0xa47b52, roughness: 0.7 }), varas.length), up = new THREE.Vector3(0, 1, 0);
+    varas.forEach(([a, b], k) => { const d = b.clone().sub(a), L = d.length(); o3.position.copy(a); o3.quaternion.setFromUnitVectors(up, d.normalize()); o3.scale.set(1, L, 1); o3.updateMatrix(); mV.setMatrixAt(k, o3.matrix); });
+    mV.castShadow = !movil; grupo.add(mV);
+    // hoteles de insectos y bebederos de aves en el borde
+    const hotel = new THREE.BoxGeometry(1.2, 1.6, 0.5).translate(0, 1.3, 0), poste = new THREE.CylinderGeometry(0.08, 0.08, 1, 6).translate(0, 0.5, 0), beb = new THREE.CylinderGeometry(0.55, 0.15, 1.1, 14).translate(0, 0.55, 0);
+    const mH = new THREE.InstancedMesh(hotel, new THREE.MeshStandardMaterial({ color: 0x9b7550, roughness: 0.9 }), 8), mP2 = new THREE.InstancedMesh(poste, new THREE.MeshStandardMaterial({ color: 0x5a4636 }), 8), mB = new THREE.InstancedMesh(beb, new THREE.MeshStandardMaterial({ color: 0xcfc8bb, roughness: 0.8 }), 6);
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.2; o3.position.set(HC[0] + Math.cos(a) * (R + 1), Y0, HC[1] + Math.sin(a) * (R + 1)); o3.rotation.set(0, -a + Math.PI / 2, 0); o3.scale.set(1, 1, 1); o3.updateMatrix(); mH.setMatrixAt(k, o3.matrix); mP2.setMatrixAt(k, o3.matrix); }
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.7; o3.position.set(HC[0] + Math.cos(a) * (R - 3), Y0, HC[1] + Math.sin(a) * (R - 3)); o3.rotation.set(0, 0, 0); o3.updateMatrix(); mB.setMatrixAt(k, o3.matrix); }
+    for (const m of [mH, mP2, mB]) { m.castShadow = !movil; grupo.add(m); }
+    // fauna que atrae: mariposas, abejas y colibríes que van de flor en flor
+    const flores = XF.map(M => new THREE.Vector3().setFromMatrixPosition(M));
+    const ESPF = [{ c: 0xf08a24, n: movil ? 14 : 36, v: 1.8, s: 0.09, ala: true }, { c: 0xf4f1e6, n: movil ? 8 : 20, v: 1.6, s: 0.08, ala: true }, { c: 0xe0a52a, n: movil ? 25 : 70, v: 3.2, s: 0.025 }, { c: 0x1f9a5c, n: movil ? 4 : 10, v: 7, s: 0.07 }];
+    const fauna = [];
+    for (const e of ESPF) {
+      const g = e.ala ? new THREE.PlaneGeometry(e.s * 2, e.s).rotateX(-Math.PI / 2) : new THREE.SphereGeometry(e.s, 6, 4).scale(1.6, 1, 1);
+      const m = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ color: e.c, side: THREE.DoubleSide, roughness: 0.6 }), e.n); m.frustumCulled = false; grupo.add(m);
+      const ag = []; for (let i = 0; i < e.n; i++) { const f = flores[Math.floor(rnd() * flores.length)]; ag.push({ p: f.clone().add(new THREE.Vector3(0, 1, 0)), d: f.clone(), t: rnd() * 3, ph: rnd() * 6 }); }
+      fauna.push({ e, m, ag });
+    }
+    let tu = performance.now();
+    const vuela = () => {
+      requestAnimationFrame(vuela); const ahora = performance.now(), dt = Math.min(0.05, (ahora - tu) / 1000); tu = ahora;
+      if (T3.camera.position.distanceTo(new THREE.Vector3(HC[0], 0, HC[1])) > 600) return; // solo cerca de la huerta
+      for (const { e, m, ag } of fauna) ag.forEach((a, i) => {
+        const dir = a.d.clone().sub(a.p), L = dir.length();
+        if (L < 0.15) { if ((a.t -= dt) <= 0) { a.d = flores[Math.floor(rnd() * flores.length)].clone().add(new THREE.Vector3(0, 0.35, 0)); a.t = 1 + rnd() * 4; } }
+        else a.p.addScaledVector(dir.normalize(), Math.min(L, e.v * dt)).add(new THREE.Vector3(Math.sin(ahora / 200 + a.ph) * 0.02, Math.sin(ahora / 150 + a.ph) * 0.02, 0));
+        o3.position.copy(a.p); o3.rotation.set(e.ala ? Math.sin(ahora / 60 + a.ph) * 0.9 : 0, Math.atan2(-dir.z, dir.x), 0); const s = Math.max(1, T3.camera.position.distanceTo(a.p) * 0.012 / e.s); o3.scale.setScalar(Math.min(s, 6)); o3.updateMatrix(); m.setMatrixAt(i, o3.matrix);
+      });
+      for (const f of fauna) f.m.instanceMatrix.needsUpdate = true;
+    };
+    requestAnimationFrame(vuela);
+  }
   T3.tintal = grupo;
   return { grupo, palmas: nP };
 }
