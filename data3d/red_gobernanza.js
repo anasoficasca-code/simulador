@@ -86,37 +86,63 @@ function css() {
 #rg-pop .ley{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10.5px;color:#b8bbd6;margin-top:6px}#rg-pop .ley i{display:inline-block;width:14px;height:2px;margin-right:5px;vertical-align:middle}
 #rg-pop .det{min-height:34px;margin-top:6px;padding:7px 9px;border-radius:8px;background:rgba(255,255,255,.04);color:#cfd2ea;font-size:11.5px}
 #rg-pop .det b{color:#fff}
+#rg-pop .inc{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10.5px;color:#ffc1d3}#rg-pop .inc b{width:100%;color:#ff8fb1;letter-spacing:.14em;text-transform:uppercase;font-size:9.5px}
 @media(max-width:820px){#rg-pop{left:10px;right:10px;width:auto;top:auto;bottom:10px;max-height:62vh}}`;
   document.head.appendChild(s);
 }
+// RED POLICÉNTRICA (no jerárquica): cinco células barriales, cada una con su asamblea que DECIDE sobre su barrio; las asambleas se
+// coordinan entre sí en anillo por delegados rotativos (nadie está arriba). Los nodos de CONOCIMIENTO están en el medio pero no deciden:
+// su poder es enseñar a los líderes de cada célula, que lo llevan par a par a sus vecinos. Los articuladores convocan y conectan.
 export function verRed(id, on) {
   const D = R[id]; if (!D) return;
   if (!pop) { css(); pop = document.createElement('div'); pop.id = 'rg-pop'; document.body.appendChild(pop); }
   if (!on) { if (pop.dataset.id === id) { pop.style.display = 'none'; cancelAnimationFrame(anim); } return; }
   pop.dataset.id = id; pop.style.display = 'block'; cancelAnimationFrame(anim);
-  // disposición: una fila por nivel (de arriba a abajo), nodos repartidos en la fila
-  const W = 560, filas = NIV.map(v => D.n.filter(n => n[2] === v.k)).filter(f => f.length), FH = 92, H = filas.length * FH + 20, P = {};
-  filas.forEach((f, r) => f.forEach((n, i) => { P[n[0]] = { x: (i + 1) * W / (f.length + 1), y: 34 + r * FH, n, r, rad: 7 + n[3] * 5, col: NIV.find(v => v.k === n[2]).c }; }));
-  const corta = (s, m = 22) => { const w = s.split(' '), L = []; let l = ''; for (const x of w) { if ((l + ' ' + x).trim().length > m) { L.push(l); l = x; } else l = (l + ' ' + x).trim(); } L.push(l); return L.slice(0, 3); };
-  let svg = `<svg viewBox="0 0 ${W} ${H}"><defs>${Object.entries(FLUJO).map(([k, [c]]) => `<marker id="rg-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="${c}"/></marker>`).join('')}<filter id="rg-gl"><feGaussianBlur stdDeviation="3"/></filter></defs>`;
-  filas.forEach((f, r) => { const v = NIV.find(x => x.k === f[0][2]); svg += `<text x="6" y="${34 + r * FH - 22}" fill="${v.c}" font-size="8.5" letter-spacing="2" font-weight="700" class="rg-f" data-r="${r}" opacity="0">${v.n.toUpperCase()}</text><line x1="6" y1="${34 + r * FH + 40}" x2="${W - 6}" y2="${34 + r * FH + 40}" stroke="#ffffff" stroke-opacity=".05"/>`; });
-  D.e.forEach(([a, b, t], k) => { const p = P[a], q = P[b]; if (!p || !q) return; const [c] = FLUJO[t], mx = (p.x + q.x) / 2 + (p.r === q.r ? 0 : (q.x - p.x) * 0.12), my = (p.y + q.y) / 2 - (p.r === q.r ? 26 : 0);
-    const dx = q.x - mx, dy = q.y - my, L = Math.hypot(dx, dy) || 1, ex = q.x - dx / L * (q.rad + 3), ey = q.y - dy / L * (q.rad + 3);
-    svg += `<path id="rg-e${k}" class="rg-e" data-r="${Math.max(p.r, q.r)}" d="M${p.x} ${p.y} Q${mx} ${my} ${ex} ${ey}" fill="none" stroke="${c}" stroke-width="1.4" stroke-opacity=".75" marker-end="url(#rg-${t})" stroke-dasharray="600" stroke-dashoffset="600"/>`; });
-  for (const p of Object.values(P)) { const L = corta(p.n[1]); svg += `<g class="rg-n" data-r="${p.r}" data-id="${p.n[0]}" opacity="0" style="cursor:pointer"><circle cx="${p.x}" cy="${p.y}" r="${p.rad + 6}" fill="${p.col}" opacity=".18" filter="url(#rg-gl)"/><circle cx="${p.x}" cy="${p.y}" r="${p.rad}" fill="#0b0d18" stroke="${p.col}" stroke-width="${p.n[3] + 0.5}"/>${p.n[0] === 'colec' ? `<image href="data3d/logo_bosque_bavaria.png" x="${p.x - p.rad}" y="${p.y - p.rad}" width="${p.rad * 2}" height="${p.rad * 2}"/>` : ''}${L.map((l, i) => `<text x="${p.x}" y="${p.y + p.rad + 11 + i * 10}" text-anchor="middle" fill="#e8e9f5" font-size="8.6" font-weight="600">${l}</text>`).join('')}</g>`; }
+  const de = (k) => D.n.filter(n => n[2] === k), DEC = de('decide')[0], ART = de('articula'), SAB = de('saber'), APL = de('aplica'), INC = de('incentivo');
+  const W = 560, H = 470, C = [W / 2, 230], NC = 5, RC = 172, nodos = [], aristas = [], ns = 'http://www.w3.org/2000/svg';
+  const nodo = (o) => { nodos.push(o); return o; };
+  const arista = (a, b, t, fase) => aristas.push({ a, b, t, fase });
+  // células barriales
+  const asam = [];
+  for (let i = 0; i < NC; i++) {
+    const an = -Math.PI / 2 + i * 2 * Math.PI / NC, cx = C[0] + Math.cos(an) * RC, cy = C[1] + Math.sin(an) * RC * 0.86;
+    const a = nodo({ x: cx, y: cy, r: 13, col: '#ffd166', lab: i === 0 ? DEC[1] : 'Asamblea · barrio ' + (i + 1), det: DEC[4], fase: 0, n: DEC, k: 'decide' }); asam.push(a);
+    // miembros de la célula: los que aplican (en abanico hacia afuera)
+    APL.forEach((m, j) => { const da = (j - (APL.length - 1) / 2) * 0.42, d = 58, mx = cx + Math.cos(an + da) * d, my = cy + Math.sin(an + da) * d * 0.86;
+      const q = nodo({ x: mx, y: my, r: 5 + m[3] * 1.5, col: '#56ccf2', lab: '', det: m[4], fase: 2, n: m, k: 'aplica' }); arista(a, q, 'decision', 2); });
+  }
+  // anillo de asambleas (coordinación horizontal) + cuerdas entre células no vecinas
+  for (let i = 0; i < NC; i++) { arista(asam[i], asam[(i + 1) % NC], 'coord', 1); if (i < 2) arista(asam[i], asam[i + 2], 'coord', 1); }
+  // articuladores: entre asambleas (convocan y conectan)
+  ART.forEach((m, j) => { const i = (j * 2 + 1) % NC, a = asam[i], b = asam[(i + 1) % NC], x = (a.x + b.x) / 2 * 0.82 + C[0] * 0.18, y = (a.y + b.y) / 2 * 0.82 + C[1] * 0.18;
+    const q = nodo({ x, y, r: 10, col: '#7fd39b', lab: m[1], det: m[4], fase: 1, n: m, k: 'articula', logo: m[0] === 'colec' }); arista(q, a, 'conv', 1); arista(q, b, 'conv', 1); });
+  // conocimiento: en el centro, con halo grande (poder de saber) pero sin flechas de decisión; enseña a los líderes de TODAS las células
+  SAB.forEach((m, j) => { const an = j / SAB.length * Math.PI * 2 - Math.PI / 2, d = SAB.length > 1 ? 56 : 0;
+    const q = nodo({ x: C[0] + Math.cos(an) * d, y: C[1] + Math.sin(an) * d * 0.86, r: 8 + m[3] * 3, col: '#b18cff', lab: m[1], det: m[4] + ' · No decide: comparte conocimiento', fase: 3, n: m, k: 'saber', halo: true });
+    nodos.filter(o => o.k === 'aplica' && o.n === APL[0]).forEach(l => arista(q, l, 'saber', 3)); });
+  // retorno de saber de las células al centro (lo aprendido en las huertas vuelve al laboratorio)
+  if (SAB.length) asam.forEach(a => arista(a, nodos.find(o => o.k === 'saber'), 'retro', 3));
+  const T = { decision: ['#ffd166', 'decide sobre su barrio'], coord: ['#ffe9a8', 'coordinación entre asambleas (delegados rotativos)'], conv: ['#7fd39b', 'convoca y conecta'], saber: ['#b18cff', 'conocimiento (enseña, no decide)'], retro: ['#8fd3ff', 'aprendizajes que regresan'] };
+  let svg = `<svg viewBox="0 0 ${W} ${H}"><defs><filter id="rg-gl"><feGaussianBlur stdDeviation="5"/></filter></defs>`;
+  aristas.forEach((e, k) => { const [c] = T[e.t], mx = (e.a.x + e.b.x) / 2 + (e.t === 'coord' ? (C[0] - (e.a.x + e.b.x) / 2) * -0.12 : 0), my = (e.a.y + e.b.y) / 2 + (e.t === 'coord' ? (C[1] - (e.a.y + e.b.y) / 2) * -0.12 : 0);
+    svg += `<path class="rg-e" data-f="${e.fase}" d="M${e.a.x.toFixed(1)} ${e.a.y.toFixed(1)} Q${mx.toFixed(1)} ${my.toFixed(1)} ${e.b.x.toFixed(1)} ${e.b.y.toFixed(1)}" fill="none" stroke="${c}" stroke-width="${e.t === 'coord' ? 2 : e.t === 'saber' ? 1.3 : 1}" stroke-opacity="${e.t === 'retro' ? 0.35 : 0.7}" ${e.t === 'retro' ? 'stroke-dasharray="3 4"' : 'stroke-dasharray="900" stroke-dashoffset="900"'}/>`; });
+  nodos.forEach((o, i) => { const L = o.lab ? o.lab.match(/.{1,22}(\s|$)/g).slice(0, 2) : [];
+    svg += `<g class="rg-n" data-f="${o.fase}" data-i="${i}" opacity="0" style="cursor:pointer">${o.halo ? `<circle cx="${o.x}" cy="${o.y}" r="${o.r * 2.4}" fill="${o.col}" opacity=".22" filter="url(#rg-gl)"/>` : ''}<circle cx="${o.x}" cy="${o.y}" r="${o.r}" fill="#0b0d18" stroke="${o.col}" stroke-width="${o.k === 'decide' ? 2.5 : 1.6}"/>${o.logo ? `<image href="data3d/logo_bosque_bavaria.png" x="${o.x - o.r}" y="${o.y - o.r}" width="${o.r * 2}" height="${o.r * 2}"/>` : ''}${L.map((l, j) => `<text x="${o.x}" y="${o.y + o.r + 10 + j * 9.5}" text-anchor="middle" fill="#e8e9f5" font-size="8.3" font-weight="600">${l.trim()}</text>`).join('')}</g>`; });
   svg += `<g id="rg-pul"></g></svg>`;
-  pop.innerHTML = `<button class="x" aria-label="Cerrar">✕</button><h3>Red de gobernanza · ${id}</h3><h4>${D.t}</h4><p class="s">${D.s} El tamaño del nodo es su poder, que aquí es conocimiento: lo tiene quien enseña para que otros lo apliquen en sus casas.</p>${svg}
-<div class="det">Toca un nodo para ver su papel.</div><div class="ley">${Object.values(FLUJO).map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join('')}</div>`;
+  pop.innerHTML = `<button class="x" aria-label="Cerrar">✕</button><h3>Red de gobernanza policéntrica · ${id}</h3><h4>${D.t}</h4>
+<p class="s"><b style="color:#ffd166">¿Quién decide?</b> Cada barrio en su asamblea, con voz y voto en igualdad. Las asambleas se coordinan entre sí por delegados rotativos: no hay un centro que mande. <b style="color:#b18cff">¿Quién tiene el poder del conocimiento?</b> ${SAB.map(s => s[1]).join(', ')}: no deciden; enseñan a los líderes de cada barrio, que lo aplican y lo enseñan en sus casas.</p>${svg}
+<div class="det"><b style="color:#56ccf2">En cada barrio aplican:</b> ${APL.map(a => a[1]).join(' · ')}. Toca un nodo para ver su papel.</div>
+<div class="ley">${Object.values(T).map(([c, n]) => `<span><i style="background:${c}"></i>${n}</span>`).join('')}</div>
+${INC.length ? `<div class="inc"><b>Incentivos para participar</b>${INC.map(i => `<span>${i[1]}${i[4] ? ' · ' + i[4] : ''}</span>`).join('')}</div>` : ''}`;
   pop.querySelector('.x').onclick = () => { pop.style.display = 'none'; cancelAnimationFrame(anim); };
-  pop.querySelectorAll('.rg-n').forEach(g => g.onclick = () => { const n = D.n.find(x => x[0] === g.dataset.id); pop.querySelector('.det').innerHTML = `<b>${n[1]}</b> · ${NIV.find(v => v.k === n[2]).n}${n[4] ? ' — ' + n[4] : ''}`; });
-  // se arma por niveles: aparecen los nodos de cada fila, luego se dibujan sus flechas; después quedan pulsos recorriéndolas
-  const t0 = performance.now(), PASO = 650, ns = 'http://www.w3.org/2000/svg', pul = pop.querySelector('#rg-pul'), rutas = [...pop.querySelectorAll('.rg-e')];
-  const puntos = rutas.map((r, k) => { const c = document.createElementNS(ns, 'circle'); c.setAttribute('r', '2.6'); c.setAttribute('fill', r.getAttribute('stroke')); c.setAttribute('opacity', '0'); pul.appendChild(c); return { r, c, L: r.getTotalLength(), f: k * 0.137 % 1 }; });
+  pop.querySelectorAll('.rg-n').forEach(g => g.onclick = () => { const o = nodos[+g.dataset.i]; pop.querySelector('.det').innerHTML = `<b>${o.lab || o.n[1]}</b> · ${{ decide: 'Decide', articula: 'Articula', saber: 'Conocimiento', aplica: 'Aplica' }[o.k]}${o.det ? ' — ' + o.det : ''}`; });
+  const t0 = performance.now(), PASO = 700, pul = pop.querySelector('#rg-pul'), rutas = [...pop.querySelectorAll('.rg-e')];
+  const puntos = rutas.filter(r => r.getAttribute('stroke') !== '#8fd3ff').map((r, k) => { const c = document.createElementNS(ns, 'circle'); c.setAttribute('r', '2.2'); c.setAttribute('fill', r.getAttribute('stroke')); c.setAttribute('opacity', '0'); pul.appendChild(c); return { r, c, L: r.getTotalLength(), f: k * 0.173 % 1 }; });
   const paso = (t) => {
     const e = (t - t0) / PASO;
-    pop.querySelectorAll('.rg-n,.rg-f').forEach(g => { const k = Math.max(0, Math.min(1, e - +g.dataset.r)); g.setAttribute('opacity', k.toFixed(2)); });
-    rutas.forEach(r => { const k = Math.max(0, Math.min(1, e - +r.dataset.r - 0.4)); r.setAttribute('stroke-dashoffset', (600 * (1 - k)).toFixed(0)); });
-    if (e > filas.length + 0.6) for (const p of puntos) { p.f = (p.f + 0.006) % 1; const q = p.r.getPointAtLength(p.f * p.L); p.c.setAttribute('cx', q.x); p.c.setAttribute('cy', q.y); p.c.setAttribute('opacity', '1'); }
+    pop.querySelectorAll('.rg-n').forEach(g => g.setAttribute('opacity', Math.max(0, Math.min(1, e - +g.dataset.f)).toFixed(2)));
+    rutas.forEach(r => { if (r.getAttribute('stroke-dasharray') === '3 4') { r.style.opacity = Math.max(0, Math.min(1, e - 4)); return; } r.setAttribute('stroke-dashoffset', (900 * (1 - Math.max(0, Math.min(1, e - +r.dataset.f - 0.3)))).toFixed(0)); });
+    if (e > 4.5) for (const p of puntos) { p.f = (p.f + 0.005) % 1; const q = p.r.getPointAtLength(p.f * p.L); p.c.setAttribute('cx', q.x); p.c.setAttribute('cy', q.y); p.c.setAttribute('opacity', '1'); }
     anim = requestAnimationFrame(paso);
   };
   anim = requestAnimationFrame(paso);
