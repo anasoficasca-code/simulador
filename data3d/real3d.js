@@ -458,6 +458,13 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   };
   api.update({ position: new THREE.Vector3(1e8, 0, 1e8) }, true);
   // árboles semitransparentes (vista de simulación: deja ver las calles y los agentes debajo de las copas)
+  // tinte de todo el arbolado (modo Visión: copas oscuras azul verdoso con brillo propio); null restaura
+  api.tinte = (hex, emis) => {
+    const mats = new Set();
+    for (const l of lod) for (const m of [...l.L0, ...l.L1]) (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => mats.add(x));
+    for (const m of [...lejos, ...techos]) mats.add(m.material);
+    for (const m of mats) { if (!m.userData.c0) m.userData.c0 = { c: m.color.clone(), e: m.emissiveIntensity }; if (hex == null) { m.color.copy(m.userData.c0.c); if (m.emissive) m.emissiveIntensity = m.userData.c0.e; } else { m.color.set(hex); if (m.emissive) m.emissiveIntensity = emis ?? m.userData.c0.e; } }
+  };
   api.opacidad = (o) => {
     const mats = new Set();
     for (const l of lod) for (const m of [...l.L0, ...l.L1]) (Array.isArray(m.material) ? m.material : [m.material]).forEach(x => mats.add(x));

@@ -131,7 +131,7 @@ export function iniciarCielo({ THREE, T3, luzMalla }) {
     return { hora, el };
   }
   let ult = performance.now();
-  const bucle = () => { const a = performance.now(), dt = Math.min(0.2, (a - ult) / 1000); ult = a; try { aplicar(dt); } catch (e) { console.warn('cielo:', e); } requestAnimationFrame(bucle); };
+  const bucle = () => { const a = performance.now(), dt = Math.min(0.2, (a - ult) / 1000); ult = a; if (T3.vision) { requestAnimationFrame(bucle); return; } /* modo Visión: la luz la pone data3d/vision.js */ try { aplicar(dt); } catch (e) { console.warn('cielo:', e); } requestAnimationFrame(bucle); };
   requestAnimationFrame(bucle);
-  return { aplicar };
+  return { aplicar, U, luzMalla, refrescar: () => { ultMalla = -1; tMalla = 0; } };
 }

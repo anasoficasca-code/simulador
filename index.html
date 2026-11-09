@@ -1269,7 +1269,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=56'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=57'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -3319,7 +3319,13 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
     .then(() => { // botón para apagar y prender la foto 3D de Google (el suelo de base)
       const ag = document.getElementById('gs-ag');
       if (ag && !document.getElementById('fb-btn')) { const b = document.createElement('button'); b.id = 'fb-btn'; b.className = 'on'; b.textContent = 'Foto base'; b.title = 'Apaga o prende la foto 3D de Google (el suelo de base)'; b.style.cssText = 'width:100%;margin-top:6px'; b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.tiles) T3.tiles.group.visible = on; }; ag.parentElement.insertAdjacentElement('afterend', b); }
-      return import('./data3d/cielo.js?v=4');
+      if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'vi-btn'; b.textContent = '✦ Visión'; b.title = 'Ver la propuesta: Bavaria Común, Corabastos, red de huertas y humedales'; b.style.cssText = 'width:100%;margin-top:6px;background:linear-gradient(100deg,#2a1d6b,#5b3fd6);color:#fff;border:1px solid #8b74ff;letter-spacing:.2em';
+        let V = null, pV = null;
+        b.onclick = async () => { b.disabled = true; try { if (!pV) pV = import('./data3d/vision.js?v=1').then(m => m.crearVision({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, movil: MOVIL })); V = await pV; const on = !V.on; V.ver(on); b.classList.toggle('on', on); b.textContent = on ? '✦ Salir de la visión' : '✦ Visión'; } catch (e) { console.warn('visión:', e); say('⚠️ No cargó la visión', 5000); } b.disabled = false; };
+        (fb || ag.parentElement).insertAdjacentElement('afterend', b);
+      }
+      return import('./data3d/cielo.js?v=5');
     }).then(m => { T3.cielo = m.iniciarCielo({ THREE: T3.THREE, T3, luzMalla }); }) // cielo y luz de 24 horas con el reloj de la simulación
     .then(() => import('./data3d/biotica.js?v=12')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL, huertas: EST ? EST.sitios() : null }))
     .then(() => import('./data3d/actores.js?v=7')).then(m => m.iniciarActores({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 })).then(a => { T3.actores = a; }) // capa de redes de actores (9 estrategias del Excel)
