@@ -1168,7 +1168,7 @@ function actualizarMallaIn(T, tl, dt) {
   actualizarOrto(T);
   if (!T.mallaMostrada) {
     const st = tl.stats, listo = st.downloading === 0 && st.parsing === 0 && st.visible > 8;
-    if (listo || REALISTA || performance.now() - T.tilesT0 > 40000) { T.mallaMostrada = true; tl.group.visible = true; marcarPaso('foto'); if (KEN && T.fotoPend !== false) fotoReal(true); // los edificios propios se cambian por los de la foto SOLO cuando la foto ya está cargada }
+    if (listo || REALISTA || performance.now() - T.tilesT0 > 40000) { T.mallaMostrada = true; tl.group.visible = true; marcarPaso('foto'); if (KEN && T.fotoPend !== false) fotoReal(true); /* los edificios propios se cambian por los de la foto SOLO cuando la foto ya está cargada */ }
     else tl.group.visible = false;
   }
   if (tl.errorTarget > T.errMeta && tl.stats.downloading === 0 && tl.stats.parsing === 0 && tl.stats.visible > 3) tl.errorTarget = Math.max(T.errMeta, Math.round(tl.errorTarget * 0.62));
