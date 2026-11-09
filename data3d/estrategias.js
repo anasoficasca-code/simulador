@@ -53,7 +53,7 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0, dentro = nul
   const hidroponia = (on) => {
     if (T3.huertas && T3.huertas.grupo) T3.huertas.grupo.visible = !on; // las terrazas son hidropónicas (no camas de tierra)
     if (HIDRO) { HIDRO.ver(on); return; } if (!on) return;
-    if (!HIDRO_P) HIDRO_P = import('./huertas_hidro.js?v=9').then(m => { const e = D.estrategias.find(x => x.id === 'E8'), c = e && e.capas.find(x => /cubiertas/i.test(x.n)); if (!c) return null;
+    if (!HIDRO_P) HIDRO_P = import('./huertas_hidro.js?v=10').then(m => { const e = D.estrategias.find(x => x.id === 'E8'), c = e && e.capas.find(x => /cubiertas/i.test(x.n)); if (!c) return null;
       const techos = (c.techos || []).map(t => ({ W: W2(t.slice(0, -1)), h: t[t.length - 1] / 10 })).filter(t => !dentro || dentro(t.W[0][0], t.W[0][1]));
       return m.iniciarHidroponia({ THREE, T3, techos: (() => { const L = techos.concat(T3.torresTechos || [], T3.techosAltos || []), vistos = new Set(); return L.filter(t => { let x = 0, z = 0; for (const q of t.W) { x += q[0]; z += q[1]; } const k = Math.round(x / t.W.length / 4) + ',' + Math.round(z / t.W.length / 4); if (vistos.has(k)) return false; vistos.add(k); return true; }); })(), movil }); }).then(h => { HIDRO = h; if (h) h.ver(true); return h; }).catch(er => console.warn('huertas hidropónicas:', er));
   };

@@ -929,7 +929,7 @@ async function crearMallaGoogle(T) {
   tiles.setCamera(T.camera);
   tiles.setResolutionFromRenderer(T.camera, T.renderer);
   // carga progresiva: se empieza con poco detalle (aparecen enseguida los edificios en 3D) y se afina por etapas cuando termina cada una
-  T.errMeta = GOOGLE ? (T.movil ? 14 : 4) : REALISTA ? (T.movil ? 16 : 5) : KEN ? (T.movil ? 14 : 4) : (T.movil ? 28 : 14); // modo Kennedy: la foto del suelo es lo que más se ve, se pide más nítida // realista: contexto de Google nítido, como en God's Eye // meta: menor = más nítido (fachadas) pero más descarga
+  T.errMeta = GOOGLE ? (T.movil ? 14 : 4) : REALISTA ? (T.movil ? 16 : 5) : KEN ? (T.movil ? 16 : 6) : (T.movil ? 28 : 14); // modo Kennedy: la foto del suelo es lo que más se ve, se pide más nítida // realista: contexto de Google nítido, como en God's Eye // meta: menor = más nítido (fachadas) pero más descarga
   tiles.errorTarget = 56;
   T.tilesErr = 0; T.tilesT0 = performance.now(); T.mallaMostrada = false;
   tiles.addEventListener('load-error', (e) => { // antes los errores de Google se perdían en silencio
@@ -1168,7 +1168,7 @@ function actualizarMallaIn(T, tl, dt) {
   actualizarOrto(T);
   if (!T.mallaMostrada) {
     const st = tl.stats, listo = st.downloading === 0 && st.parsing === 0 && st.visible > 8;
-    if (listo || REALISTA || performance.now() - T.tilesT0 > 40000) { T.mallaMostrada = true; tl.group.visible = true; marcarPaso('foto'); }
+    if (listo || REALISTA || performance.now() - T.tilesT0 > 40000) { T.mallaMostrada = true; tl.group.visible = true; marcarPaso('foto'); if (KEN && T.fotoPend !== false) fotoReal(true); // los edificios propios se cambian por los de la foto SOLO cuando la foto ya está cargada }
     else tl.group.visible = false;
   }
   if (tl.errorTarget > T.errMeta && tl.stats.downloading === 0 && tl.stats.parsing === 0 && tl.stats.visible > 3) tl.errorTarget = Math.max(T.errMeta, Math.round(tl.errorTarget * 0.62));
@@ -2889,6 +2889,7 @@ function buildRoads(THREE, N) {
   po(mVia, 2); po(mAcera, 1);
   const mRaya = new THREE.MeshBasicMaterial({ color: 0xf2f0e6, side: THREE.DoubleSide }); po(mRaya, 4);
   T3.viasMallas = [mk(GA, mAcera, true, 1), mk(GS, mAcera, false, 1), mk(GV, mVia, true, 2), mk(GR, mRaya, true, 3)];
+  if (T3.fotoReal) for (const m of T3.viasMallas) m.visible = false;
   if (GP.P.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(GP.P, 3)); g.setIndex(GP.I); g.computeVertexNormals();
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xb9b6ae, roughness: 0.85 })); m.castShadow = !LIVIANO; m.receiveShadow = !LIVIANO; T3.scene.add(m); } // concreto de los puentes
   T3.counts.vias = N.edges.length;
@@ -3422,7 +3423,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=13'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=14'), listoK()])
     .then(async ([m, me]) => {
       try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0, movil: MOVIL, dentro: (x, z) => enZona(x + LC.x, LC.y - z) /* huertas hidropónicas solo donde está el modelo de edificios */ }); } catch (e) { console.warn('estrategias:', e); }
       if (EST && EST.hidroponia) setTimeout(() => EST.hidroponia(), 1500); // techos y balcones con huerta y sus animales desde el inicio
@@ -3438,8 +3439,8 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       if (ag && !document.getElementById('fb-btn')) { const b = document.createElement('button'); b.id = 'fb-btn'; b.className = 'on'; b.textContent = 'Foto base'; b.title = 'Apaga o prende la foto 3D de Google (el suelo de base)'; b.style.cssText = 'width:100%;margin-top:6px'; b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.tiles) T3.tiles.group.visible = on; }; ag.parentElement.insertAdjacentElement('afterend', b); }
       if (!document.getElementById('fr-btn')) { // vista: foto 3D real (God's Eye) o modelo de cajas
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'fr-btn'; b.className = 'on'; b.textContent = 'Foto real 3D'; b.title = 'Prendido: casas, vías y árboles reales de la foto 3D (como God\'s Eye). Apagado: modelo de volúmenes'; b.style.cssText = 'width:100%;margin-top:6px';
-        b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); fotoReal(on); };
-        (fb || ag.parentElement).insertAdjacentElement('afterend', b); fotoReal(true); // por defecto: vista fotorrealista como God's Eye
+        b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); T3.fotoPend = on; if (!on || T3.mallaMostrada) fotoReal(on); };
+        (fb || ag.parentElement).insertAdjacentElement('afterend', b); if (T3.mallaMostrada) fotoReal(true); else b.classList.toggle('on', T3.fotoPend !== false); // por defecto: vista fotorrealista como God's Eye, en cuanto llega la foto
       }
       if (!document.getElementById('ar-btn')) { // árboles: por defecto los reales de la foto 3D de Google (como God's Eye); el botón trae los modelos 3D
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = T3.fotoReal ? '' : 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';

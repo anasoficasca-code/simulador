@@ -243,6 +243,7 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     a.x += a.vx * dt * paso; a.y += a.vy * dt * paso; a.z += a.vz * dt * paso;
   }
   const q = new THREE.Quaternion(), qa = new THREE.Quaternion(), eu = new THREE.Euler(), pos = new THREE.Vector3(), esc = new THREE.Vector3(), M4 = new THREE.Matrix4(), Mala = new THREE.Matrix4();
+  const Q_VUELTA = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI), vAla = new THREE.Vector3(), eAla = new THREE.Vector3(), M5 = new THREE.Matrix4(), OCULTO = new THREE.Matrix4().makeScale(0, 0, 0);
   function dibujarA(a, dt, cam) {
     const m = MESH[a.e], e = ESP[a.e];
     a.fase += dt * (a.st === 'liba' ? 1.3 : 1);
@@ -258,8 +259,8 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     const angA = posado && a.e === 'mariposa' ? 1.2 + 0.3 * Math.sin(a.fase * 2) : Math.sin(performance.now() / 1000 * f * 6.283 + a.i) * amp;
     m.alas.forEach((par, vi) => par.forEach((im, lado) => {
       const vis = a.e !== 'mariposa' || vi === a.var;
-      eu.set((lado ? -1 : 1) * angA, 0, 0); qa.setFromEuler(eu); if (lado) qa.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI));
-      Mala.compose(new THREE.Vector3(0, a.e === 'copeton' ? 0.02 : 0.005, 0), qa, new THREE.Vector3(1, 1, vis ? 1 : 0)); im.setMatrixAt(a.i, M4.clone().multiply(Mala));
+      eu.set((lado ? -1 : 1) * angA, 0, 0); qa.setFromEuler(eu); if (lado) qa.multiply(Q_VUELTA);
+      vAla.set(0, a.e === 'copeton' ? 0.02 : 0.005, 0); eAla.set(1, 1, vis ? 1 : 0); Mala.compose(vAla, qa, eAla); M5.multiplyMatrices(M4, Mala); im.setMatrixAt(a.i, M5);
     }));
   }
   // ficha y contador de la red
@@ -282,7 +283,9 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     for (const a of AG) {
       // el que quedó lejos del área visible reaparece cerca
       if (a.st !== 'nuevo' && (a.x - centro.x) ** 2 + (a.z - centro.z) ** 2 > (radio * 1.6) ** 2) a.st = 'nuevo';
-      moverA(a, dt, cam); dibujarA(a, dt, cam);
+      const lejos = (a.x - cam.position.x) ** 2 + (a.z - cam.position.z) ** 2 > 450 * 450;
+      if (lejos && a.st !== 'nuevo') { if (!a.oculto) { a.oculto = true; const m = MESH[a.e]; m.cuerpo.setMatrixAt(a.i, OCULTO); for (const par of m.alas) for (const im of par) im.setMatrixAt(a.i, OCULTO); } continue; }
+      a.oculto = false; moverA(a, dt, cam); dibujarA(a, dt, cam);
     }
     for (const m of Object.values(MESH)) { m.cuerpo.instanceMatrix.needsUpdate = true; for (const par of m.alas) for (const im of par) im.instanceMatrix.needsUpdate = true; }
     // aristas de la red: se desvanecen en ~40 s; las que cruzan de un edificio a otro, más brillantes
