@@ -1268,7 +1268,7 @@ async function initTodoReal() {
     T3 = { THREE, renderer, scene, camera, orbit, hemi, sun, skyU, liviano: LIVIANO, movil: MOVIL, night: false, anim: null, last: 0, counts: {},
       waterU: { value: 0 }, sunOff: new THREE.Vector3(0.42, 0.62, 0.35).normalize().multiplyScalar(2600), suelo };
     { let ok; T3.pArboles = new Promise(r => ok = r); T3.arbolesOk = ok; }
-    T3.esperaArboles = () => Promise.race([T3.pArboles, new Promise(r => setTimeout(r, 15000))]);
+    T3.esperaArboles = () => Promise.race([T3.pArboles, new Promise(r => setTimeout(r, KEN ? 1500 : 15000))]); // Kennedy: los edificios y el tráfico no esperan a los árboles
     { // suelo base neutro desde el primer cuadro (debajo de todo; la foto de Google lo cubre cuando llega)
       const gb = new THREE.Mesh(new THREE.PlaneGeometry(16000, 12000), new THREE.MeshBasicMaterial({ color: 0x77746a, depthWrite: false })); // sin profundidad: la foto de Google (corrida hacia atrás) siempre lo cubre
       gb.rotation.x = -Math.PI / 2; gb.position.y = -2.9; gb.renderOrder = -20; T3.sueloBase = gb; scene.add(gb);
