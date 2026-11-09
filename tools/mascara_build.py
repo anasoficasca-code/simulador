@@ -25,6 +25,10 @@ def propios():
     B = json.load(open(os.path.join(D, 'bavaria.json')))
     for e in B['edif']: P.append(Polygon(e['p']).buffer(3))
     for t in B['tanques']: P.append(Point(t).buffer(9))
+    import math as _m
+    for r in json.load(open(os.path.join(D, 'conjuntos.json')))['barras']:  # conjuntos de bloques de cubierta roja (data3d/conjuntos.js)
+        ux, uy = _m.cos(r['a']), _m.sin(r['a']); vx, vy = -uy, ux; L2, W2 = r['L'] / 2 + 2, r['W'] / 2 + 2
+        P.append(Polygon([(r['c'][0] + ux * u + vx * v, r['c'][1] + uy * u + vy * v) for u, v in ((-L2, -W2), (L2, -W2), (L2, W2), (-L2, W2))]))
     return P
 
 def propios_suelo():  # se recorta solo lo que Google levanta (palmas y edificio derretidos), no la foto del piso: nivel de edificio genérico
