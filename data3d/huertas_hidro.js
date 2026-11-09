@@ -77,7 +77,7 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     if (inclinado) return;
     const ux = Math.cos(ang), uz = Math.sin(ang), vx = -uz, vz = ux, rot = -ang;
     // rejilla de racks a lo largo del eje largo: filas cada 2,6 m, racks de 4 m cada 4,8 m, a más de 1,2 m del antepecho
-    let puestos = 0; const conCamas = t.h >= 16.5; /* las terrazas altas ya tienen camas de cultivo (huertas_techo.js) */ const max = conCamas ? 0 : Math.min(movil ? 10 : 34, Math.floor(area / 22)), tunel = area > 450 && rnd() < 0.45;
+    let puestos = 0; const max = Math.min(movil ? 10 : 34, Math.floor(area / 22)), tunel = area > 450 && rnd() < 0.45;
     for (let v = -40; v <= 40 && puestos < max; v += 2.6) for (let u = -60; u <= 60 && puestos < max; u += 4.8) {
       const x = cx + u * ux + v * vx, z = cz + u * uz + v * vz;
       if (!enPoli(W, x, z) || distBorde(W, x, z) < (tunel && puestos < 2 ? 2.6 : 2.3)) continue;

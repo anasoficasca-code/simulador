@@ -1401,7 +1401,6 @@ async function initTodoReal() {
         T3.kenArboles = KEN; // simulador: copas opacas, especies de Bogotá y más árboles 3D reales, como el render de Unreal
         const TIN = await pTin; if (TIN && TIN.zona_modelo) TT = { ...TT, t: TT.t.filter(t => !enPoli(TIN.zona_modelo, t[0], t[1])) }; // sin árboles bajo las palmas de la plaza ni en la huerta de la Biblioteca El Tintal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
-        if (KEN && T3.trees && T3.trees.ver) T3.trees.ver(false); // Kennedy: los árboles reales son los de la foto 3D de Google (literalmente reales)
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
@@ -1903,6 +1902,7 @@ function buildChunks(THREE, B) {
   if (torresFoto.length) { // torres de ladrillo con balcones-huerta (data3d/torres_balcones.js) y huerta en la terraza
     const L = torresFoto.map(b => ({ W: b.pts.slice(0, -1).map(p => lw(p[0], p[1])), h: b.h, y0: 0.3 }));
     for (const t of L) techosHuerta.push({ W: t.W, y: t.h - 0.45 });
+    T3.torresTechos = (T3.torresTechos || []).concat(L.map(t => ({ W: t.W, h: t.h }))); // cubiertas de las torres con balcones: también hidropónicas
     if (!pTorres) pTorres = import('./data3d/torres_balcones.js?v=3').then(m => (T3.torres = m.crearTorres(T3.THREE, T3, { liviano: LIVIANO }))).catch(e => { console.warn('torres con balcones:', e); return null; });
     pTorres.then(Tt => { if (Tt) Tt.agregar(L); });
   }
@@ -3398,12 +3398,12 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       const ag = document.getElementById('gs-ag');
       if (ag && !document.getElementById('fb-btn')) { const b = document.createElement('button'); b.id = 'fb-btn'; b.className = 'on'; b.textContent = 'Foto base'; b.title = 'Apaga o prende la foto 3D de Google (el suelo de base)'; b.style.cssText = 'width:100%;margin-top:6px'; b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.tiles) T3.tiles.group.visible = on; }; ag.parentElement.insertAdjacentElement('afterend', b); }
       if (!document.getElementById('fr-btn')) { // vista: foto 3D real (God's Eye) o modelo de cajas
-        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'fr-btn'; b.className = 'on'; b.textContent = 'Foto real 3D'; b.title = 'Prendido: casas, vías y árboles reales de la foto 3D (como God\'s Eye). Apagado: modelo de volúmenes'; b.style.cssText = 'width:100%;margin-top:6px';
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'fr-btn'; b.textContent = 'Foto real 3D'; b.title = 'Prendido: casas, vías y árboles reales de la foto 3D (como God\'s Eye). Apagado: modelo de volúmenes'; b.style.cssText = 'width:100%;margin-top:6px';
         b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); fotoReal(on); };
-        (fb || ag.parentElement).insertAdjacentElement('afterend', b); fotoReal(true);
+        (fb || ag.parentElement).insertAdjacentElement('afterend', b); // por defecto apagado: carga más rápido
       }
       if (!document.getElementById('ar-btn')) { // árboles: por defecto los reales de la foto 3D de Google (como God's Eye); el botón trae los modelos 3D
-        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.textContent = 'Árboles modelo 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
         b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.trees && T3.trees.ver) T3.trees.ver(on); };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
