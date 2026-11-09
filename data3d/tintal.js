@@ -185,83 +185,86 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
     m.receiveShadow = !movil; m.renderOrder = 1; m.name = 'tintal-suelo'; grupo.add(m);
   }
 
-  // ---------- HUERTA PARAMÉTRICA del prado circular: espiral de bancales que atrae polinizadores, aves e insectos ----------
-  // 11 bancales curvos en espiral de Fermat que crecen y se levantan hacia el centro (ancho y alto variables), cubiertos de
-  // hortalizas y flores melíferas; en el centro un pabellón de retícula de madera (gridshell) sobre un espejo de agua;
-  // hoteles de insectos y bebederos de aves en el borde, y caminos de gravilla entre los brazos.
+  // ---------- HUERTA DEL PRADO CIRCULAR: cubiertas orgánicas blancas sobre columnas ramificadas y bancales de huerta ----------
+  // (referencias: cubiertas de lóbulos con costillas blancas sobre plazas verdes; columnas-árbol que recogen el agua lluvia)
+  // Bancales orgánicos de concreto claro sembrados con plantas reales (modelos de Poly Haven), plaza de concreto, cubiertas de
+  // membrana traslúcida con costillas y borde tubular, sostenidas por columnas que se abren en ramas. Sin animaciones.
   if (D.huerta) {
-    const HC = [D.huerta.c[0] + OX, D.huerta.c[1] + OZ], R = D.huerta.r - 2, BR = 11;
-    const PAL = ['#8d5bc4', '#b07ad9', '#f2c230', '#f08a24', '#e34b5a', '#f4f1e6', '#d95fa8', '#5aa83c', '#7fbf4a', '#3f7d2c'].map(h => new THREE.Color(h));
-    const madera = new THREE.Color('#8a6a48'), tierra = new THREE.Color('#5a4030');
-    const P = [], N = [], Cc = [], I = []; let vc = 0;
-    const v = (x, y, z, c) => { P.push(x, y, z); Cc.push(c.r, c.g, c.b); return vc++; };
-    const brazos = [];
-    for (let b = 0; b < BR; b++) {
-      const a0 = b / BR * Math.PI * 2, pts = [];
-      for (let k = 0; k <= 40; k++) { const t = k / 40, r = 7.5 + t * (R - 9), th = a0 + t * 2.1; pts.push({ x: HC[0] + Math.cos(th) * r, z: HC[1] + Math.sin(th) * r, w: 1.1 + 1.6 * Math.sin(Math.PI * Math.pow(t, 0.8)), h: 0.35 + 0.75 * (1 - t) * Math.sin(Math.PI * Math.min(1, t * 1.8 + 0.1)), t }); }
-      brazos.push(pts);
-      // bancal: cinta con lados de madera y tapa de tierra
-      for (let k = 0; k < pts.length - 1; k++) {
-        const A = pts[k], B = pts[k + 1], dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz) || 1, nx = -dz / L, nz = dx / L;
-        const q = (p, s, y) => [p.x + nx * s * p.w / 2, y, p.z + nz * s * p.w / 2];
-        for (const s of [-1, 1]) { const a = q(A, s, Y0), b2 = q(B, s, Y0), c2 = q(B, s, Y0 + B.h), d = q(A, s, Y0 + A.h); const i0 = v(...a, madera), i1 = v(...b2, madera), i2 = v(...c2, madera), i3 = v(...d, madera); I.push(...(s > 0 ? [i0, i2, i1, i0, i3, i2] : [i0, i1, i2, i0, i2, i3])); }
-        const t0 = v(...q(A, -1, Y0 + A.h), tierra), t1 = v(...q(A, 1, Y0 + A.h), tierra), t2 = v(...q(B, 1, Y0 + B.h), tierra), t3 = v(...q(B, -1, Y0 + B.h), tierra); I.push(t0, t2, t1, t0, t3, t2);
-      }
+    const HC = [D.huerta.c[0] + OX, D.huerta.c[1] + OZ], R = D.huerta.r - 1.5;
+    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+    const o3 = new THREE.Object3D();
+    // plaza de concreto claro (círculo) con juntas
+    const texPlaza = lienzo(512, 512, (g, w, h) => { g.fillStyle = '#d4d0c8'; g.fillRect(0, 0, w, h); for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(${Math.random() > 0.5 ? '255,255,255' : '80,76,70'},${0.05 * Math.random()})`; g.fillRect(Math.random() * w, Math.random() * h, 3, 3); } g.strokeStyle = 'rgba(120,115,108,.35)'; g.lineWidth = 2; for (let k = 0; k <= w; k += 64) { g.beginPath(); g.moveTo(k, 0); g.lineTo(k, h); g.moveTo(0, k); g.lineTo(w, k); g.stroke(); } }, true);
+    texPlaza.repeat.set(R / 8, R / 8);
+    const plaza = new THREE.Mesh(new THREE.CircleGeometry(R, 72).rotateX(-Math.PI / 2).translate(HC[0], Y0 + 0.5, HC[1]), new THREE.MeshStandardMaterial({ map: texPlaza, roughness: 0.92 }));
+    plaza.receiveShadow = !movil; grupo.add(plaza);
+    // contorno orgánico (lóbulos) en el plano: r(θ)
+    const blob = (cx, cz, r0, rot, k1, k2, n = 64) => { const P = []; for (let i = 0; i < n; i++) { const t = i / n * Math.PI * 2; const r = r0 * (1 + k1 * Math.sin(3 * t + rot) + k2 * Math.sin(5 * t + rot * 1.7)); P.push([cx + Math.cos(t) * r, cz + Math.sin(t) * r]); } return P; };
+    const dentroP = (W, x, z) => { let c = false; for (let i = 0, j = W.length - 1; i < W.length; j = i++) { const a = W[i], b = W[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+    // bancales orgánicos: bordillo de concreto (0,5 m) y tierra; 1 grande al centro y 7 alrededor
+    const camas = [blob(HC[0], HC[1], 9.5, 0.4, 0.14, 0.06)];
+    for (let k = 0; k < 7; k++) { const a = k / 7 * Math.PI * 2 + 0.3, r = R * 0.64; camas.push(blob(HC[0] + Math.cos(a) * r, HC[1] + Math.sin(a) * r, 6.8 + rnd() * 2.4, rnd() * 6, 0.22, 0.08)); }
+    const matBord = new THREE.MeshStandardMaterial({ color: 0xc9c5bc, roughness: 0.85 }), matTierra = new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 1 });
+    for (const W of camas) {
+      let mx = 0, mz = 0; for (const p of W) { mx += p[0]; mz += p[1]; } mx /= W.length; mz /= W.length;
+      const ins = W.map(p => { const dx = p[0] - mx, dz = p[1] - mz, d = Math.hypot(dx, dz) || 1, k = Math.max(0, d - 0.4) / d; return [mx + dx * k, mz + dz * k]; }); // bordillo de 40 cm
+      const sh = new THREE.Shape(W.map(p => new THREE.Vector2(p[0], -p[1]))); sh.holes.push(new THREE.Path(ins.slice().reverse().map(p => new THREE.Vector2(p[0], -p[1]))));
+      const ex = new THREE.ExtrudeGeometry(sh, { depth: 0.55, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 2, curveSegments: 4 }).rotateX(-Math.PI / 2).translate(0, Y0 + 0.1, 0);
+      const m = new THREE.Mesh(ex, matBord); m.castShadow = m.receiveShadow = !movil; grupo.add(m);
+      const sh2 = new THREE.Shape(ins.map(p => new THREE.Vector2(p[0], -p[1])));
+      const t = new THREE.Mesh(new THREE.ShapeGeometry(sh2).rotateX(-Math.PI / 2).translate(0, Y0 + 0.55, 0), matTierra); t.scale.set(1, 1, 1); t.receiveShadow = !movil; grupo.add(t);
     }
-    const gB = new THREE.BufferGeometry(); gB.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); gB.setAttribute('color', new THREE.Float32BufferAttribute(Cc, 3)); gB.setIndex(I); gB.computeVertexNormals();
-    const bancales = new THREE.Mesh(gB, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 })); bancales.castShadow = bancales.receiveShadow = !movil; grupo.add(bancales);
-    // plantas: matas instanciadas sobre cada bancal (hortalizas verdes y flores melíferas en franjas de color que cambian por brazo)
-    const mata = new THREE.IcosahedronGeometry(0.42, 1), flor = new THREE.ConeGeometry(0.11, 0.7, 6).translate(0, 0.35, 0);
-    const mat = new THREE.MeshStandardMaterial({ roughness: 0.8 }), XM = [], XF = [], CM = [], CF = [], o3 = new THREE.Object3D();
-    brazos.forEach((pts, b) => {
-      for (let k = 1; k < pts.length - 1; k++) { const p = pts[k], n = Math.max(1, Math.round(p.w / 0.55));
-        for (let j = 0; j < n; j++) {
-          const s = (j + 0.5) / n - 0.5, A = pts[k - 1], dx = p.x - A.x, dz = p.z - A.z, L = Math.hypot(dx, dz) || 1, x = p.x - dz / L * s * p.w * 0.9, z = p.z + dx / L * s * p.w * 0.9;
-          const zona = (b + Math.floor(p.t * 4)) % 5, florido = zona === 0 || zona === 2 || ((k + j) % 4 === 0);
-          o3.position.set(x + (rnd() - 0.5) * 0.2, Y0 + p.h, z + (rnd() - 0.5) * 0.2); o3.rotation.set(0, rnd() * 6, 0); const e = 0.7 + rnd() * 0.6; o3.scale.set(e, e * (0.6 + rnd() * 0.5), e); o3.updateMatrix(); XM.push(o3.matrix.clone()); CM.push(PAL[7 + Math.floor(rnd() * 3)]);
-          if (florido) { o3.position.y += 0.25; o3.scale.setScalar(0.8 + rnd() * 0.7); o3.updateMatrix(); XF.push(o3.matrix.clone()); CF.push(PAL[(b * 2 + Math.floor(p.t * 3)) % 7]); }
-        }
-      }
-    });
-    const inst = (g, L, C) => { const m = new THREE.InstancedMesh(g, mat, L.length); L.forEach((M, i) => { m.setMatrixAt(i, M); m.setColorAt(i, C[i]); }); m.castShadow = !movil; m.frustumCulled = false; grupo.add(m); };
-    inst(mata, XM, CM); inst(flor, XF, CF);
-    // espejo de agua central y pabellón gridshell de madera (retícula torcida en dos direcciones)
-    const agua = new THREE.Mesh(new THREE.CircleGeometry(4.6, 40).rotateX(-Math.PI / 2).translate(HC[0], Y0 + 0.18, HC[1]), new THREE.MeshStandardMaterial({ color: 0x3f7f95, roughness: 0.08, metalness: 0.3 })); grupo.add(agua);
-    const RC = 6.6, HD = 5.2, NU = 18, NV = 7, nodo = (i, j, tw) => { const u = i / NU * Math.PI * 2 + tw * j / NV * 0.9, f = j / NV, r = RC * Math.sin(Math.PI / 2 * (1 - f)) + 0.4; return new THREE.Vector3(HC[0] + Math.cos(u) * r, Y0 + HD * Math.sin(Math.PI / 2 * f) * (1 + 0.12 * Math.sin(u * 3)), HC[1] + Math.sin(u) * r); };
-    const varas = []; for (const tw of [1, -1]) for (let i = 0; i < NU; i++) for (let j = 0; j < NV; j++) varas.push([nodo(i, j, tw), nodo(i, j + 1, tw)]);
-    for (let j = 1; j < NV; j += 2) for (let i = 0; i < NU; i++) varas.push([nodo(i, j, 1), nodo(i + 1, j, 1)]);
-    const cil = new THREE.CylinderGeometry(0.07, 0.07, 1, 6).translate(0, 0.5, 0), mV = new THREE.InstancedMesh(cil, new THREE.MeshStandardMaterial({ color: 0xa47b52, roughness: 0.7 }), varas.length), up = new THREE.Vector3(0, 1, 0);
-    varas.forEach(([a, b], k) => { const d = b.clone().sub(a), L = d.length(); o3.position.copy(a); o3.quaternion.setFromUnitVectors(up, d.normalize()); o3.scale.set(1, L, 1); o3.updateMatrix(); mV.setMatrixAt(k, o3.matrix); });
-    mV.castShadow = !movil; grupo.add(mV);
-    // hoteles de insectos y bebederos de aves en el borde
-    const hotel = new THREE.BoxGeometry(1.2, 1.6, 0.5).translate(0, 1.3, 0), poste = new THREE.CylinderGeometry(0.08, 0.08, 1, 6).translate(0, 0.5, 0), beb = new THREE.CylinderGeometry(0.55, 0.15, 1.1, 14).translate(0, 0.55, 0);
-    const mH = new THREE.InstancedMesh(hotel, new THREE.MeshStandardMaterial({ color: 0x9b7550, roughness: 0.9 }), 8), mP2 = new THREE.InstancedMesh(poste, new THREE.MeshStandardMaterial({ color: 0x5a4636 }), 8), mB = new THREE.InstancedMesh(beb, new THREE.MeshStandardMaterial({ color: 0xcfc8bb, roughness: 0.8 }), 6);
-    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.2; o3.position.set(HC[0] + Math.cos(a) * (R + 1), Y0, HC[1] + Math.sin(a) * (R + 1)); o3.rotation.set(0, -a + Math.PI / 2, 0); o3.scale.set(1, 1, 1); o3.updateMatrix(); mH.setMatrixAt(k, o3.matrix); mP2.setMatrixAt(k, o3.matrix); }
-    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.7; o3.position.set(HC[0] + Math.cos(a) * (R - 3), Y0, HC[1] + Math.sin(a) * (R - 3)); o3.rotation.set(0, 0, 0); o3.updateMatrix(); mB.setMatrixAt(k, o3.matrix); }
-    for (const m of [mH, mP2, mB]) { m.castShadow = !movil; grupo.add(m); }
-    // fauna que atrae: mariposas, abejas y colibríes que van de flor en flor
-    const flores = XF.map(M => new THREE.Vector3().setFromMatrixPosition(M));
-    const ESPF = [{ c: 0xf08a24, n: movil ? 14 : 36, v: 1.8, s: 0.09, ala: true }, { c: 0xf4f1e6, n: movil ? 8 : 20, v: 1.6, s: 0.08, ala: true }, { c: 0xe0a52a, n: movil ? 25 : 70, v: 3.2, s: 0.025 }, { c: 0x1f9a5c, n: movil ? 4 : 10, v: 7, s: 0.07 }];
-    const fauna = [];
-    for (const e of ESPF) {
-      const g = e.ala ? new THREE.PlaneGeometry(e.s * 2, e.s).rotateX(-Math.PI / 2) : new THREE.SphereGeometry(e.s, 6, 4).scale(1.6, 1, 1);
-      const m = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ color: e.c, side: THREE.DoubleSide, roughness: 0.6 }), e.n); m.frustumCulled = false; grupo.add(m);
-      const ag = []; for (let i = 0; i < e.n; i++) { const f = flores[Math.floor(rnd() * flores.length)]; ag.push({ p: f.clone().add(new THREE.Vector3(0, 1, 0)), d: f.clone(), t: rnd() * 3, ph: rnd() * 6 }); }
-      fauna.push({ e, m, ag });
-    }
-    let tu = performance.now();
-    const vuela = () => {
-      requestAnimationFrame(vuela); const ahora = performance.now(), dt = Math.min(0.05, (ahora - tu) / 1000); tu = ahora;
-      if (T3.camera.position.distanceTo(new THREE.Vector3(HC[0], 0, HC[1])) > 600) return; // solo cerca de la huerta
-      for (const { e, m, ag } of fauna) ag.forEach((a, i) => {
-        const dir = a.d.clone().sub(a.p), L = dir.length();
-        if (L < 0.15) { if ((a.t -= dt) <= 0) { a.d = flores[Math.floor(rnd() * flores.length)].clone().add(new THREE.Vector3(0, 0.35, 0)); a.t = 1 + rnd() * 4; } }
-        else a.p.addScaledVector(dir.normalize(), Math.min(L, e.v * dt)).add(new THREE.Vector3(Math.sin(ahora / 200 + a.ph) * 0.02, Math.sin(ahora / 150 + a.ph) * 0.02, 0));
-        o3.position.copy(a.p); o3.rotation.set(e.ala ? Math.sin(ahora / 60 + a.ph) * 0.9 : 0, Math.atan2(-dir.z, dir.x), 0); const s = Math.max(1, T3.camera.position.distanceTo(a.p) * 0.012 / e.s); o3.scale.setScalar(Math.min(s, 6)); o3.updateMatrix(); m.setMatrixAt(i, o3.matrix);
+    // plantas reales instanciadas en los bancales (helecho, calathea, ortiga, vinca, celidonia: huerta medicinal y de follaje)
+    const MOD = ['fern_02', 'calathea_orbifolia_01', 'nettle_plant', 'periwinkle_plant', 'celandine_01'];
+    const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js'); const cargador = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+    const carga = await Promise.all(MOD.map(n => cargador.loadAsync('data3d/models/' + n + '.glb').catch(e => { console.warn('planta', n, e); return null; })));
+    const puntos = []; // [x, z, cama]
+    camas.forEach((W, ci) => { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const q of W) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]); }
+      for (let x = x0 + 0.6; x < x1; x += 0.8) for (let z = z0 + 0.6; z < z1; z += 0.8) { const px = x + (rnd() - 0.5) * 0.5, pz = z + (rnd() - 0.5) * 0.5; if (dentroP(W, px, pz)) puntos.push([px, pz, ci]); } });
+    T3.huertaPlantas = puntos.length;
+    carga.forEach((gl, mi) => {
+      if (!gl) return; gl.scene.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(gl.scene), alto = Math.max(b.max.y - b.min.y, b.max.x - b.min.x, b.max.z - b.min.z) || 1, esc0 = (mi === 0 ? 1.9 : 1.5) / alto; // por su medida mayor: no se salen del bancal
+      const mis = puntos.filter((p, i) => (i * 7 + p[2] * 3) % MOD.length === mi);
+      gl.scene.traverse(o => {
+        if (!o.isMesh) return;
+        const geo = o.geometry.clone().applyMatrix4(o.matrixWorld).translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
+        const mat = o.material; if (mat.map) mat.map.anisotropy = ANIS; mat.side = THREE.DoubleSide; if (mat.map && mat.emissive) { mat.emissiveMap = mat.map; mat.emissive.setRGB(1, 1, 1); mat.emissiveIntensity = 0.25; } if (mat.transparent) { mat.transparent = false; mat.alphaTest = 0.4; }
+        const im = new THREE.InstancedMesh(geo, mat, mis.length);
+        mis.forEach(([x, z], k) => { const e = esc0 * (0.75 + rnd() * 0.6); o3.position.set(x, Y0 + 0.55, z); o3.rotation.set(0, rnd() * 6.28, 0); o3.scale.set(e, e, e); o3.updateMatrix(); im.setMatrixAt(k, o3.matrix); });
+        im.castShadow = !movil; im.receiveShadow = !movil; grupo.add(im);
       });
-      for (const f of fauna) f.m.instanceMatrix.needsUpdate = true;
-    };
-    requestAnimationFrame(vuela);
+    });
+    // cubiertas: 6 lóbulos alargados que se cruzan, a 6-9 m, con membrana traslúcida, costillas blancas y borde tubular
+    const texCost = lienzo(64, 256, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#fff'; for (let y = 0; y < h; y += 16) g.fillRect(0, y, w, 4); g.fillRect(0, 0, 3, h); g.fillRect(w - 3, 0, 3, h); }, true);
+    const matCost = new THREE.MeshStandardMaterial({ color: 0xf6f6f2, map: texCost, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.4 });
+    const matMemb = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, roughness: 0.3, depthWrite: false });
+    const matCol = new THREE.MeshStandardMaterial({ color: 0xf1f1ee, roughness: 0.35, metalness: 0.2 });
+    const lobulos = []; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.6; lobulos.push({ cx: HC[0] + Math.cos(a) * R * 0.38, cz: HC[1] + Math.sin(a) * R * 0.38, rot: a + (rnd() - 0.5) * 0.8, A: 13 + rnd() * 5, B: 5.5 + rnd() * 2, H: 6.2 + rnd() * 2.8 }); }
+    for (const L of lobulos) {
+      const NU = 40, NV = 14, P = [], U = [], I = [], cs = Math.cos(L.rot), sn = Math.sin(L.rot);
+      const borde = (t) => { const s = Math.sin(t), c = Math.cos(t), r = 1 + 0.12 * Math.sin(2 * t) + 0.08 * Math.sin(3 * t + L.rot); return [c * L.A * r, s * L.B * (1 + 0.25 * Math.cos(t * 2))]; };
+      for (let i = 0; i <= NU; i++) for (let j = 0; j <= NV; j++) {
+        const t = i / NU * Math.PI * 2, f = j / NV, e = borde(t), x = e[0] * f, z = e[1] * f, y = L.H + 1.8 * (1 - f * f) - 0.6 * Math.cos(t * 2) * f;
+        P.push(L.cx + x * cs - z * sn, Y0 + y, L.cz + x * sn + z * cs); U.push(f, t / (Math.PI * 2) * 12);
+        if (i < NU && j < NV) { const a = i * (NV + 1) + j, b = a + NV + 1; I.push(a, b, a + 1, b, b + 1, a + 1); }
+      }
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals();
+      const m1 = new THREE.Mesh(g, matMemb), m2 = new THREE.Mesh(g, matCost); m2.castShadow = !movil; grupo.add(m1, m2);
+      const borP = []; for (let i = 0; i < 80; i++) { const t = i / 80 * Math.PI * 2, e = borde(t); borP.push(new THREE.Vector3(L.cx + e[0] * cs - e[1] * sn, Y0 + L.H - 0.6 * Math.cos(t * 2), L.cz + e[0] * sn + e[1] * cs)); }
+      const tubo = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(borP, true), 160, 0.22, 8, true), matCol); tubo.castShadow = !movil; grupo.add(tubo);
+      // columnas-árbol: fuste de 3,5 m que se abre en 4 ramas hasta la cubierta
+      for (const fx of [-0.45, 0.45]) {
+        const bx = L.cx + fx * L.A * cs, bz = L.cz + fx * L.A * sn, tope = Y0 + 3.6, ram = [];
+        const tramo = (a, b, r0, r1) => { const d = b.clone().sub(a), Lh = d.length(), g2 = new THREE.CylinderGeometry(r1, r0, Lh, 10); g2.translate(0, Lh / 2, 0); g2.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize())); g2.translate(a.x, a.y, a.z); return g2; };
+        const pie = new THREE.Vector3(bx, Y0, bz), nudo = new THREE.Vector3(bx, tope, bz);
+        ram.push(tramo(pie, nudo, 0.38, 0.3));
+        for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + L.rot, d = 2.6 + rnd() * 1.4, q = new THREE.Vector3(bx + Math.cos(a) * d, Y0 + L.H + 1.2, bz + Math.sin(a) * d); ram.push(tramo(nudo, q, 0.22, 0.12)); }
+        const col = new THREE.Mesh(mergeGeometries(ram.map(x => x.toNonIndexed())), matCol); col.castShadow = !movil; grupo.add(col);
+      }
+    }
+    // bancas de concreto curvas en el anillo exterior
+    for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + 0.15, r = R - 2.2; const b2 = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.45, 0.7), matBord); b2.position.set(HC[0] + Math.cos(a) * r, Y0 + 0.4, HC[1] + Math.sin(a) * r); b2.rotation.y = -a + Math.PI / 2; b2.castShadow = !movil; grupo.add(b2); }
   }
   T3.tintal = grupo;
   return { grupo, palmas: nP };
