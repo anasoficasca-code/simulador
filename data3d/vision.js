@@ -14,7 +14,7 @@ export async function crearVision({ THREE, T3, lw, OX, OZ, movil = false }) {
   const grupo = new THREE.Group(); grupo.name = 'vision'; grupo.visible = false; T3.scene.add(grupo);
   let sem = 2040; const rnd = () => ((sem = (sem * 16807) % 2147483647) / 2147483647);
   const C = (h) => new THREE.Color(h);
-  const COL = { bav: C('#b9a7ff'), bav2: C('#ffffff'), cora: C('#ff6fae'), huerta: C('#3dffb0'), parque: C('#7df9ff'), tienda: C('#ffd166'), humedal: C('#38bdf8'), roof: C('#2ee59d') };
+  const COL = { bav: C('#ffd36b'), bav2: C('#fff1d6'), cora: C('#ff7a3d'), huerta: C('#ff6fae'), parque: C('#f7b6d2'), tienda: C('#ff9f5a'), humedal: C('#c9a7ff'), roof: C('#2ee59d') };
   const cent = (W) => { let x = 0, z = 0; for (const q of W) { x += q[0]; z += q[1]; } return [x / W.length, z / W.length]; };
   const area = (W) => { let a = 0; for (let i = 0; i < W.length; i++) { const p = W[i], q = W[(i + 1) % W.length]; a += p[0] * q[1] - q[0] * p[1]; } return Math.abs(a) / 2; };
   const dentro = (W, x, z) => { let c = false; for (let i = 0, j = W.length - 1; i < W.length; j = i++) { const a = W[i], b = W[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
@@ -131,6 +131,22 @@ export async function crearVision({ THREE, T3, lw, OX, OZ, movil = false }) {
     curvas.push({ P, c, k });
   }
   const gR = new THREE.BufferGeometry(); gR.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gR.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  const web = (() => { // cada nodo con sus 5 vecinos más cercanos, arcos casi rasantes, hilo muy tenue
+    const N = [...nodosT, ...nodosP, ...nodosB, ...nodosW, ...tiendas.filter((_, i) => i % 3 === 0).map(q => [q[0], q[1], 3])], L = [], C2 = [];
+    const cw = [C('#f7c6d9'), C('#ffb38a'), C('#ffe2a8')];
+    for (let i = 0; i < N.length; i++) for (const q of cerca(N[i], N, 6).slice(1)) { const a = N[i], d = Math.hypot(q[0] - a[0], q[1] - a[1]), hh = 3 + d * 0.05, c = cw[i % 3]; let p0 = [a[0], a[2], a[1]];
+      for (let s = 1; s <= 6; s++) { const u = s / 6, p1 = [a[0] + (q[0] - a[0]) * u, a[2] + (q[2] - a[2]) * u + Math.sin(Math.PI * u) * hh, a[1] + (q[1] - a[1]) * u]; L.push(...p0, ...p1); C2.push(c.r * 0.18, c.g * 0.18, c.b * 0.18, c.r * 0.18, c.g * 0.18, c.b * 0.18); p0 = p1; } }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(L, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(C2, 3));
+    const m = new THREE.LineSegments(g, new THREE.LineBasicMaterial(aditivo({ vertexColors: true, opacity: 1 }))); m.frustumCulled = false; grupo.add(m);
+    const gn = new THREE.BufferGeometry(); gn.setAttribute('position', new THREE.Float32BufferAttribute(N.flatMap(q => [q[0], q[2] + 0.5, q[1]]), 3));
+    const pn = new THREE.Points(gn, new THREE.PointsMaterial(aditivo({ color: 0xfff2e8, size: 2.2, sizeAttenuation: false, opacity: 0.9 }))); pn.frustumCulled = false; grupo.add(pn);
+    return [m, pn];
+  })();
+  const polvo = (() => { // luciérnagas amarillas sobre todo el territorio (más densas en parques, huertas y Bavaria)
+    const P = [], semP = [...nodosT, ...nodosP, ...nodosB]; for (let i = 0; i < (movil ? 6000 : 22000); i++) { const b = semP[Math.floor(rnd() * semP.length)], r = 20 + rnd() * 140, a = rnd() * 6.28; P.push(b[0] + Math.cos(a) * r, 2 + rnd() * rnd() * 70, b[1] + Math.sin(a) * r); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    const m = new THREE.Points(g, new THREE.PointsMaterial(aditivo({ color: 0xe8ff6a, size: 1.6, sizeAttenuation: false, opacity: 0.85 }))); m.frustumCulled = false; grupo.add(m); return m;
+  })();
   const red = new THREE.LineSegments(gR, new THREE.LineBasicMaterial(aditivo({ vertexColors: true, opacity: 0.42 }))); red.frustumCulled = false; grupo.add(red);
   const NP = Math.min(curvas.length, movil ? 700 : 1800), pp = new Float32Array(NP * 3), pc = new Float32Array(NP * 3), gP = new THREE.BufferGeometry();
   gP.setAttribute('position', new THREE.BufferAttribute(pp, 3)); gP.setAttribute('color', new THREE.BufferAttribute(pc, 3));
@@ -179,8 +195,10 @@ body.vision #gs-der,body.vision #hid-red,body.vision .es-et,body.vision #bt-pan,
 <li style="--c:#38bdf8"><i>03</i><div><b>Conectividad ecosistémica en los bordes de humedal</b><span>Matriz vegetal nativa en La Vaca y El Burro para mitigar el parasitismo del Chamón sobre el Cucarachero y eliminar trampas ecológicas.</span></div></li>
 <li style="--c:#ffd166"><i>04</i><div><b>Incentivos sociales y gamificación</b><span>Incentivos no monetarios para la participación ciudadana y la adopción de las acciones de mayor impacto.</span></div></li>
 </ol>
-<div class="ley"><span style="--c:#b9a7ff"><em></em>Bavaria Común</span><span style="--c:#ff6fae"><em></em>Corabastos</span><span style="--c:#3dffb0"><em></em>Huertas</span><span style="--c:#7df9ff"><em></em>Parques</span><span style="--c:#ffd166"><em></em>Tiendas</span><span style="--c:#38bdf8"><em></em>Humedales</span></div>`;
+<button id="vi-redes" class="on" style="margin:12px 0 0;width:100%;height:34px;border-radius:9px;border:1px solid rgba(255,180,140,.45);background:rgba(255,140,90,.14);color:#ffe2cc;font:600 11px system-ui;letter-spacing:.2em;text-transform:uppercase;cursor:pointer">Redes · encendidas</button>
+<div class="ley"><span style="--c:#ffd36b"><em></em>Bavaria Común</span><span style="--c:#ff7a3d"><em></em>Corabastos</span><span style="--c:#ff6fae"><em></em>Huertas</span><span style="--c:#f7b6d2"><em></em>Parques</span><span style="--c:#ff9f5a"><em></em>Tiendas</span><span style="--c:#c9a7ff"><em></em>Humedales</span></div>`;
   document.body.appendChild(panel); panel.querySelector('.x').onclick = () => { panel.style.display = 'none'; };
+  let redesOn = true; panel.querySelector('#vi-redes').onclick = (e) => { redesOn = !redesOn; for (const m of [red, pulsos, ...web]) m.visible = redesOn; e.target.textContent = redesOn ? 'Redes · encendidas' : 'Redes · apagadas'; e.target.style.opacity = redesOn ? 1 : 0.55; };
 
   /* ---------- encender / apagar ---------- */
   const guardado = new Map(); let antes = null, edges = null, prog = 0;
@@ -204,10 +222,10 @@ body.vision #gs-der,body.vision #hid-red,body.vision .es-et,body.vision #bt-pan,
     if (v) {
       antes = { bg: sc.background && sc.background.clone(), fog: sc.fog && sc.fog.color.clone(), dens: sc.fog && sc.fog.density, sun: T3.sun.intensity, hemi: T3.hemi.intensity, hc: T3.hemi.color.clone(), hg: T3.hemi.groundColor.clone(), exp: T3.renderer.toneMappingExposure,
         tint: T3.maskU && T3.maskU.uTint.value.clone(), zona: T3.maskU && T3.maskU.uZona.value.z, monte: T3.maskU && T3.maskU.uMonte && T3.maskU.uMonte.value, noche: T3.roofU && T3.roofU.uNoche && T3.roofU.uNoche.value };
-      if (sc.background) sc.background.set(0x05081a); if (sc.fog) { sc.fog.color.set(0x0a1030); sc.fog.density = (antes.dens || 0.00004) * 1.6; }
+      if (sc.background) sc.background.set(0x07082a); if (sc.fog) { sc.fog.color.set(0x0d0c3a); sc.fog.density = (antes.dens || 0.00004) * 1.6; }
       T3.sun.intensity = 0.12; T3.hemi.intensity = 0.55; T3.hemi.color.set(0x5566aa); T3.hemi.groundColor.set(0x080a14); T3.renderer.toneMappingExposure = 1.0;
       if (U) { U.top.value.set(0x010208); U.mid.value.set(0x060a22); U.bot.value.set(0x141a46); U.uStars.value = 1; U.uCloud.value = 0.04; U.uGlow.value = 0; U.uMoon.value = 0; U.uHorA.value = 0.5; U.uHor.value.set(0x3b2a7a); }
-      if (T3.maskU) { T3.maskU.uTint.value.set(0.16, 0.2, 0.42); T3.maskU.uZona.value.z = 1e9; if (T3.maskU.uMonte) T3.maskU.uMonte.value = 0; }
+      if (T3.maskU) { T3.maskU.uTint.value.set(0.16, 0.2, 0.42); T3.maskU.uZona.value.z = 1e9; if (T3.maskU.uVis) T3.maskU.uVis.value = 1; if (T3.maskU.uMonte) T3.maskU.uMonte.value = 0; }
       if (T3.cielo && T3.cielo.luzMalla) T3.cielo.luzMalla(T3, 0.32);
       if (T3.roofU && T3.roofU.uNoche) T3.roofU.uNoche.value = 0; // ventanas apagadas: el resto del territorio queda en penumbra
       // capas de análisis (sintaxis espacial, flujos): se apagan para que solo brille la propuesta
@@ -221,7 +239,7 @@ body.vision #gs-der,body.vision #hid-red,body.vision .es-et,body.vision #bt-pan,
     } else if (antes) {
       if (sc.background && antes.bg) sc.background.copy(antes.bg); if (sc.fog && antes.fog) { sc.fog.color.copy(antes.fog); sc.fog.density = antes.dens; }
       T3.sun.intensity = antes.sun; T3.hemi.intensity = antes.hemi; T3.hemi.color.copy(antes.hc); T3.hemi.groundColor.copy(antes.hg); T3.renderer.toneMappingExposure = antes.exp;
-      if (T3.maskU) { if (antes.tint) T3.maskU.uTint.value.copy(antes.tint); T3.maskU.uZona.value.z = antes.zona; if (T3.maskU.uMonte) T3.maskU.uMonte.value = antes.monte; }
+      if (T3.maskU) { if (T3.maskU.uVis) T3.maskU.uVis.value = 0; if (antes.tint) T3.maskU.uTint.value.copy(antes.tint); T3.maskU.uZona.value.z = antes.zona; if (T3.maskU.uMonte) T3.maskU.uMonte.value = antes.monte; }
       if (T3.roofU && T3.roofU.uNoche) T3.roofU.uNoche.value = antes.noche;
       for (const [o, m] of guardado) o.material = m; guardado.clear();
       if (T3.trees && T3.trees.tinte) T3.trees.tinte(null);
