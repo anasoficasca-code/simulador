@@ -1168,7 +1168,7 @@ function actualizarMallaIn(T, tl, dt) {
   actualizarOrto(T);
   if (!T.mallaMostrada) {
     const st = tl.stats, listo = st.downloading === 0 && st.parsing === 0 && st.visible > 8;
-    if (listo || REALISTA || performance.now() - T.tilesT0 > 40000) { T.mallaMostrada = true; tl.group.visible = true; marcarPaso('foto'); if (KEN && T.fotoPend !== false) fotoReal(true); /* los edificios propios se cambian por los de la foto SOLO cuando la foto ya está cargada */ }
+    if (listo || REALISTA || performance.now() - T.tilesT0 > 40000) { T.mallaMostrada = true; tl.group.visible = true; marcarPaso('foto'); if (KEN && T.fotoPend === true) fotoReal(true); /* los edificios propios se cambian por los de la foto SOLO cuando la foto ya está cargada */ }
     else tl.group.visible = false;
   }
   if (tl.errorTarget > T.errMeta && tl.stats.downloading === 0 && tl.stats.parsing === 0 && tl.stats.visible > 3) tl.errorTarget = Math.max(T.errMeta, Math.round(tl.errorTarget * 0.62));
@@ -3438,9 +3438,9 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       const ag = document.getElementById('gs-ag');
       if (ag && !document.getElementById('fb-btn')) { const b = document.createElement('button'); b.id = 'fb-btn'; b.className = 'on'; b.textContent = 'Foto base'; b.title = 'Apaga o prende la foto 3D de Google (el suelo de base)'; b.style.cssText = 'width:100%;margin-top:6px'; b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.tiles) T3.tiles.group.visible = on; }; ag.parentElement.insertAdjacentElement('afterend', b); }
       if (!document.getElementById('fr-btn')) { // vista: foto 3D real (God's Eye) o modelo de cajas
-        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'fr-btn'; b.className = 'on'; b.textContent = 'Foto real 3D'; b.title = 'Prendido: casas, vías y árboles reales de la foto 3D (como God\'s Eye). Apagado: modelo de volúmenes'; b.style.cssText = 'width:100%;margin-top:6px';
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'fr-btn'; b.textContent = 'Foto real 3D'; b.title = 'Prendido: casas, vías y árboles reales de la foto 3D (como God\'s Eye). Apagado: modelo de volúmenes'; b.style.cssText = 'width:100%;margin-top:6px';
         b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); T3.fotoPend = on; if (!on || T3.mallaMostrada) fotoReal(on); };
-        (fb || ag.parentElement).insertAdjacentElement('afterend', b); if (T3.mallaMostrada) fotoReal(true); else b.classList.toggle('on', T3.fotoPend !== false); // por defecto: vista fotorrealista como God's Eye, en cuanto llega la foto
+        (fb || ag.parentElement).insertAdjacentElement('afterend', b); /* por defecto apagado: todos los edificios del modelo y carga rápida */ // por defecto: vista fotorrealista como God's Eye, en cuanto llega la foto
       }
       if (!document.getElementById('ar-btn')) { // árboles: por defecto los reales de la foto 3D de Google (como God's Eye); el botón trae los modelos 3D
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = T3.fotoReal ? '' : 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
