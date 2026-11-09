@@ -71,7 +71,7 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     const W = t.W, n = W.length; if (n < 3) return;
     let cx = 0, cz = 0, A = 0, Lmax = 0, ang = 0;
     for (let i = 0; i < n; i++) { const p = W[i], q = W[(i + 1) % n]; A += p[0] * q[1] - q[0] * p[1]; cx += p[0]; cz += p[1]; const l = Math.hypot(q[0] - p[0], q[1] - p[1]); if (l > Lmax) { Lmax = l; ang = Math.atan2(q[1] - p[1], q[0] - p[0]); } }
-    cx /= n; cz /= n; const area = Math.abs(A) / 2, y = t.h + 0.32; // sobre la capa de la cubierta de E8 (que se pinta 0,3 m sobre el techo)
+    cx /= n; cz /= n; const area = Math.abs(A) / 2, y = t.h - 0.88; // sobre la losa, que queda 0,9 m bajo el remate del antepecho // sobre la capa de la cubierta de E8 (que se pinta 0,3 m sobre el techo)
     if (area < 40) return;
     const inclinado = window.esDosAguas && window.esDosAguas(W.map(q => [q[0], q[1]]), t.h); // casas a dos aguas: sin huerta
     if (inclinado) return;

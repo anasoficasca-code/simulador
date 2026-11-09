@@ -801,6 +801,7 @@ function flight(ms) {
     T3.waterU.value = performance.now() / 1000;
     if (T3.skyU) T3.skyU.uTime.value = T3.waterU.value;
     T3.sun.position.copy(o.target).add(T3.sunOff);
+    if (KEN && !LIVIANO) { const sc = T3.sun.shadow.camera, SR = Math.max(90, Math.min(600, cam.position.distanceTo(o.target) * 0.85)); if (Math.abs(sc.right - SR) > SR * 0.08) { sc.left = sc.bottom = -SR; sc.right = sc.top = SR; sc.updateProjectionMatrix(); T3.sun.shadow.normalBias = SR / 1300; } } // sombras nítidas de cerca y que alcanzan de lejos
     T3.sun.target.position.copy(o.target);
     actualizarMalla(T3, dt);
     if (SIM) SIM.update(dt); // HUD, detección y seguimiento tipo God's Eye
@@ -1248,7 +1249,7 @@ async function initTodoReal() {
     const sun = new THREE.DirectionalLight(DIA.solColor, DIA.sol);
     sun.position.set(4000, 5000, 2000);
     sun.castShadow = !LIVIANO;
-    sun.shadow.mapSize.set(2048, 2048); // sombras nítidas alrededor del pájaro (el sol sigue a la cámara)
+    sun.shadow.mapSize.set(KEN && !MEDIO ? 4096 : 2048, KEN && !MEDIO ? 4096 : 2048); // sombras nítidas alrededor del pájaro (el sol sigue a la cámara)
     const SR = MEDIO ? 320 : 600; sun.shadow.camera.left = -SR; sun.shadow.camera.right = SR;
     sun.shadow.camera.top = SR; sun.shadow.camera.bottom = -SR;
     sun.shadow.camera.near = 100; sun.shadow.camera.far = 7000;
@@ -1636,7 +1637,9 @@ function materialEdificios(THREE) {
   if (T3.matEdif) return T3.matEdif;
   const mat = LIVIANO ? new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true }) // celular/gafas: material barato
     : new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true, roughness: 0.86, metalness: 0, envMap: T3.env || null, envMapIntensity: 0.55 });
-  T3.roofU = { uOrto: { value: null }, uOrtoVP: { value: new THREE.Matrix4() }, uOrtoOn: { value: 0 }, uNoche: { value: 0 }, uLuces: { value: 0.5 }, uSoloAltos: { value: 0 } }; // uNoche/uLuces: ventanas encendidas (data3d/cielo.js)
+  T3.roofU = { uOrto: { value: null }, uOrtoVP: { value: new THREE.Matrix4() }, uOrtoOn: { value: 0 }, uNoche: { value: 0 }, uLuces: { value: 0.5 }, uSoloAltos: { value: 0 } };
+  if (KEN && !LIVIANO) { const tl = new THREE.TextureLoader(), cargaT = (n, srgb) => { const t = tl.load('data3d/textures/' + n); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.anisotropy = 8; return t; };
+    Object.assign(T3.roofU, { tLosaC: { value: cargaT('losa_color.jpg', true) }, tLosaN: { value: cargaT('losa_normal.jpg') }, tLosaR: { value: cargaT('losa_rugosidad.jpg') } }); } // cubiertas de concreto PBR (Poly Haven, CC0) // uNoche/uLuces: ventanas encendidas (data3d/cielo.js)
   if (REALISTA) {
     const tx = texturasFachada(THREE, T3.renderer);
     Object.assign(T3.roofU, { tFachB: { value: tx.ladrillo.c }, tFachP: { value: tx.pintado.c }, tFachBN: { value: tx.ladrillo.n }, tFachPN: { value: tx.pintado.n }, tFachBR: { value: tx.ladrillo.r }, tFachPR: { value: tx.pintado.r },
@@ -1680,10 +1683,10 @@ function materialEdificios(THREE) {
       .replace('#include <common>', '#include <common>\nattribute vec4 wall;\nattribute float bord;\nattribute float bid;\nvarying float vBid;\nvarying float vBd;\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wpv = modelMatrix * vec4(position, 1.0); vWP = wpv.xyz; vWs = wpv.xz; vWl = wall; vBd = bord; vBid = bid;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos;' + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
+      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos;' + (KEN && !LIVIANO ? '\nuniform sampler2D tLosaC, tLosaN, tLosaR;' : '') + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
       .replace('#include <color_fragment>', `#include <color_fragment>
       if (uSoloAltos > 0.5 && abs(vWl.w) < 16.5) discard; // Foto real: las casas y bloques bajos son los de la foto de Google
-      vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
+      float gTecho = 0.0; vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
       {
         ${FACHADA || ''}
         float L = vWl.z, H = vWl.w;
@@ -1750,6 +1753,7 @@ function materialEdificios(THREE) {
             float r1 = fract(hb * 7.31), r2 = fract(hb * 13.7);
             vec2 q = vWP.xz / 3.0; float m2 = fract(sin(dot(floor(q), vec2(12.9898, 78.233))) * 43758.545);
             vec3 losa = vec3(0.70, 0.69, 0.66) * (0.9 + 0.14 * m2);
+            ${KEN && !LIVIANO ? 'losa *= mix(vec3(1.0), texture2D(tLosaC, vWP.xz / 6.0).rgb * 1.9, 0.75); gTecho = 1.0;' : ''}
             vec3 zinc = mix(vec3(0.60, 0.64, 0.68), vec3(0.62, 0.42, 0.30), step(0.55, r2)) * (0.86 + 0.14 * sin(vWP.x * 11.0 + vWP.z * 3.0));
             diffuseColor.rgb = mix(diffuseColor.rgb, Hb < 8.0 && r1 > 0.55 ? zinc : losa, 0.7);
           }
@@ -1759,8 +1763,10 @@ function materialEdificios(THREE) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n        totalEmissiveRadiance += gWinC * gWin * 2.6; // ventana encendida');
     if (PBR) sh.fragmentShader = sh.fragmentShader
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        ${KEN ? 'if (gTecho > 0.5) roughnessFactor = 0.82 + 0.18 * texture2D(tLosaR, vWP.xz / 6.0).r;' : ''}
         if (gF > 0.5) roughnessFactor = mix(mix(texture2D(tFachPR, gTuv).r, texture2D(tFachBR, gTuv).r, gLad), texture2D(tLadR, gUvM).r, gMuro);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        ${KEN ? 'if (gTecho > 0.5) { vec3 tn = texture2D(tLosaN, vWP.xz / 6.0).xyz * 2.0 - 1.0; vec3 Tg = normalize((viewMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz), Bg = normalize((viewMatrix * vec4(0.0, 0.0, -1.0, 0.0)).xyz); normal = normalize(Tg * tn.x + Bg * tn.y + normal * tn.z); }' : ''}
         if (gF > 0.5) { // relieve de la fachada: tangente = dirección del muro, bitangente = vertical
           vec3 tn = mix(mix(texture2D(tFachPN, gTuv).xyz, texture2D(tFachBN, gTuv).xyz, gLad), texture2D(tLadN, gUvM).xyz, gMuro) * 2.0 - 1.0;
           vec3 Tg = normalize((viewMatrix * vec4(vWl.x, 0.0, vWl.y, 0.0)).xyz), Bg = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
@@ -1782,6 +1788,20 @@ window.esDosAguas = (W, h) => { // misma prueba que techoDosAguas (cubierta incl
   for (let i = 0; i < n; i++) { const p = W[i], q = W[(i + 1) % n], u = p[0] * ux + p[1] * uz, v = p[0] * vx + p[1] * vz; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); area += p[0] * q[1] - q[0] * p[1]; }
   const Lu = u1 - u0, Lv = v1 - v0; return !(Math.abs(area) / 2 / (Lu * Lv) < 0.86 || Lu / Lv < 1.3 || Lv < 6 || Lv > 22);
 };
+// polígono metido d metros hacia adentro (inglete, limitado en esquinas agudas); null si queda inválido
+function insetPoligono(W, d) {
+  const n = W.length; let A = 0; for (let i = 0; i < n; i++) { const p = W[i], q = W[(i + 1) % n]; A += p[0] * q[1] - q[0] * p[1]; }
+  if (Math.abs(A) / 2 < 25) return null; const s = A > 0 ? 1 : -1, out = [];
+  for (let i = 0; i < n; i++) {
+    const a = W[(i - 1 + n) % n], b = W[i], c = W[(i + 1) % n];
+    let e1x = b[0] - a[0], e1z = b[1] - a[1], e2x = c[0] - b[0], e2z = c[1] - b[1]; const l1 = Math.hypot(e1x, e1z) || 1, l2 = Math.hypot(e2x, e2z) || 1; e1x /= l1; e1z /= l1; e2x /= l2; e2z /= l2;
+    const n1x = -e1z * s, n1z = e1x * s, n2x = -e2z * s, n2z = e2x * s; let mx = n1x + n2x, mz = n1z + n2z; const k = 1 + n1x * n2x + n1z * n2z;
+    if (k < 0.15) return null; mx /= k; mz /= k; const ml = Math.hypot(mx, mz); if (ml > 2.5) { mx *= 2.5 / ml; mz *= 2.5 / ml; }
+    out.push([b[0] + mx * d, b[1] + mz * d]);
+  }
+  let B = 0; for (let i = 0; i < n; i++) { const p = out[i], q = out[(i + 1) % n]; B += p[0] * q[1] - q[0] * p[1]; }
+  return Math.sign(B) === s && Math.abs(B) > Math.abs(A) * 0.4 ? out : null;
+}
 function techoDosAguas(W, h, bi, col, P, C, I, WL, vc) {
   const n = W.length; if (h < 5 || h > 22 || n < 4) return vc;
   let L = 0, ux = 1, uz = 0; // eje largo = el muro más largo
@@ -1853,11 +1873,13 @@ function buildChunks(THREE, B) {
         P.push(W[i][0], h, W[i][1]); C.push(col.w[0], col.w[1], col.w[2]); WL.push(muro[i][0], muro[i][1], muro[i][2], h); vc++;
       }
       // cubierta plana metida 0,8 m bajo el borde del muro: el muro queda como antepecho (como en el render de Unreal); la cornisa la pinta el shader
-      const hT = REALISTA && !LIVIANO && h >= 4.5 ? h - 0.45 : h;
-      if (KEN && h >= HUERTA_H) techosHuerta.push({ W, y: hT });
+      // Kennedy: cubierta plana con ANTEPECHO real: el borde se mete 0,4 m (offset) y la losa de adentro baja 0,9 m
+      const Wi = KEN && !LIVIANO && h >= 4.5 && !(window.esDosAguas && window.esDosAguas(W, h)) ? insetPoligono(W, 0.4) : null;
+      const hT = Wi ? h - 0.9 : REALISTA && !LIVIANO && h >= 4.5 ? h - 0.45 : h, WT = Wi || W;
+      if (KEN && h >= HUERTA_H) techosHuerta.push({ W: WT, y: hT });
       P.push(cx, hT, cz); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++;
       // techo con vértices propios: color liso, sin ventanas
-      for (let i = 0; i < n; i++) { P.push(W[i][0], hT, W[i][1]); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++; }
+      for (let i = 0; i < n; i++) { P.push(WT[i][0], hT, WT[i][1]); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++; }
       for (let i = 0; i < n; i++) {
         const j = (i + 1) % n;
         // los dos triángulos del muro terminan en la esquina superior i: así ambos leen el mismo muro (vértice "provocador")
@@ -1865,14 +1887,22 @@ function buildChunks(THREE, B) {
       }
       // techo: si la huella es 'estrella' respecto a su centro, abanico desde el centro (así el shader sabe qué tan cerca del borde está cada punto y pinta el remate ancho del antepecho);
       // si no, triangulado por el contorno real (el abanico se salía en huellas cóncavas)
-      let estrella = REALISTA && !LIVIANO && h >= 4.5, sg = 0;
+      let estrella = REALISTA && !LIVIANO && h >= 4.5 && !Wi, sg = 0;
       if (estrella) for (let i = 0; i < n; i++) { const p = W[i], q = W[(i + 1) % n], cr = (p[0] - cx) * (q[1] - cz) - (p[1] - cz) * (q[0] - cx); if (Math.abs(cr) < 1e-6 || (sg && Math.sign(cr) !== sg)) { estrella = false; break; } sg = Math.sign(cr); }
       let tri = [];
       if (estrella) { BDc.push(base + 2 * n); for (let i = 0; i < n; i++) BDr.push(base + 2 * n + 1 + i); }
-      else try { tri = THREE.ShapeUtils.triangulateShape(W.map(q => new THREE.Vector2(q[0], q[1])), []); } catch (e) {}
+      else try { tri = THREE.ShapeUtils.triangulateShape(WT.map(q => new THREE.Vector2(q[0], q[1])), []); } catch (e) {}
       if (tri.length) { for (const t of tri) I.push(base + 2 * n + 1 + t[0], base + 2 * n + 1 + t[1], base + 2 * n + 1 + t[2]); }
       else for (let i = 0; i < n; i++) I.push(base + 2 * n, base + 2 * n + 1 + i, base + 2 * n + 1 + (i + 1) % n);
       vc = base + 3 * n + 1;
+      if (Wi) { // remate del antepecho (anillo plano entre el borde y el offset) y su cara interior hasta la losa
+        const cR = [col.w[0] * 1.08, col.w[1] * 1.08, col.w[2] * 1.08], cI = [col.w[0] * 0.78, col.w[1] * 0.78, col.w[2] * 0.78];
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n, b0 = vc;
+          for (const [q, y, cc] of [[W[i], h, cR], [W[j], h, cR], [Wi[j], h, cR], [Wi[i], h, cR], [Wi[i], h, cI], [Wi[j], h, cI], [Wi[j], hT, cI], [Wi[i], hT, cI]]) { P.push(q[0], y, q[1]); C.push(cc[0], cc[1], cc[2]); WL.push(0, 0, -1, h); vc++; }
+          I.push(b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3, b0 + 4, b0 + 5, b0 + 6, b0 + 4, b0 + 6, b0 + 7);
+        }
+      }
       if (REALISTA && !(KEN && h >= HUERTA_H)) vc = techoDosAguas(W, h, bi, col, P, C, I, WL, vc); // los altos de Kennedy llevan huerta en la terraza (cubierta plana)
       { const hb = ((Math.sin(bi * 127.1 + 311.7) * 43758.5453) % 1 + 1) % 1; while (BID.length < vc) BID.push(hb); // tono propio de cada edificio (shader)
         if (KEN && !LIVIANO && h >= 4 && h < HUERTA_H) { // cubierta: tanque negro de agua, antena y claraboya, como en los techos de Kennedy
@@ -1902,7 +1932,7 @@ function buildChunks(THREE, B) {
   if (torresFoto.length) { // torres de ladrillo con balcones-huerta (data3d/torres_balcones.js) y huerta en la terraza
     const L = torresFoto.map(b => ({ W: b.pts.slice(0, -1).map(p => lw(p[0], p[1])), h: b.h, y0: 0.3 }));
     for (const t of L) techosHuerta.push({ W: t.W, y: t.h - 0.45 });
-    T3.torresTechos = (T3.torresTechos || []).concat(L.map(t => ({ W: t.W, h: t.h }))); // cubiertas de las torres con balcones: también hidropónicas
+    T3.torresTechos = (T3.torresTechos || []).concat(L.map(t => ({ W: t.W, h: t.h + 0.45 }))); // su losa está 0,45 m bajo el borde // cubiertas de las torres con balcones: también hidropónicas
     if (!pTorres) pTorres = import('./data3d/torres_balcones.js?v=3').then(m => (T3.torres = m.crearTorres(T3.THREE, T3, { liviano: LIVIANO }))).catch(e => { console.warn('torres con balcones:', e); return null; });
     pTorres.then(Tt => { if (Tt) Tt.agregar(L); });
   }
@@ -3383,7 +3413,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=9'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=10'), listoK()])
     .then(async ([m, me]) => {
       try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0, movil: MOVIL, dentro: (x, z) => enZona(x + LC.x, LC.y - z) /* huertas hidropónicas solo donde está el modelo de edificios */ }); } catch (e) { console.warn('estrategias:', e); }
       if (EST && EST.hidroponia) setTimeout(() => EST.hidroponia(), 1500); // techos y balcones con huerta y sus animales desde el inicio
