@@ -187,6 +187,8 @@ const ESPECIES_ARBOL = [
 // Especies del arbolado de Bogotá armadas sobre los 4 modelos reales (misma geometría, distinto follaje y porte):
 // base = índice en ESPECIES_ARBOL · h = tinte de las hojas (multiplica la textura) · sx, sy = proporción de la copa (ancho, alto)
 const VARIEDADES = [
+  { n: 'Eucalipto (bosque)', base: 3, peso: 0, h: [0.62, 0.72, 0.66], sx: 0.7, sy: 1.25 },        // bosque del predio de Bavaria: alto, oscuro, verde azulado
+  { n: 'Pino (bosque)', base: 0, peso: 0, h: [0.55, 0.68, 0.56], sx: 0.62, sy: 1.35 },
   { n: 'Jacaranda (en flor)', base: 0, peso: 0.07, h: [1.12, 0.78, 1.18], sx: 1.05, sy: 1.0 },  // copa lila
   { n: 'Jacaranda', base: 0, peso: 0.08, h: [0.9, 0.95, 0.86], sx: 1.0, sy: 1.0 },
   { n: 'Urapán', base: 2, peso: 0.16, h: [0.74, 0.92, 0.72], sx: 0.9, sy: 1.25 },                // verde oscuro, alto
@@ -327,7 +329,8 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   const X = [], Z = [], Hh = [], SP = [], pesoTot = ESPECIES_ARBOL.reduce((a, e) => a + e.peso, 0);
   const elegir = (r) => { r *= pesoTot; for (let k = 0; k < ESPECIES_ARBOL.length; k++) { r -= ESPECIES_ARBOL[k].peso; if (r < 0) return k; } return ESPECIES_ARBOL.length - 1; };
   const KEN_A = !!T3.kenArboles; // simulador: alturas como el render de Unreal (6 a 14 m, copas grandes); el censo marca muchos de 1-2 m y se veían como matas
-  for (let i = 0; i < T.t.length; i += stride) { const t = T.t[i], w = lw(t[0], t[1]); X.push(w[0]); Z.push(w[1]); Hh.push(KEN_A ? Math.max(6, Math.min(14, 6.5 + (t[2] || 4) * 0.8 + hash(i * 5 + 2) * 3)) : Math.max(4, Math.min(16, t[2] || 6))); SP.push(elegir(hash(i * 3 + 1))); }
+  const BOSQUE = []; // árboles del bosque de Bavaria (t[4] === 1)
+  for (let i = 0; i < T.t.length; i += stride) { const t = T.t[i], w = lw(t[0], t[1]); if (t[4] === 1) { BOSQUE[X.length] = 1; X.push(w[0]); Z.push(w[1]); Hh.push(Math.max(18, Math.min(30, (t[2] || 14) * 1.6 + hash(i * 9 + 4) * 4))); SP.push(0); continue; } X.push(w[0]); Z.push(w[1]); Hh.push(KEN_A ? Math.max(6, Math.min(14, 6.5 + (t[2] || 4) * 0.8 + hash(i * 5 + 2) * 3)) : Math.max(4, Math.min(16, t[2] || 6))); SP.push(elegir(hash(i * 3 + 1))); }
   const aguas = cuerposDeAgua(W, lw); let ribera = 0;
   for (const a of aguas) {
     for (let i = 0; i < a.pts.length && ribera < 30000; i += 2) {
@@ -374,7 +377,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   const N = X.length, ROT = new Float32Array(N); for (let i = 0; i < N; i++) ROT[i] = hash(i * 41 + 11) * Math.PI * 2;
   // especie de Bogotá de cada árbol (VARIEDADES): fija el modelo base, el color del follaje y el porte
   const VAR = new Uint8Array(N), pesoV = VARIEDADES.reduce((a, v) => a + v.peso, 0);
-  for (let i = 0; i < N; i++) { let r = hash(i * 7 + 3) * pesoV, k = 0; for (; k < VARIEDADES.length - 1; k++) { r -= VARIEDADES[k].peso; if (r < 0) break; } VAR[i] = k; SP[i] = VARIEDADES[k].base; }
+  for (let i = 0; i < N; i++) { let k = 0; if (BOSQUE[i]) k = hash(i * 13 + 5) < 0.7 ? 0 : 1; else { let r = hash(i * 7 + 3) * pesoV; for (k = 2; k < VARIEDADES.length - 1; k++) { r -= VARIEDADES[k].peso; if (r < 0) break; } } VAR[i] = k; SP[i] = VARIEDADES[k].base; }
   api0.variedades = VARIEDADES.map(v => v.n);
   const especies = [], MV = !!T3.movil; // celular: sólo el modelo reducido de cada árbol (se descarga mucho menos)
   const NIVELES = MV ? ['L1'] : ['L0', 'L1'];

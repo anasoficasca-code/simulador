@@ -21,25 +21,26 @@ export function construirBavaria({ THREE, T3, lw, D, liviano }) {
   const texL = new THREE.CanvasTexture(cv); texL.wrapS = texL.wrapT = THREE.RepeatWrapping; texL.colorSpace = THREE.SRGBColorSpace;
   texL.anisotropy = T3.renderer.capabilities.getMaxAnisotropy();
   const matLadrillo = new THREE.MeshStandardMaterial({ map: texL, roughness: 0.92, metalness: 0, side: THREE.DoubleSide });
-  const matConcreto = new THREE.MeshStandardMaterial({ color: 0x9b9893, roughness: 0.95, metalness: 0 });
-  const matCubierta = new THREE.MeshStandardMaterial({ color: 0x8a8c8a, roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide });
+  const matConcreto = new THREE.MeshStandardMaterial({ color: 0xb3aca2, roughness: 0.95, metalness: 0 }); // concreto envejecido, claro como en el video
+  const matCubierta = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.05, side: THREE.DoubleSide }); // cada cubierta con su color de la foto satelital
+  const matPintado = new THREE.MeshStandardMaterial({ color: 0xe6e2d8, roughness: 0.85, metalness: 0, side: THREE.DoubleSide }); // muros pintados de blanco (nave grande y silos)
   const matVidrio = new THREE.MeshStandardMaterial({ color: 0x2a3138, roughness: 0.35, metalness: 0.2, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
   const matBlanco = new THREE.MeshStandardMaterial({ color: 0xe9e7e2, roughness: 0.7, metalness: 0.05 });
 
   // ---- acumuladores: muros con textura (posición + uv) y ventanas ----
-  const ML = { p: [], uv: [], i: [] }, MV = { p: [], i: [] }, MC = { p: [], i: [] };
+  const ML = { p: [], uv: [], i: [] }, MB = { p: [], uv: [], i: [] }, MV = { p: [], i: [] }, MC = { p: [], i: [], c: [] };
   const quad = (A, q, uvs) => { const b = A.p.length / 3; for (const v of q) A.p.push(...v); if (uvs) A.uv.push(...uvs); A.i.push(b, b + 1, b + 2, b, b + 2, b + 3); };
-  const muros = (W, y0, y1, s0 = 0) => { // W: anillo en el mundo [[x,z]...]
+  const muros = (W, y0, y1, s0 = 0, A = ML) => { // W: anillo en el mundo [[x,z]...]
     let s = s0;
     for (let k = 0; k < W.length; k++) {
       const a = W[k], b = W[(k + 1) % W.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      quad(ML, [[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]]], [s, y0, s + L, y0, s + L, y1, s, y1]);
+      quad(A, [[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]]], [s, y0, s + L, y0, s + L, y1, s, y1]);
       s += L;
     }
   };
-  const cubierta = (W, y, A) => {
+  const cubierta = (W, y, A, col) => {
     let tri = []; try { tri = THREE.ShapeUtils.triangulateShape(W.map(q => new THREE.Vector2(q[0], q[1])), []); } catch (e) {}
-    const b = A.p.length / 3; for (const q of W) A.p.push(q[0], y, q[1]);
+    const b = A.p.length / 3; for (const q of W) { A.p.push(q[0], y, q[1]); if (A.c) A.c.push(...(col || [0.54, 0.55, 0.54])); }
     for (const t of tri) A.i.push(b + t[0], b + t[2], b + t[1]);
   };
   const ccw = (W) => { let a = 0; for (let k = 0; k < W.length; k++) { const p = W[k], q = W[(k + 1) % W.length]; a += p[0] * q[1] - q[0] * p[1]; } return a; };
@@ -98,22 +99,35 @@ export function construirBavaria({ THREE, T3, lw, D, liviano }) {
     }
   };
 
+  const colTecho = (e) => { if (!e.col) return null; const k = e.col.map(v => v / 255), l = 0.3 * k[0] + 0.59 * k[1] + 0.11 * k[2], s = l < 0.45 ? 1.25 : 1.05; return k.map(v => Math.min(1, Math.pow(v * s, 2.2))); }; // a lineal; las oscuras se levantan un poco
+  const silos = (W, h) => { // fila de silos cilíndricos de concreto blanco sobre los lados largos, con la cubierta encima
+    let L0 = 0, a0 = W[0], b0 = W[1];
+    for (let k = 0; k < W.length; k++) { const a = W[k], b = W[(k + 1) % W.length], l = Math.hypot(b[0] - a[0], b[1] - a[1]); if (l > L0) { L0 = l; a0 = a; b0 = b; } }
+    const ux = (b0[0] - a0[0]) / L0, uz = (b0[1] - a0[1]) / L0, sg = ccw(W) > 0 ? 1 : -1, nx = uz * sg, nz = -ux * sg, r = 3.1, n = Math.floor(L0 / (2 * r + 0.4));
+    for (let j = 0; j < n; j++) { const t = (j + 0.5) * L0 / n; silosC.push([a0[0] + ux * t + nx * r * 0.55, h / 2 - 1, a0[1] + uz * t + nz * r * 0.55, r, h + 2]); }
+  };
+  const silosC = [];
   for (const e of D.edif) {
     const W = e.p.map(p => lw(p[0], p[1]));
     if (e.s === 'esqueleto') { esqueleto(W, e.h); continue; }
-    muros(W, -1, e.h);
-    if (e.s === 'oficina') { ventanas(W, e.h, 3.4, 0, 1.9, true); cubierta(W, e.h, MC); }
-    else { ventanas(W, e.h, 4.2, 2.4, 1.7, false); cubierta(W, e.h, MC); }
+    const tc = colTecho(e), claro = e.col && (0.3 * e.col[0] + 0.59 * e.col[1] + 0.11 * e.col[2]) > 140;
+    if (e.s === 'silos') { muros(W, -1, e.h, 0, MB); silos(W, e.h); cubierta(W, e.h, MC, tc); continue; }
+    if (e.s === 'blanco') { muros(W, -1, e.h, 0, MB); ventanas(W, e.h, 3.6, 0, 1.8, true); cubierta(W, e.h, MC, tc); continue; } // nave de cuatro pisos con hileras de ventanas
+    muros(W, -1, e.h, 0, claro ? MB : ML);
+    if (e.s === 'oficina') { ventanas(W, e.h, 3.4, 0, 1.9, true); cubierta(W, e.h, MC, tc); }
+    else { ventanas(W, e.h, 4.2, 2.4, 1.7, false); cubierta(W, e.h, MC, tc); }
   }
 
   const malla = (A, mat, uv) => {
     if (!A.i.length) return;
     const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(A.p, 3));
     if (uv) gg.setAttribute('uv', new THREE.Float32BufferAttribute(A.uv, 2));
+    if (A.c && A.c.length) gg.setAttribute('color', new THREE.Float32BufferAttribute(A.c, 3));
     gg.setIndex(A.i); gg.computeVertexNormals();
     const m = new THREE.Mesh(gg, mat); m.castShadow = sombras; m.receiveShadow = sombras; grupo.add(m);
   };
-  malla(ML, matLadrillo, true); malla(MV, matVidrio); malla(MC, matCubierta);
+  malla(ML, matLadrillo, true); malla(MB, matPintado, true); malla(MV, matVidrio); malla(MC, matCubierta);
+  if (silosC.length) { const im = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 20), matPintado, silosC.length), d = new THREE.Object3D(); silosC.forEach((s, k) => { d.position.set(s[0], s[1], s[2]); d.scale.set(s[3], s[4], s[3]); d.updateMatrix(); im.setMatrixAt(k, d.matrix); }); im.castShadow = sombras; im.receiveShadow = sombras; grupo.add(im); }
 
   const instancias = (L, mat, tinte) => {
     if (!L.length) return;
@@ -124,14 +138,15 @@ export function construirBavaria({ THREE, T3, lw, D, liviano }) {
   instancias(cajasL, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92 }), 0xa45434); // pilastras de ladrillo
   instancias(cajasC, matConcreto, 0xd8d4cc);
 
-  // ---- tanque de agua elevado (blanco, fuste cilíndrico y depósito arriba) ----
+  // ---- torres de agua (las dos del predio): fuste blanco que se abre en curva hacia el depósito, base pintada de verde ----
+  const perfil = [];
+  for (let k = 0; k <= 24; k++) { const y = k / 24 * 40, t = y / 40, r = 2.3 - 0.7 * Math.sin(Math.PI * Math.min(1, t * 1.25)) * (t < 0.8 ? 1 : 0) + Math.pow(Math.max(0, t - 0.62) / 0.38, 2.2) * 3.6; perfil.push(new THREE.Vector2(Math.max(1.5, r), y)); }
+  perfil.push(new THREE.Vector2(5.6, 40.6), new THREE.Vector2(0.01, 41.2));
+  const gTorre = new THREE.LatheGeometry(perfil, 32), matVerde = new THREE.MeshStandardMaterial({ color: 0x3f8f4e, roughness: 0.8 });
   for (const t of D.tanques || []) {
     const [x, z] = lw(t[0], t[1]), tg = new THREE.Group(); tg.position.set(x, 0, z);
-    const fuste = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.2, 34, 20), matBlanco); fuste.position.y = 17;
-    const cono = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 1.6, 4, 24), matBlanco); cono.position.y = 36;
-    const dep = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 6.2, 5, 24), matBlanco); dep.position.y = 40.5;
-    const tapa = new THREE.Mesh(new THREE.ConeGeometry(6.4, 1.8, 24), matBlanco); tapa.position.y = 43.9;
-    for (const m of [fuste, cono, dep, tapa]) { m.castShadow = sombras; m.receiveShadow = sombras; tg.add(m); }
+    const fuste = new THREE.Mesh(gTorre, matBlanco), base = new THREE.Mesh(new THREE.CylinderGeometry(2.36, 2.4, 3.2, 32), matVerde); base.position.y = 1.4;
+    for (const m of [fuste, base]) { m.castShadow = sombras; m.receiveShadow = sombras; tg.add(m); }
     grupo.add(tg);
   }
   T3.scene.add(grupo);

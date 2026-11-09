@@ -1269,7 +1269,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=54'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=56'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1278,7 +1278,7 @@ async function initTodoReal() {
     // edificios en binario por celdas de 1 km (data3d/edif): primero las cercanas a la cámara, el resto en segundo plano
     const EI = await pEdifIdx;
     // antigua fábrica de Bavaria: modelo propio (data3d/bavaria.js); sus cajas genéricas se quitan
-    const pBav = GOOGLE ? Promise.resolve(null) : window.cargarJSON('data3d/bavaria.json?v=2').catch(() => null);
+    const pBav = GOOGLE ? Promise.resolve(null) : window.cargarJSON('data3d/bavaria.json?v=3').catch(() => null);
     const enPoli = (W, x, y) => { let c = false; for (let i = 0, j = W.length - 1; i < W.length; j = i++) { const a = W[i], b = W[j]; if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
     const deBavaria = (BV, b) => { if (!BV) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } x /= n; y /= n; return BV.edif.some(e => enPoli(e.p, x, y)); };
     // bodegas de Corabastos: modelo propio (data3d/corabastos.js); sus cajas genéricas se quitan
@@ -1310,7 +1310,7 @@ async function initTodoReal() {
       })();
     }
     marcarPaso('edif');
-    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && import('./data3d/bavaria.js?v=4').then(m => { T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
+    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && import('./data3d/bavaria.js?v=5').then(m => { T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
       .catch(e => console.warn('fábrica Bavaria:', e));
     if (!GOOGLE && !(LIVIANO && !MEDIO)) pCora.then(CO => CO && import('./data3d/corabastos.js?v=2').then(m => { T3.corabastos = m.construirCorabastos({ THREE, T3, lw, D: CO, liviano: LIVIANO }); }))
       .catch(e => console.warn('Corabastos:', e));
@@ -1374,7 +1374,7 @@ async function initTodoReal() {
       try {
         // árboles de la antigua fábrica de Bavaria (masas de follaje de la imagen satelital): mismos modelos reales que el resto del territorio
         let TT = T;
-        try { const [BA, BV] = await Promise.all([window.cargarJSON('data3d/bavaria_arboles.json?v=2'), pBav]); if (BA && BA.arboles) { const lib = (BV && BV.libres) || []; TT = { ...T, t: T.t.concat(BA.arboles.filter(a => !lib.some(z => enPoli(z, a[0], a[1]))).map(a => [a[0], a[1], a[2], 0])) }; } } catch (e) { console.warn('árboles de Bavaria:', e); }
+        try { const [BA, BV] = await Promise.all([window.cargarJSON('data3d/bavaria_arboles.json?v=3'), pBav]); if (BA && BA.arboles) { const lib = (BV && BV.libres) || []; TT = { ...T, t: T.t.concat(BA.arboles.filter(a => !lib.some(z => enPoli(z, a[0], a[1]))).map(a => [a[0], a[1], a[2], 0, a[4] || 0])) }; } } catch (e) { console.warn('árboles de Bavaria:', e); }
         T3.kenArboles = KEN; // simulador: copas opacas, especies de Bogotá y más árboles 3D reales, como el render de Unreal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
         T3.counts.t = T.t.length;
