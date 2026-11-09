@@ -16,24 +16,33 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
   const lienzo = (w, h, f) => { const c = document.createElement('canvas'); c.width = w; c.height = h; f(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANIS; return t; };
 
   // ---------- texturas: hojas de lechuga, acelga y albahaca vistas desde arriba (alfa) ----------
-  const texPlantas = lienzo(512, 128, (g, w, h) => { // tira de canastillas con plantas, 4 m de tubo
+  // hoja realista: lámina con degradado de la base a la punta, nervio central claro, borde algo más oscuro y sombra bajo las de encima
+  const hoja = (g, x, y, largo, ancho, ang, base, punta, nervio) => {
+    g.save(); g.translate(x, y); g.rotate(ang);
+    const gr = g.createLinearGradient(0, 0, largo, 0); gr.addColorStop(0, base); gr.addColorStop(1, punta);
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.beginPath(); g.ellipse(largo * 0.5 + 1.5, 2, largo * 0.5, ancho * 0.5, 0, 0, 7); g.fill(); // sombra
+    g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(largo * 0.25, -ancho * 0.6, largo * 0.8, -ancho * 0.55, largo, 0); g.bezierCurveTo(largo * 0.8, ancho * 0.55, largo * 0.25, ancho * 0.6, 0, 0); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 0.8; g.stroke();
+    g.strokeStyle = nervio; g.lineWidth = 1; g.beginPath(); g.moveTo(1, 0); g.lineTo(largo * 0.9, 0); g.stroke();
+    for (let k = 0.2; k < 0.85; k += 0.15) { g.beginPath(); g.moveTo(largo * k, 0); g.lineTo(largo * (k + 0.1), -ancho * 0.3); g.moveTo(largo * k, 0); g.lineTo(largo * (k + 0.1), ancho * 0.3); g.stroke(); }
+    g.restore();
+  };
+  // cultivos: [base, punta, nervio, nº de hojas, largo, ancho]: lechuga crespa, lechuga morada, acelga, albahaca, espinaca
+  const CULT = [['#5f8a3a', '#9cc06a', 'rgba(225,240,190,.6)', 14, 17, 12], ['#4d5a2e', '#8a3f52', 'rgba(230,200,210,.5)', 13, 16, 11], ['#3e6a2a', '#5f8e3c', 'rgba(220,90,90,.75)', 9, 21, 9], ['#3f6a2b', '#6f9a45', 'rgba(210,235,180,.5)', 16, 10, 6], ['#2f5222', '#55803a', 'rgba(200,225,170,.45)', 11, 15, 10]];
+  const roseta = (g, x, y, esc, t) => { const [b, p, n, nh, L, A] = CULT[t]; for (let k = 0; k < nh; k++) { const an = k * 2.399 + Math.random() * 0.3, f = 0.55 + 0.45 * (1 - k / nh); hoja(g, x, y, L * esc * f, A * esc * f, an, b, p, n); } };
+  const texPlantas = lienzo(512, 128, (g, w, h) => { // tira de 4 m de tubo NFT vista desde arriba: canastillas con su roseta
     g.clearRect(0, 0, w, h);
-    const tipos = [['#8fd14f', '#b8e86f'], ['#5fa83a', '#86c84e'], ['#9a3f5c', '#c96a84'], ['#6fb544', '#a3d965']];
-    for (let x = 18; x < w; x += 32) {
-      const [c1, c2] = tipos[Math.floor(Math.random() * tipos.length)];
-      for (let k = 0; k < 11; k++) { const an = k / 11 * 6.28 + Math.random() * 0.5, r = 13 + Math.random() * 9; g.fillStyle = k % 2 ? c1 : c2; g.beginPath(); g.ellipse(x + Math.cos(an) * r * 0.55, h / 2 + Math.sin(an) * r * 0.55, r * 0.7, r * 0.45, an, 0, 7); g.fill(); }
-      g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.arc(x - 3, h / 2 - 3, 5, 0, 7); g.fill();
-    }
+    for (let x = 18; x < w; x += 32) { const t = Math.floor(Math.random() * CULT.length); g.fillStyle = 'rgba(40,40,40,.9)'; g.beginPath(); g.arc(x, h / 2, 6, 0, 7); g.fill(); roseta(g, x, h / 2, 1.75 + Math.random() * 0.45, t); }
   });
-  const texMata = lienzo(128, 128, (g, w, h) => { // mata vista de lado para las torres y jardineras (alfa)
+  const texMata = lienzo(256, 256, (g, w, h) => { // matas de lado (torres y jardineras): hojas que cuelgan y algunas flores pequeñas
     g.clearRect(0, 0, w, h);
-    for (let k = 0; k < 40; k++) { const x = w * (0.15 + 0.7 * Math.random()), y = h * (0.15 + 0.75 * Math.random()), r = 6 + Math.random() * 12; g.fillStyle = ['#5a9a3c', '#77b04a', '#3f7d2c', '#94c560', '#8b3c55'][k % 5]; g.beginPath(); g.ellipse(x, y, r, r * 0.6, Math.random() * 3, 0, 7); g.fill(); }
-    for (let k = 0; k < 6; k++) { g.fillStyle = ['#f2d14a', '#e8e8f0', '#d7609b'][k % 3]; g.beginPath(); g.arc(w * (0.2 + 0.6 * Math.random()), h * (0.2 + 0.5 * Math.random()), 3.5, 0, 7); g.fill(); } // flores (albahaca, rúcula, caléndula)
+    for (let k = 0; k < 9; k++) roseta(g, w * (0.18 + 0.64 * Math.random()), h * (0.25 + 0.55 * Math.random()), 2.6 + Math.random() * 1.0, Math.floor(Math.random() * CULT.length));
+    for (let k = 0; k < 7; k++) { g.fillStyle = ['#e9d36a', '#f1efe6', '#c46a9a'][k % 3]; g.beginPath(); g.arc(w * (0.2 + 0.6 * Math.random()), h * (0.2 + 0.5 * Math.random()), 2.2, 0, 7); g.fill(); }
   });
-  const matPVC = new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 0.45, metalness: 0.05 });
-  const matMetal = new THREE.MeshStandardMaterial({ color: 0x9aa2a8, roughness: 0.5, metalness: 0.6 });
-  const matPlanta = new THREE.MeshStandardMaterial({ map: texPlantas, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.8 });
-  const matMata = new THREE.MeshStandardMaterial({ map: texMata, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.8 });
+  const matPVC = new THREE.MeshStandardMaterial({ color: 0xe2e1db, roughness: 0.62, metalness: 0.02 });
+  const matMetal = new THREE.MeshStandardMaterial({ color: 0x8e959b, roughness: 0.55, metalness: 0.55 });
+  const matPlanta = new THREE.MeshStandardMaterial({ map: texPlantas, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.75 });
+  const matMata = new THREE.MeshStandardMaterial({ map: texMata, alphaTest: 0.35, side: THREE.DoubleSide, roughness: 0.75 });
   const matTunel = new THREE.MeshStandardMaterial({ color: 0xeaf4ee, roughness: 0.25, transparent: true, opacity: 0.38, side: THREE.DoubleSide, depthWrite: false });
   const matTanque = new THREE.MeshStandardMaterial({ color: 0x2f6fb0, roughness: 0.5 });
   const matJard = new THREE.MeshStandardMaterial({ color: 0x5b4636, roughness: 0.85 });

@@ -1291,7 +1291,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=62'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=63'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1874,7 +1874,7 @@ function buildChunks(THREE, B) {
       }
       // cubierta plana metida 0,8 m bajo el borde del muro: el muro queda como antepecho (como en el render de Unreal); la cornisa la pinta el shader
       // Kennedy: cubierta plana con ANTEPECHO real: el borde se mete 0,4 m (offset) y la losa de adentro baja 0,9 m
-      const Wi = KEN && !LIVIANO && h >= 4.5 && !(window.esDosAguas && window.esDosAguas(W, h)) ? insetPoligono(W, 0.75) : null;
+      const Wi = KEN && !LIVIANO && h >= 4.5 && !(window.esDosAguas && window.esDosAguas(W, h)) ? insetPoligono(W, 0.38) : null;
       const hT = Wi ? h - 0.9 : REALISTA && !LIVIANO && h >= 4.5 ? h - 0.45 : h, WT = Wi || W;
       if (KEN && h >= HUERTA_H) techosHuerta.push({ W: WT, y: hT });
       P.push(cx, hT, cz); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++;
@@ -3413,7 +3413,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=10'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=12'), listoK()])
     .then(async ([m, me]) => {
       try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0, movil: MOVIL, dentro: (x, z) => enZona(x + LC.x, LC.y - z) /* huertas hidropónicas solo donde está el modelo de edificios */ }); } catch (e) { console.warn('estrategias:', e); }
       if (EST && EST.hidroponia) setTimeout(() => EST.hidroponia(), 1500); // techos y balcones con huerta y sus animales desde el inicio
