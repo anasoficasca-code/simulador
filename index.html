@@ -1885,6 +1885,7 @@ function buildChunks(THREE, B) {
       const Wi = KEN && !LIVIANO && h >= 4.5 && !(window.esDosAguas && window.esDosAguas(W, h)) ? insetPoligono(W, 0.38) : null;
       const hT = Wi ? h - 0.9 : REALISTA && !LIVIANO && h >= 4.5 ? h - 0.45 : h, WT = Wi || W;
       if (KEN && h >= HUERTA_H) techosHuerta.push({ W: WT, y: hT });
+      if (KEN && h >= HUERTA_H) (T3.techosAltos = T3.techosAltos || []).push({ W: WT, h: hT + 0.88 }); // todas las torres modeladas: huerta hidropónica en la terraza
       P.push(cx, hT, cz); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++;
       // techo con vértices propios: color liso, sin ventanas
       for (let i = 0; i < n; i++) { P.push(WT[i][0], hT, WT[i][1]); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++; }
@@ -3416,12 +3417,12 @@ $('b-hd').onclick = async () => {
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   // Biblioteca El Tintal (modelo propio) y canchas reales de OpenStreetMap: no dependen de la simulación, se cargan en paralelo
-  listoK().then(() => import('./data3d/tintal.js?v=11')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0.85, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
+  listoK().then(() => import('./data3d/tintal.js?v=12')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0.85, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
   listoK().then(() => import('./data3d/conjuntos.js?v=5')).then(m => m.iniciarConjuntos({ THREE: T3.THREE, T3, lw, Y0: 0.3, movil: MOVIL })).catch(e => console.warn('conjuntos:', e));
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=12'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=13'), listoK()])
     .then(async ([m, me]) => {
       try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0, movil: MOVIL, dentro: (x, z) => enZona(x + LC.x, LC.y - z) /* huertas hidropónicas solo donde está el modelo de edificios */ }); } catch (e) { console.warn('estrategias:', e); }
       if (EST && EST.hidroponia) setTimeout(() => EST.hidroponia(), 1500); // techos y balcones con huerta y sus animales desde el inicio

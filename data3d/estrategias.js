@@ -53,10 +53,46 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0, dentro = nul
   const hidroponia = (on) => {
     if (T3.huertas && T3.huertas.grupo) T3.huertas.grupo.visible = !on; // las terrazas son hidropónicas (no camas de tierra)
     if (HIDRO) { HIDRO.ver(on); return; } if (!on) return;
-    if (!HIDRO_P) HIDRO_P = import('./huertas_hidro.js?v=7').then(m => { const e = D.estrategias.find(x => x.id === 'E8'), c = e && e.capas.find(x => /cubiertas/i.test(x.n)); if (!c) return null;
+    if (!HIDRO_P) HIDRO_P = import('./huertas_hidro.js?v=9').then(m => { const e = D.estrategias.find(x => x.id === 'E8'), c = e && e.capas.find(x => /cubiertas/i.test(x.n)); if (!c) return null;
       const techos = (c.techos || []).map(t => ({ W: W2(t.slice(0, -1)), h: t[t.length - 1] / 10 })).filter(t => !dentro || dentro(t.W[0][0], t.W[0][1]));
-      return m.iniciarHidroponia({ THREE, T3, techos: techos.concat(T3.torresTechos || []), movil }); }).then(h => { HIDRO = h; if (h) h.ver(true); return h; }).catch(er => console.warn('huertas hidropónicas:', er));
+      return m.iniciarHidroponia({ THREE, T3, techos: (() => { const L = techos.concat(T3.torresTechos || [], T3.techosAltos || []), vistos = new Set(); return L.filter(t => { let x = 0, z = 0; for (const q of t.W) { x += q[0]; z += q[1]; } const k = Math.round(x / t.W.length / 4) + ',' + Math.round(z / t.W.length / 4); if (vistos.has(k)) return false; vistos.add(k); return true; }); })(), movil }); }).then(h => { HIDRO = h; if (h) h.ver(true); return h; }).catch(er => console.warn('huertas hidropónicas:', er));
   };
+  // E8 Red distribuida de producción alimentaria: sin manchas de color; una red de líneas que une todas las huertas (lotes, cubiertas,
+  // viviendas) con sus vecinas, y la cámara se aleja para verla entera. Se apaga con el mismo botón.
+  let RED8 = null, camAntes = null;
+  function redHuertas(on) {
+    const e = D.estrategias.find(x => x.id === 'E8'); if (!e) return;
+    if (on && !RED8) {
+      const P = [];
+      for (const cp of e.capas) { for (const l of cp.lotes) { const W = W2(l), c0 = cent(W); P.push([c0[0], Y0 + 1, c0[1]]); } for (const t of cp.techos || []) { const W = W2(t.slice(0, -1)), c0 = cent(W); P.push([c0[0], t[t.length - 1] / 10 + 0.5, c0[1]]); } }
+      const CEL = 120, G = new Map(), k = (x, z) => Math.floor(x / CEL) + ',' + Math.floor(z / CEL);
+      P.forEach((p, i) => { const kk = k(p[0], p[2]); if (!G.has(kk)) G.set(kk, []); G.get(kk).push(i); });
+      const L = [], vis = new Set();
+      P.forEach((p, i) => {
+        const cx = Math.floor(p[0] / CEL), cz = Math.floor(p[2] / CEL), cand = [];
+        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (const j of G.get((cx + a) + ',' + (cz + b)) || []) if (j !== i) { const q = P[j], d = (q[0] - p[0]) ** 2 + (q[2] - p[2]) ** 2; if (d < CEL * CEL) cand.push([d, j]); }
+        cand.sort((x, y) => x[0] - y[0]);
+        for (const [, j] of cand.slice(0, 3)) { const kk = i < j ? i + '_' + j : j + '_' + i; if (vis.has(kk)) continue; vis.add(kk); const q = P[j], h = Math.max(p[1], q[1]) + 4 + Math.hypot(q[0] - p[0], q[2] - p[2]) * 0.08;
+          let a0 = p; for (let s = 1; s <= 4; s++) { const u = s / 4, m = [p[0] + (q[0] - p[0]) * u, p[1] + (q[1] - p[1]) * u + Math.sin(Math.PI * u) * (h - Math.max(p[1], q[1])), p[2] + (q[2] - p[2]) * u]; L.push(...a0, ...m); a0 = m; } }
+      });
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(L, 3));
+      const lin = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xeaf7ee, transparent: true, opacity: 0.38, depthWrite: false })); lin.frustumCulled = false; lin.renderOrder = 8;
+      const gp = new THREE.BufferGeometry(); gp.setAttribute('position', new THREE.Float32BufferAttribute(P.flat(), 3));
+      const pts = new THREE.Points(gp, new THREE.PointsMaterial({ color: 0x9df0b8, size: 3, sizeAttenuation: false, transparent: true, opacity: 0.9, depthWrite: false })); pts.frustumCulled = false;
+      RED8 = new THREE.Group(); RED8.add(lin, pts); grupo.add(RED8);
+      let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const p of P) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]); }
+      RED8.userData.c = [(x0 + x1) / 2, (z0 + z1) / 2, Math.max(x1 - x0, z1 - z0)];
+    }
+    if (!RED8) return;
+    RED8.visible = on;
+    const o = T3.orbit; if (!o) return;
+    if (on) { // zoom hacia afuera: se ve toda la red
+      camAntes = { p: T3.camera.position.clone(), t: o.target.clone() };
+      const [cx, cz, s] = RED8.userData.c, p0 = T3.camera.position.clone(), t0 = o.target.clone(), p1 = new THREE.Vector3(cx + s * 0.25, s * 0.85, cz + s * 0.75), t1 = new THREE.Vector3(cx, 0, cz), ini = performance.now();
+      const vuela = () => { const k = Math.min(1, (performance.now() - ini) / 1800), e2 = k * k * (3 - 2 * k); T3.camera.position.lerpVectors(p0, p1, e2); o.target.lerpVectors(t0, t1, e2); o.update(); if (k < 1) requestAnimationFrame(vuela); };
+      vuela();
+    }
+  }
   for (const e of D.estrategias) {
     const gr = new THREE.Group(); gr.visible = false; grupo.add(gr); // al iniciar, todas apagadas
     CAPA[e.id] = { gr, e, lista: false };
@@ -163,7 +199,7 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0, dentro = nul
   });
   return {
     lista,
-    ver: (id, on) => { PREN[id] = on; conexiones(); const k = CAPA[id]; if (!k) return; if (on && !k.lista) { armar(k.e, k.gr); k.lista = true; } k.gr.visible = on; },
+    ver: (id, on) => { PREN[id] = on; conexiones(); if (id === 'E8') { redHuertas(on); return; } const k = CAPA[id]; if (!k) return; if (on && !k.lista) { armar(k.e, k.gr); k.lista = true; } k.gr.visible = on; },
     marcar: (id, on) => { PREN[id] = on; conexiones(); }, // E1 y E3 tienen su propio plan: solo cuentan para las conexiones
     // sitios de huerta en el suelo (lotes baldíos) para las colmenas y lombrices de la red biótica
     hidroponia: () => hidroponia(true), // huertas hidropónicas en techos y balcones con sus polinizadores: siempre a la vista

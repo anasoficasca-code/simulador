@@ -72,7 +72,7 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
   // ---------- dónde va cada instalación (una vez) ----------
   const enPoli = (W, x, z) => { let c = false; for (let i = 0, j = W.length - 1; i < W.length; j = i++) { const a = W[i], b = W[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
   const distBorde = (W, x, z) => { let m = 1e9; for (let i = 0, j = W.length - 1; i < W.length; j = i++) { const a = W[j], b = W[i], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L2)); m = Math.min(m, Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz)); } return m; };
-  const INST = { rack: [], torre: [], tunel: [], tanque: [], jard: [] }; // [x, y, z, rotY, celda]
+  const INST = { rack: [], torre: [], tunel: [], tanque: [], jard: [], caseta: [] }; // [x, y, z, rotY, celda]
   const FLORES = []; // puntos que visitan los polinizadores: [x, y, z, tipo(0 techo, 1 balcón), techo]
   const CELDA = 150, celdas = new Map(), clave = (x, z) => Math.floor(x / CELDA) + ',' + Math.floor(z / CELDA);
   const meter = (k, x, y, z, r) => { const c = clave(x, z); INST[k].push([x, y, z, r, c]); };
@@ -80,16 +80,18 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     const W = t.W, n = W.length; if (n < 3) return;
     let cx = 0, cz = 0, A = 0, Lmax = 0, ang = 0;
     for (let i = 0; i < n; i++) { const p = W[i], q = W[(i + 1) % n]; A += p[0] * q[1] - q[0] * p[1]; cx += p[0]; cz += p[1]; const l = Math.hypot(q[0] - p[0], q[1] - p[1]); if (l > Lmax) { Lmax = l; ang = Math.atan2(q[1] - p[1], q[0] - p[0]); } }
+    { let mejor = 1e18; for (let i = 0; i < n; i++) { const p = W[i], q = W[(i + 1) % n], a0 = Math.atan2(q[1] - p[1], q[0] - p[0]), c0 = Math.cos(a0), s0 = Math.sin(a0); let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9; for (const r of W) { const u = r[0] * c0 + r[1] * s0, v = -r[0] * s0 + r[1] * c0; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); } const ar = (u1 - u0) * (v1 - v0); if (ar < mejor - 1e-6) { mejor = ar; ang = (u1 - u0) >= (v1 - v0) ? a0 : a0 + Math.PI / 2; } } } // rectángulo mínimo: racks alineados con la cubierta
     cx /= n; cz /= n; const area = Math.abs(A) / 2, y = t.h - 0.88; // sobre la losa, que queda 0,9 m bajo el remate del antepecho // sobre la capa de la cubierta de E8 (que se pinta 0,3 m sobre el techo)
     if (area < 40) return;
     const inclinado = window.esDosAguas && window.esDosAguas(W.map(q => [q[0], q[1]]), t.h); // casas a dos aguas: sin huerta
     if (inclinado) return;
     const ux = Math.cos(ang), uz = Math.sin(ang), vx = -uz, vz = ux, rot = -ang;
+    let caseta = null; if (t.h >= 16.5) { for (const f of [0, 0.25, -0.25, 0.45, -0.45]) { const x = cx + ux * f * 10, z = cz + uz * f * 10; if (enPoli(W, x, z) && distBorde(W, x, z) > 3.2) { caseta = [x, z]; meter('caseta', x, y, z, rot); break; } } }
     // rejilla de racks a lo largo del eje largo: filas cada 2,6 m, racks de 4 m cada 4,8 m, a más de 1,2 m del antepecho
     let puestos = 0; const max = Math.min(movil ? 10 : 34, Math.floor(area / 22)), tunel = area > 450 && rnd() < 0.45;
     for (let v = -40; v <= 40 && puestos < max; v += 2.6) for (let u = -60; u <= 60 && puestos < max; u += 4.8) {
       const x = cx + u * ux + v * vx, z = cz + u * uz + v * vz;
-      if (!enPoli(W, x, z) || distBorde(W, x, z) < (tunel && puestos < 2 ? 2.6 : 2.3)) continue;
+      if (!enPoli(W, x, z) || distBorde(W, x, z) < (tunel && puestos < 2 ? 2.6 : 2.3) || (caseta && Math.hypot(x - caseta[0], z - caseta[1]) < 4.6)) continue;
       if (tunel && puestos === 0) { meter('tunel', x, y, z, rot); puestos++; continue; }
       if (rnd() < 0.3) { meter('torre', x - ux * 0.8, y, z - uz * 0.8, rot); meter('torre', x + ux * 0.8, y, z + uz * 0.8, rot); FLORES.push([x + ux * 0.8 + vx * 0.45, y + 1.25, z + uz * 0.8 + vz * 0.45, 0, ti, vx, vz]); }
       else { meter('rack', x, y, z, rot); const sd = rnd() < 0.5 ? 1 : -1; FLORES.push([x + ux * (rnd() * 3 - 1.5) + vx * sd * 0.95, y + 1.0, z + uz * (rnd() * 3 - 1.5) + vz * sd * 0.95, 0, ti, vx * sd, vz * sd]); } // frente a las lechugas del nivel medio, por fuera del rack
@@ -115,18 +117,24 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
   const FC = new Map(); FLORES.forEach((f, i) => { const c = clave(f[0], f[2]); if (!FC.has(c)) FC.set(c, []); FC.get(c).push(i); });
 
   // ---------- instancias: solo las cercanas a lo que mira la cámara ----------
-  const CAP = movil ? { rack: 1400, torre: 900, tunel: 80, tanque: 200, jard: 1800 } : { rack: 9000, torre: 5000, tunel: 400, tanque: 1100, jard: 10000 };
+  const CAP = movil ? { rack: 1400, torre: 900, tunel: 80, tanque: 200, jard: 1800, caseta: 120 } : { rack: 9000, torre: 5000, tunel: 400, tanque: 1100, jard: 10000, caseta: 600 };
+  // caseta del ascensor y la escalera: volumen de 4,4 x 3,4 m y 3,2 m de alto, con su puerta metálica de salida a la cubierta y alero
+  const gCaseta = new THREE.BoxGeometry(4.4, 3.2, 3.4).translate(0, 1.6, 0), gPuerta = mergeGeometries([new THREE.BoxGeometry(1.0, 2.1, 0.08).translate(0, 1.05, 1.72), new THREE.BoxGeometry(4.8, 0.14, 3.9).translate(0, 3.27, 0)]);
+  const matCaseta = new THREE.MeshStandardMaterial({ color: 0xd9d3c7, roughness: 0.9 }), matPuerta = new THREE.MeshStandardMaterial({ color: 0x5b6168, roughness: 0.5, metalness: 0.5 });
   const capa = (k, partes) => partes.map(([g, m, sombra]) => { const im = new THREE.InstancedMesh(g, m, CAP[k]); im.count = 0; im.castShadow = !!sombra && !movil; im.frustumCulled = false; grupo.add(im); return im; });
   const IM = {
     rack: capa('rack', [[gRack, matPVC, true], [gRackMetal, matMetal], [gRackPl, matPlanta]]),
     torre: capa('torre', [[gTorre, matPVC, true], [gTorrePl, matMata]]),
     tunel: capa('tunel', [[gTunel, matTunel], [gTunelArcos, matMetal]]),
     tanque: capa('tanque', [[gTanque, matTanque, true]]),
-    jard: capa('jard', [[gJard, matJard], [gJardPl, matMata]])
+    jard: capa('jard', [[gJard, matJard], [gJardPl, matMata]]),
+    caseta: capa('caseta', [[gCaseta, matCaseta, true], [gPuerta, matPuerta, true]])
   };
   const o3 = new THREE.Object3D(), foco = new THREE.Vector3();
   let ultimo = null;
+  let extra = 0;
   function recalcular() {
+    if (T3.floresExtra && T3.floresExtra.length > extra) { for (const f of T3.floresExtra.slice(extra)) { const i = FLORES.length; FLORES.push(f); const kk = clave(f[0], f[2]); if (!FC.has(kk)) FC.set(kk, []); FC.get(kk).push(i); } extra = T3.floresExtra.length; } // flores de la huerta del Tintal
     const c = T3.orbit ? T3.orbit.target : foco.set(0, 0, 0), R = (movil ? 420 : 750) + Math.min(900, T3.camera.position.distanceTo(c) * 0.5);
     if (ultimo && ultimo.distanceTo(c) < R * 0.12) return; ultimo = (ultimo || new THREE.Vector3()).copy(c);
     const r2 = R * R;
@@ -141,11 +149,11 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
 
   // ---------- polinizadores y aliados de la huerta ----------
   const ESP = {
-    colibri: { n: 'Colibrí chillón', sci: 'Colibri coruscans', c: '#2fae6e', v: 9, cant: movil ? 14 : 36, liba: [1.2, 3.2], salto: 70, rol: 'Poliniza las flores de albahaca, rúcula y caléndula de las huertas; vuelve a las mismas flores cada pocos minutos (rutas de trapline)' },
-    abeja: { n: 'Abeja de miel', sci: 'Apis mellifera', c: '#f2c230', v: 4.5, cant: movil ? 40 : 120, liba: [2, 6], salto: 35, rol: 'Poliniza hortalizas y aromáticas; la colmena de barrio las conecta con parques y humedales' },
-    mariposa: { n: 'Mariposas', sci: 'Anartia amathea · Ascia monuste', c: '#ff8a3d', v: 2.4, cant: movil ? 16 : 50, liba: [3, 8], salto: 25, rol: 'Visitan flores de la huerta; su presencia indica una huerta sin plaguicidas' },
-    abejorro: { n: 'Abejorro', sci: 'Bombus atratus', c: '#3a3a3a', v: 3.6, cant: movil ? 14 : 40, liba: [2, 5], salto: 30, rol: 'Abejorro nativo de la sabana: poliniza tomate, fresa y uchuva por vibración, aun con frío y llovizna' },
-    copeton: { n: 'Copetón', sci: 'Zonotrichia capensis', c: '#b48a5a', v: 6, cant: movil ? 6 : 18, liba: [4, 10], salto: 45, rol: 'Come insectos y semillas de maleza entre los racks: control natural de plagas sin dañar la huerta' }
+    colibri: { n: 'Colibrí chillón', sci: 'Colibri coruscans', c: '#2fae6e', v: 9, cant: movil ? 24 : 80, liba: [1.2, 3.2], salto: 70, rol: 'Poliniza las flores de albahaca, rúcula y caléndula de las huertas; vuelve a las mismas flores cada pocos minutos (rutas de trapline)' },
+    abeja: { n: 'Abeja de miel', sci: 'Apis mellifera', c: '#f2c230', v: 4.5, cant: movil ? 60 : 220, liba: [2, 6], salto: 35, rol: 'Poliniza hortalizas y aromáticas; la colmena de barrio las conecta con parques y humedales' },
+    mariposa: { n: 'Mariposas', sci: 'Anartia amathea · Ascia monuste', c: '#ff8a3d', v: 2.4, cant: movil ? 30 : 110, liba: [3, 8], salto: 25, rol: 'Visitan flores de la huerta; su presencia indica una huerta sin plaguicidas' },
+    abejorro: { n: 'Abejorro', sci: 'Bombus atratus', c: '#3a3a3a', v: 3.6, cant: movil ? 24 : 80, liba: [2, 5], salto: 30, rol: 'Abejorro nativo de la sabana: poliniza tomate, fresa y uchuva por vibración, aun con frío y llovizna' },
+    copeton: { n: 'Copetón', sci: 'Zonotrichia capensis', c: '#b48a5a', v: 6, cant: movil ? 12 : 40, liba: [4, 10], salto: 45, rol: 'Come insectos y semillas de maleza entre los racks: control natural de plagas sin dañar la huerta' }
   };
   // modelos (1 unidad = 1 m), hechos de piezas simples pero con su silueta y color reales
   const elip = (rx, ry, rz, x, y, z, col) => { const g = new THREE.SphereGeometry(1, 10, 7).scale(rx, ry, rz).translate(x, y, z); const c = new THREE.Color(col), a = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < a.length; i += 3) { a[i] = c.r; a[i + 1] = c.g; a[i + 2] = c.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
