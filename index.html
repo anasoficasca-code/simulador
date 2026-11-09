@@ -1309,12 +1309,12 @@ async function initTodoReal() {
       return CO.naves.some(v => { const dx = x - v.c[0], dy = y - v.c[1], u = dx * Math.cos(v.a) + dy * Math.sin(v.a), w = -dx * Math.sin(v.a) + dy * Math.cos(v.a); return Math.abs(u) < v.L / 2 + 1 && Math.abs(w) < v.W / 2 + 1; }); };
     // Biblioteca El Tintal y su plaza: modelo propio (data3d/tintal.js); sus cajas genéricas se quitan
     const pTin = KEN ? window.cargarJSON('data3d/tintal.json?v=2').catch(() => null) : Promise.resolve(null);
-    const pConj = KEN ? window.cargarJSON('data3d/conjuntos.json?v=1').catch(() => null) : Promise.resolve(null); // conjuntos de cubierta roja (data3d/conjuntos.js)
+    const pConj = KEN ? window.cargarJSON('data3d/conjuntos.json?v=3').catch(() => null) : Promise.resolve(null); // conjuntos de cubierta roja (data3d/conjuntos.js)
     const deConj = (CJ, b) => { if (!CJ) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } x /= n; y /= n; return CJ.barras.some(r => { const dx = x - r.c[0], dy = y - r.c[1], u = dx * Math.cos(r.a) + dy * Math.sin(r.a), w = -dx * Math.sin(r.a) + dy * Math.cos(r.a); return Math.abs(u) < r.L / 2 + 2 && Math.abs(w) < r.W / 2 + 2; }); };
     const deTintal = (TI, b) => { if (!TI) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } return enPoli(TI.zona_modelo, x / n, y / n); };
     const cargarEdif = async (f) => { const [BV, CO, TI, CJ] = await Promise.all([pBav, pCora, pTin, pConj]); return decodificarEdificios(EI, await (await fetch('data3d/edif/' + f)).arrayBuffer()).filter(b => enZona(b.pts[0][0], b.pts[0][1]) && !deBavaria(BV, b) && !deCora(CO, b) && !deTintal(TI, b) && !deConj(CJ, b)); }; // vista realista: solo la zona del proyecto
     const agregarHuellas = () => {}; // la máscara de huellas ya viene precalculada (data3d/edif/mascara*.png)
-    if (!GOOGLE && !(LIVIANO && !MEDIO)) pMalla.then(() => { if (T3.maskU) cargarMascara(T3, LIVIANO ? 'mascara_humedal.png?v=7' : 'mascara.png?v=7'); });
+    if (!GOOGLE && !(LIVIANO && !MEDIO)) pMalla.then(() => { if (T3.maskU) cargarMascara(T3, LIVIANO ? 'mascara_humedal.png?v=9' : 'mascara.png?v=9'); });
     let B = [];
     // edificios 3D propios (huellas y alturas reales) también en la vista fotorrealista: la malla de Google en Kennedy los trae
     // casi planos ("derretidos"); como en las maquetas de Umbra, se levantan volúmenes limpios y el techo toma el color de la foto aérea
@@ -3409,7 +3409,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   // Biblioteca El Tintal (modelo propio) y canchas reales de OpenStreetMap: no dependen de la simulación, se cargan en paralelo
   listoK().then(() => import('./data3d/tintal.js?v=11')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0.85, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
-  listoK().then(() => import('./data3d/conjuntos.js?v=2')).then(m => m.iniciarConjuntos({ THREE: T3.THREE, T3, lw, Y0: 0.3, movil: MOVIL })).catch(e => console.warn('conjuntos:', e));
+  listoK().then(() => import('./data3d/conjuntos.js?v=5')).then(m => m.iniciarConjuntos({ THREE: T3.THREE, T3, lw, Y0: 0.3, movil: MOVIL })).catch(e => console.warn('conjuntos:', e));
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
@@ -3422,7 +3422,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       let CPLAN = null; // E3 Corabastos reducido: transformación de la central (data3d/corabastos_plan.js)
       try { CPLAN = await (await import('./data3d/corabastos_plan.js?v=3')).iniciarPlanCorabastos({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 }); T3.planCorabastos = CPLAN; } catch (e) { console.warn('plan Corabastos:', e); }
       const lista = EST ? EST.lista.slice() : []; if (PLAN) lista.unshift(PLAN.entrada);
-      return m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'], estrategias: lista.length ? lista : null, verEstrategia: (id, on) => { if (id === 'E1') { if (EST) EST.marcar('E1', on); if (!window.__colB) window.__colB = import('./data3d/colectivo_bavaria.js?v=1').then(m => m.crearColectivo({ THREE: T3.THREE, T3, lw })); window.__colB.then(cb => cb.ver(on)).catch(e => console.warn('colectivo Bavaria:', e)); return PLAN && PLAN.ver(on); } if (id === 'E3' && CPLAN) { if (EST) EST.marcar('E3', on); return CPLAN.ver(on); } return EST && EST.ver(id, on); } }); // todas muestran su lugar; las conexiones entre estrategias se ven cuando las dos están prendidas
+      return m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'], estrategias: lista.length ? lista : null, verEstrategia: (id, on) => { if (id === 'E1') { if (EST) EST.marcar('E1', on); if (!window.__colB) window.__colB = import('./data3d/colectivo_bavaria.js?v=2').then(m => m.crearColectivo({ THREE: T3.THREE, T3, lw })); window.__colB.then(cb => cb.ver(on)).catch(e => console.warn('colectivo Bavaria:', e)); return PLAN && PLAN.ver(on); } if (id === 'E3' && CPLAN) { if (EST) EST.marcar('E3', on); return CPLAN.ver(on); } return EST && EST.ver(id, on); } }); // todas muestran su lugar; las conexiones entre estrategias se ven cuando las dos están prendidas
     })
     .then(() => { // botón para apagar y prender la foto 3D de Google (el suelo de base)
       const ag = document.getElementById('gs-ag');

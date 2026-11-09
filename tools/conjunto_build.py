@@ -1,4 +1,4 @@
-﻿"""Conjuntos de vivienda en bloques alargados de 3 pisos con cubierta roja (Av. Américas, ~4.6330, -74.1389), como en Street View:
+"""Conjuntos de vivienda en bloques alargados de 3 pisos con cubierta roja (Av. Américas, ~4.6330, -74.1389), como en Street View:
 fachada crema con pilastras y franjas vino tinto, cubierta de teja/lámina roja a dos aguas, pórticos de entrada con techito rojo.
 Une las huellas de buildings.json de cada barra y saca su rectángulo (centro, largo, ancho, ángulo) en coordenadas del modelo.
 Salida: data3d/conjuntos.json (lo usan data3d/conjuntos.js, index.html para quitar las cajas genéricas y tools/mascara_build.py)."""
@@ -24,10 +24,15 @@ for g in (U.geoms if hasattr(U, 'geoms') else [U]):
     e1 = (c[1][0] - c[0][0], c[1][1] - c[0][1]); e2 = (c[2][0] - c[1][0], c[2][1] - c[1][1])
     if math.hypot(*e1) < math.hypot(*e2): e1, e2 = e2, e1
     L, W = math.hypot(*e1) - 2.4, math.hypot(*e2) - 2.4
-    if L < 35 or W < 7 or W > 13.5: continue
-    barras.append({'c': [round(r.centroid.x, 2), round(r.centroid.y, 2)], 'L': round(L, 1), 'W': round(W, 1), 'a': round(math.atan2(e1[1], e1[0]), 4)})
+    if L < 35 or W < 7 or W > 45: continue
+    ang = math.atan2(e1[1], e1[0]); vx, vy = -math.sin(ang), math.cos(ang); n = 1 if W <= 16 else 2 if W <= 30 else 3  # piezas anchas: barras paralelas unidas por el buffer
+    w = (W - (n - 1) * 8) / n if n > 1 else W
+    for k in range(n):
+        off = (k - (n - 1) / 2) * (w + 8) if n > 1 else 0
+        barras.append({'c': [round(r.centroid.x + vx * off, 2), round(r.centroid.y + vy * off, 2)], 'L': round(L, 1), 'W': round(min(w, 12.5), 1), 'a': round(ang, 4)})
 excl = unary_union([h for h in H]).buffer(2)
 json.dump({'fuente': 'buildings.json + imagen Esri; estilo de Street View (Av. Américas)', 'barras': barras, 'zona': [[round(x, 2), round(y, 2)] for x, y in zona.exterior.coords]},
           open(os.path.join(RAIZ, 'data3d', 'conjuntos.json'), 'w', encoding='utf-8'), separators=(',', ':'))
 print(len(H), 'huellas ->', len(barras), 'barras', [(b['L'], b['W']) for b in barras])
+
 

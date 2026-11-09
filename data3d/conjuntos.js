@@ -4,7 +4,7 @@
    pequeños pórticos con techito rojo a dos aguas; cerramiento de reja negra con seto amarillo verdoso.
    Datos: data3d/conjuntos.json (tools/conjunto_build.py). Marco del modelo: lw(x, y) -> mundo. */
 export async function iniciarConjuntos({ THREE, T3, lw, Y0 = 0.3, movil = false }) {
-  const D = await (window.cargarJSON || ((u) => fetch(u).then(r => r.json())))('data3d/conjuntos.json?v=1');
+  const D = await (window.cargarJSON || ((u) => fetch(u).then(r => r.json())))('data3d/conjuntos.json?v=3');
   const { mergeGeometries } = await import('three/addons/utils/BufferGeometryUtils.js');
   const grupo = new THREE.Group(); grupo.name = 'conjuntos'; T3.scene.add(grupo);
   const ANIS = Math.min(8, T3.renderer.capabilities.getMaxAnisotropy ? T3.renderer.capabilities.getMaxAnisotropy() : 4);
@@ -62,6 +62,27 @@ export async function iniciarConjuntos({ THREE, T3, lw, Y0 = 0.3, movil = false 
   const mT = new THREE.InstancedMesh(gTecho, new THREE.MeshStandardMaterial({ color: 0xa8382e, roughness: 0.6, side: THREE.DoubleSide }), porticos.length), mC = new THREE.InstancedMesh(gCol, new THREE.MeshStandardMaterial({ color: 0xece4d2, roughness: 0.8 }), porticos.length);
   porticos.forEach(([x, z, rot], i) => { o3.position.set(x, Y0 + 2.4, z); o3.rotation.set(0, rot, 0); o3.updateMatrix(); mT.setMatrixAt(i, o3.matrix); o3.position.y = Y0; o3.updateMatrix(); mC.setMatrixAt(i, o3.matrix); });
   mT.castShadow = mC.castShadow = !movil; grupo.add(mT, mC);
+  // cerramiento de cada conjunto (como en Street View): reja negra de barrotes de 1,9 m sobre muro bajo crema y seto amarillo verdoso por fuera
+  const lados = [D.barras.filter(r => r.c[0] < 8641), D.barras.filter(r => r.c[0] >= 8641)].filter(l => l.length);
+  const casco = (P) => { P = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], hi = []; for (const p of P) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); } for (const p of P.slice().reverse()) { while (hi.length > 1 && cr(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop(); hi.push(p); } return lo.slice(0, -1).concat(hi.slice(0, -1)); };
+  const texReja = lienzo(128, 128, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#1d1f21'; for (let x = 4; x < w; x += 13) g.fillRect(x, 0, 3, h); g.fillRect(0, 6, w, 5); g.fillRect(0, h - 10, w, 5); });
+  const matReja = new THREE.MeshStandardMaterial({ map: texReja, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.5, metalness: 0.4 });
+  const matMuro = new THREE.MeshStandardMaterial({ color: 0xe4dccb, roughness: 0.9 }), matSeto = new THREE.MeshStandardMaterial({ color: 0x8aa23c, roughness: 0.95 });
+  const R2 = [], M2 = [], S2 = [];
+  for (const L of lados) {
+    const pts = []; for (const r of L) { const ux = Math.cos(r.a), uy = Math.sin(r.a), vx = -uy, vy = ux; for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pts.push([r.c[0] + ux * u * (r.L / 2 + 6) + vx * v * (r.W / 2 + 6), r.c[1] + uy * u * (r.L / 2 + 6) + vy * v * (r.W / 2 + 6)]); }
+    const H2 = casco(pts).map(p => lw(p[0], p[1]));
+    for (let i = 0; i < H2.length; i++) {
+      const a = H2[i], b = H2[(i + 1) % H2.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]), ang = Math.atan2(b[1] - a[1], b[0] - a[0]), mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+      const pr = new THREE.PlaneGeometry(len, 1.9).translate(0, 0.95 + 0.5, 0); const uv = pr.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, uv.getX(k) * len / 1.6);
+      pr.rotateY(-ang).translate(mx, Y0, mz); R2.push(pr);
+      M2.push(new THREE.BoxGeometry(len, 0.5, 0.25).translate(0, 0.25, 0).rotateY(-ang).translate(mx, Y0, mz));
+      // el seto va del lado de afuera (centroide del conjunto adentro)
+      let cx = 0, cz = 0; for (const p of H2) { cx += p[0]; cz += p[1]; } cx /= H2.length; cz /= H2.length; const nx = -(b[1] - a[1]) / len, nz = (b[0] - a[0]) / len, sg = ((mx - cx) * nx + (mz - cz) * nz) > 0 ? 1 : -1;
+      S2.push(new THREE.BoxGeometry(len, 1.0, 0.9).translate(0, 0.5, 0).rotateY(-ang).translate(mx + nx * sg * 0.75, Y0, mz + nz * sg * 0.75));
+    }
+  }
+  if (R2.length) { malla(R2, matReja); malla(M2, matMuro); malla(S2, matSeto); }
   T3.conjuntos = grupo;
   return { grupo, barras: D.barras.length };
 }
