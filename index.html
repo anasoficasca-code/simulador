@@ -788,7 +788,7 @@ function flight(ms) {
     o.update();
     updateAves();
     updatePeatones(dt);
-    if (T3.trees) T3.trees.update(cam);
+    if (T3.trees && T3.trees.visible !== false) T3.trees.update(cam); // con Foto real los árboles son los de la foto: no se recalculan
     if (T3.huertas) T3.huertas.actualizar(cam); // plantas 3D de las terrazas cercanas
     if (T3.torres) T3.torres.actualizar(cam); // huertas de los balcones cercanos
     if (T3.plants) T3.plants.update(cam);
@@ -1043,6 +1043,13 @@ function fotoReal(on) {
   if (T3.roofU) T3.roofU.uSoloAltos.value = on ? 1 : 0; // Foto real: de lo propio quedan solo las torres con huerta; las casas son las de la foto
   for (const e of T3.edificios || []) for (const ch of e.mesh.children) ch.visible = !on; // tanques y antenas de las casas modeladas
   for (const m of T3.viasMallas || []) m.visible = !on;
+  // como God's Eye: la gradación fotográfica de la malla en todo el territorio y los árboles reales de la foto (los modelados no se calculan)
+  const U = T3.maskU;
+  if (U) { if (!T3.gradeKen) T3.gradeKen = { g: U.uGrade.value.clone(), t: U.uTint.value.clone(), z: U.uZona.value.z, m: U.uMonte ? U.uMonte.value : 0 };
+    if (on) { U.uGrade.value.set(1.2, 0.9, 1.22, 1); U.uTint.value.set(1.04, 1.0, 0.93); U.uZona.value.z = 1e9; if (U.uMonte) U.uMonte.value = 0; }
+    else { U.uGrade.value.copy(T3.gradeKen.g); U.uTint.value.copy(T3.gradeKen.t); U.uZona.value.z = T3.gradeKen.z; if (U.uMonte) U.uMonte.value = T3.gradeKen.m; } }
+  if (T3.trees && T3.trees.ver) { T3.trees.ver(!on); const ab = document.getElementById('ar-btn'); if (ab) ab.classList.toggle('on', !on); }
+  const fb = document.getElementById('fr-btn'); if (fb) fb.classList.toggle('on', on);
 }
 window.fotoReal = fotoReal;
 // huellas de los edificios del modelo dibujadas en un lienzo (blanco = libre, negro = edificio) en coordenadas del modelo, norte arriba
@@ -1291,7 +1298,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=63'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=64'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1402,6 +1409,7 @@ async function initTodoReal() {
         T3.kenArboles = KEN; // simulador: copas opacas, especies de Bogotá y más árboles 3D reales, como el render de Unreal
         const TIN = await pTin; if (TIN && TIN.zona_modelo) TT = { ...TT, t: TT.t.filter(t => !enPoli(TIN.zona_modelo, t[0], t[1])) }; // sin árboles bajo las palmas de la plaza ni en la huerta de la Biblioteca El Tintal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
+        if (T3.fotoReal && T3.trees && T3.trees.ver) T3.trees.ver(false); // Foto real: los árboles son los de la foto
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
@@ -3428,12 +3436,12 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       const ag = document.getElementById('gs-ag');
       if (ag && !document.getElementById('fb-btn')) { const b = document.createElement('button'); b.id = 'fb-btn'; b.className = 'on'; b.textContent = 'Foto base'; b.title = 'Apaga o prende la foto 3D de Google (el suelo de base)'; b.style.cssText = 'width:100%;margin-top:6px'; b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.tiles) T3.tiles.group.visible = on; }; ag.parentElement.insertAdjacentElement('afterend', b); }
       if (!document.getElementById('fr-btn')) { // vista: foto 3D real (God's Eye) o modelo de cajas
-        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'fr-btn'; b.textContent = 'Foto real 3D'; b.title = 'Prendido: casas, vías y árboles reales de la foto 3D (como God\'s Eye). Apagado: modelo de volúmenes'; b.style.cssText = 'width:100%;margin-top:6px';
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'fr-btn'; b.className = 'on'; b.textContent = 'Foto real 3D'; b.title = 'Prendido: casas, vías y árboles reales de la foto 3D (como God\'s Eye). Apagado: modelo de volúmenes'; b.style.cssText = 'width:100%;margin-top:6px';
         b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); fotoReal(on); };
-        (fb || ag.parentElement).insertAdjacentElement('afterend', b); // por defecto apagado: carga más rápido
+        (fb || ag.parentElement).insertAdjacentElement('afterend', b); fotoReal(true); // por defecto: vista fotorrealista como God's Eye
       }
       if (!document.getElementById('ar-btn')) { // árboles: por defecto los reales de la foto 3D de Google (como God's Eye); el botón trae los modelos 3D
-        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = T3.fotoReal ? '' : 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
         b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.trees && T3.trees.ver) T3.trees.ver(on); };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
