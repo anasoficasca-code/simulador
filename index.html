@@ -1874,7 +1874,7 @@ function buildChunks(THREE, B) {
       }
       // cubierta plana metida 0,8 m bajo el borde del muro: el muro queda como antepecho (como en el render de Unreal); la cornisa la pinta el shader
       // Kennedy: cubierta plana con ANTEPECHO real: el borde se mete 0,4 m (offset) y la losa de adentro baja 0,9 m
-      const Wi = KEN && !LIVIANO && h >= 4.5 && !(window.esDosAguas && window.esDosAguas(W, h)) ? insetPoligono(W, 0.4) : null;
+      const Wi = KEN && !LIVIANO && h >= 4.5 && !(window.esDosAguas && window.esDosAguas(W, h)) ? insetPoligono(W, 0.75) : null;
       const hT = Wi ? h - 0.9 : REALISTA && !LIVIANO && h >= 4.5 ? h - 0.45 : h, WT = Wi || W;
       if (KEN && h >= HUERTA_H) techosHuerta.push({ W: WT, y: hT });
       P.push(cx, hT, cz); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++;
@@ -1896,7 +1896,7 @@ function buildChunks(THREE, B) {
       else for (let i = 0; i < n; i++) I.push(base + 2 * n, base + 2 * n + 1 + i, base + 2 * n + 1 + (i + 1) % n);
       vc = base + 3 * n + 1;
       if (Wi) { // remate del antepecho (anillo plano entre el borde y el offset) y su cara interior hasta la losa
-        const cR = [col.w[0] * 1.08, col.w[1] * 1.08, col.w[2] * 1.08], cI = [col.w[0] * 0.78, col.w[1] * 0.78, col.w[2] * 0.78];
+        const cR = [0.86, 0.85, 0.82], cI = [col.w[0] * 0.72, col.w[1] * 0.72, col.w[2] * 0.72]; // remate de concreto claro de 75 cm
         for (let i = 0; i < n; i++) {
           const j = (i + 1) % n, b0 = vc;
           for (const [q, y, cc] of [[W[i], h, cR], [W[j], h, cR], [Wi[j], h, cR], [Wi[i], h, cR], [Wi[i], h, cI], [Wi[j], h, cI], [Wi[j], hT, cI], [Wi[i], hT, cI]]) { P.push(q[0], y, q[1]); C.push(cc[0], cc[1], cc[2]); WL.push(0, 0, -1, h); vc++; }
