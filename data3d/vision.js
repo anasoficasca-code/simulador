@@ -225,7 +225,7 @@ body.vision #gs-der,body.vision #hid-red,body.vision .es-et,body.vision #bt-pan,
       if (sc.background) sc.background.set(0x07082a); if (sc.fog) { sc.fog.color.set(0x0d0c3a); sc.fog.density = (antes.dens || 0.00004) * 1.6; }
       T3.sun.intensity = 0.12; T3.hemi.intensity = 0.55; T3.hemi.color.set(0x5566aa); T3.hemi.groundColor.set(0x080a14); T3.renderer.toneMappingExposure = 1.0;
       if (U) { U.top.value.set(0x010208); U.mid.value.set(0x060a22); U.bot.value.set(0x141a46); U.uStars.value = 1; U.uCloud.value = 0.04; U.uGlow.value = 0; U.uMoon.value = 0; U.uHorA.value = 0.5; U.uHor.value.set(0x3b2a7a); }
-      if (T3.maskU) { T3.maskU.uTint.value.set(0.16, 0.2, 0.42); T3.maskU.uZona.value.z = 1e9; if (T3.maskU.uVis) T3.maskU.uVis.value = 1; if (T3.maskU.uMonte) T3.maskU.uMonte.value = 0; }
+      if (T3.maskU) { T3.maskU.uTint.value.set(0.16, 0.2, 0.42); if (T3.maskU.uGradZ) T3.maskU.uGradZ.value = 1e9; if (T3.maskU.uVis) T3.maskU.uVis.value = 1; if (T3.maskU.uMonte) T3.maskU.uMonte.value = 0; }
       if (T3.cielo && T3.cielo.luzMalla) T3.cielo.luzMalla(T3, 0.32);
       if (T3.roofU && T3.roofU.uNoche) T3.roofU.uNoche.value = 0; // ventanas apagadas: el resto del territorio queda en penumbra
       // capas de análisis (sintaxis espacial, flujos): se apagan para que solo brille la propuesta
@@ -239,7 +239,7 @@ body.vision #gs-der,body.vision #hid-red,body.vision .es-et,body.vision #bt-pan,
     } else if (antes) {
       if (sc.background && antes.bg) sc.background.copy(antes.bg); if (sc.fog && antes.fog) { sc.fog.color.copy(antes.fog); sc.fog.density = antes.dens; }
       T3.sun.intensity = antes.sun; T3.hemi.intensity = antes.hemi; T3.hemi.color.copy(antes.hc); T3.hemi.groundColor.copy(antes.hg); T3.renderer.toneMappingExposure = antes.exp;
-      if (T3.maskU) { if (T3.maskU.uVis) T3.maskU.uVis.value = 0; if (antes.tint) T3.maskU.uTint.value.copy(antes.tint); T3.maskU.uZona.value.z = antes.zona; if (T3.maskU.uMonte) T3.maskU.uMonte.value = antes.monte; }
+      if (T3.maskU) { if (T3.maskU.uVis) T3.maskU.uVis.value = 0; if (antes.tint) T3.maskU.uTint.value.copy(antes.tint); T3.maskU.uZona.value.z = antes.zona; if (T3.maskU.uGradZ) T3.maskU.uGradZ.value = -1; if (T3.maskU.uMonte) T3.maskU.uMonte.value = antes.monte; }
       if (T3.roofU && T3.roofU.uNoche) T3.roofU.uNoche.value = antes.noche;
       for (const [o, m] of guardado) o.material = m; guardado.clear();
       if (T3.trees && T3.trees.tinte) T3.trees.tinte(null);

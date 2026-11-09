@@ -950,7 +950,7 @@ async function crearMallaGoogle(T) {
   // la foto ya trae su luz y sus sombras: se muestra tal cual (emisiva), sin que el sol de la escena la aplaste ni la queme
   // máscara de huellas del modelo: donde hay un edificio propio se recorta lo que Google levanta (su versión "derretida") y queda solo su foto del suelo
   T.maskU = { uGrade: { value: REALISTA && !GOOGLE ? new THREE.Vector4(1.2, 0.9, 1.22, 1) : new THREE.Vector4(1, 1, 1, 0) }, uTint: { value: REALISTA && !GOOGLE ? new THREE.Vector3(1.04, 1.0, 0.93) : new THREE.Vector3(1, 1, 1) }, // saturación, contraste, brillo, quitar bruma · tinte
-    uMask: { value: null }, uOn: { value: 0 }, uLC: { value: new THREE.Vector2(LC.x, LC.y) }, uDim: { value: new THREE.Vector2(1 / MASK.XM, 1 / MASK.YM) }, uCut: { value: 2.5 }, uEmpuje: { value: KEN ? 18 : 0 }, uMonte: { value: KEN ? 1 : 0 }, uVis: { value: 0 }, // Kennedy: la foto de Google va siempre DETRÁS de lo propio (ver project_vertex)
+    uMask: { value: null }, uOn: { value: 0 }, uLC: { value: new THREE.Vector2(LC.x, LC.y) }, uDim: { value: new THREE.Vector2(1 / MASK.XM, 1 / MASK.YM) }, uCut: { value: 2.5 }, uEmpuje: { value: KEN ? 18 : 0 }, uMonte: { value: KEN ? 1 : 0 }, uVis: { value: 0 }, uGradZ: { value: -1 }, // uGradZ: radio de la gradación (si < 0 usa el de la zona); el recorte siempre se limita a la zona // Kennedy: la foto de Google va siempre DETRÁS de lo propio (ver project_vertex)
     uZona: { value: new THREE.Vector3(ZONA.x - LC.x, LC.y - ZONA.y, ZON ? (KEN ? Math.max(ZONA.r, 2400) : ZONA.r) : 1e9) } }; // Kennedy: el recorte llega también a Corabastos y Bavaria (en celular el radio de carga es menor) // fuera de la zona: malla de Google tal cual
   const recorte = (m) => {
     m.onBeforeCompile = (sh) => {
@@ -963,7 +963,7 @@ async function crearMallaGoogle(T) {
         // la cámara (la imagen no cambia: mismo punto en pantalla), así los edificios, carros, árboles y animales propios quedan siempre encima
         .replace('#include <project_vertex>', '#include <project_vertex>\nif (uEmpuje > 0.0) { float dl = max(length(mvPosition.xyz), 1.0); vec4 pE = projectionMatrix * vec4(mvPosition.xyz * (1.0 + uEmpuje / dl), 1.0); gl_Position.z = min(pE.z / pE.w, 0.99999) * gl_Position.w; }');
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vWPm; uniform sampler2D uMask; uniform float uOn, uCut; uniform vec2 uLC, uDim; uniform vec4 uGrade; uniform vec3 uTint, uZona; uniform float uMonte, uEmpuje, uVis;')
+        .replace('#include <common>', '#include <common>\nvarying vec3 vWPm; uniform sampler2D uMask; uniform float uOn, uCut; uniform vec2 uLC, uDim; uniform vec4 uGrade; uniform vec3 uTint, uZona; uniform float uMonte, uEmpuje, uVis, uGradZ;')
         // gradación tipo render de maqueta (Umbra): quita la bruma gris de la foto aérea, sube saturación y contraste y la calienta un poco
         .replace('#include <opaque_fragment>', `{
           vec3 c = max(outgoingLight - uGrade.w * vec3(0.030, 0.036, 0.048), 0.0) / (1.0 - uGrade.w * 0.04);
@@ -972,7 +972,7 @@ async function crearMallaGoogle(T) {
           c += uGrade.w * vec3(0.026, 0.032, 0.046) * (1.0 - smoothstep(0.0, 0.16, l)); // sombras abiertas y azuladas (luz de cielo), no negras
           c = pow(c / 0.18, vec3(uGrade.y)) * 0.18 * uGrade.z * uTint;
           if (uEmpuje > 0.0) { c = mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 0.86); outgoingLight = mix(vec3(dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722))), outgoingLight, 0.86); } // Kennedy: un poco menos saturada
-          outgoingLight = mix(outgoingLight, c, 1.0 - smoothstep(uZona.z, uZona.z + 350.0, distance(vWPm.xz, uZona.xy))); // afuera de la zona, la foto tal cual
+          { float gz = uGradZ > 0.0 ? uGradZ : uZona.z; outgoingLight = mix(outgoingLight, c, 1.0 - smoothstep(gz, gz + 350.0, distance(vWPm.xz, uZona.xy))); } // afuera de la zona, la foto tal cual
           if (uVis > 0.5) { // modo Visión: territorio grabado con líneas onduladas turquesa sobre azul noche
             float lv = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));
             float ond = sin(vWPm.z * 0.011) * 26.0 + sin(vWPm.x * 0.006 + vWPm.z * 0.004) * 38.0 + vWPm.y * 2.0;
@@ -1046,8 +1046,8 @@ function fotoReal(on) {
   // como God's Eye: la gradación fotográfica de la malla en todo el territorio y los árboles reales de la foto (los modelados no se calculan)
   const U = T3.maskU;
   if (U) { if (!T3.gradeKen) T3.gradeKen = { g: U.uGrade.value.clone(), t: U.uTint.value.clone(), z: U.uZona.value.z, m: U.uMonte ? U.uMonte.value : 0 };
-    if (on) { U.uGrade.value.set(1.2, 0.9, 1.22, 1); U.uTint.value.set(1.04, 1.0, 0.93); U.uZona.value.z = 1e9; if (U.uMonte) U.uMonte.value = 0; }
-    else { U.uGrade.value.copy(T3.gradeKen.g); U.uTint.value.copy(T3.gradeKen.t); U.uZona.value.z = T3.gradeKen.z; if (U.uMonte) U.uMonte.value = T3.gradeKen.m; } }
+    if (on) { U.uGrade.value.set(1.2, 0.9, 1.22, 1); U.uTint.value.set(1.04, 1.0, 0.93); U.uZona.value.z = T3.gradeKen.z; if (U.uGradZ) U.uGradZ.value = 1e9; if (U.uMonte) U.uMonte.value = 0; }
+    else { U.uGrade.value.copy(T3.gradeKen.g); U.uTint.value.copy(T3.gradeKen.t); U.uZona.value.z = T3.gradeKen.z; if (U.uGradZ) U.uGradZ.value = -1; if (U.uMonte) U.uMonte.value = T3.gradeKen.m; } }
   if (T3.trees && T3.trees.ver) { T3.trees.ver(!on); const ab = document.getElementById('ar-btn'); if (ab) ab.classList.toggle('on', !on); }
   const fb = document.getElementById('fr-btn'); if (fb) fb.classList.toggle('on', on);
 }
@@ -3450,7 +3450,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'vi-btn'; b.textContent = '✦ Visión'; b.title = 'Ver la propuesta: Bavaria Común, Corabastos, red de huertas y humedales'; b.style.cssText = 'width:100%;margin-top:6px;background:linear-gradient(100deg,#2a1d6b,#5b3fd6);color:#fff;border:1px solid #8b74ff;letter-spacing:.2em';
         let V = null, pV = null;
-        b.onclick = async () => { b.disabled = true; try { if (!pV) pV = import('./data3d/vision.js?v=3').then(m => m.crearVision({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, movil: MOVIL })); V = await pV; const on = !V.on; V.ver(on); b.classList.toggle('on', on); b.textContent = on ? '✦ Salir de la visión' : '✦ Visión'; } catch (e) { console.warn('visión:', e); say('⚠️ No cargó la visión', 5000); } b.disabled = false; };
+        b.onclick = async () => { b.disabled = true; try { if (!pV) pV = import('./data3d/vision.js?v=4').then(m => m.crearVision({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, movil: MOVIL })); V = await pV; const on = !V.on; V.ver(on); b.classList.toggle('on', on); b.textContent = on ? '✦ Salir de la visión' : '✦ Visión'; } catch (e) { console.warn('visión:', e); say('⚠️ No cargó la visión', 5000); } b.disabled = false; };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
       return import('./data3d/cielo.js?v=7');
