@@ -198,7 +198,7 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
     const brazos = [];
     for (let b = 0; b < BR; b++) {
       const a0 = b / BR * Math.PI * 2, pts = [];
-      for (let k = 0; k <= 40; k++) { const t = k / 40, r = 15.5 + t * (R - 17), th = a0 + t * 2.1; pts.push({ x: HC[0] + Math.cos(th) * r, z: HC[1] + Math.sin(th) * r, w: 1.1 + 1.6 * Math.sin(Math.PI * Math.pow(t, 0.8)), h: 0.35 + 0.75 * (1 - t) * Math.sin(Math.PI * Math.min(1, t * 1.8 + 0.1)), t }); }
+      for (let k = 0; k <= 40; k++) { const t = k / 40, r = 7.5 + t * (R - 9), th = a0 + t * 2.1; pts.push({ x: HC[0] + Math.cos(th) * r, z: HC[1] + Math.sin(th) * r, w: 1.1 + 1.6 * Math.sin(Math.PI * Math.pow(t, 0.8)), h: 0.35 + 0.75 * (1 - t) * Math.sin(Math.PI * Math.min(1, t * 1.8 + 0.1)), t }); }
       brazos.push(pts);
       // bancal: cinta con lados de madera y tapa de tierra
       for (let k = 0; k < pts.length - 1; k++) {
@@ -226,11 +226,11 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
     const inst = (g, L, C) => { const m = new THREE.InstancedMesh(g, mat, L.length); L.forEach((M, i) => { m.setMatrixAt(i, M); m.setColorAt(i, C[i]); }); m.castShadow = !movil; m.frustumCulled = false; grupo.add(m); };
     inst(mata, XM, CM); inst(flor, XF, CF);
     // espejo de agua central y pabellón gridshell de madera (retícula torcida en dos direcciones)
-    const agua = new THREE.Mesh(new THREE.CircleGeometry(9, 48).rotateX(-Math.PI / 2).translate(HC[0], Y0 + 0.18, HC[1]), new THREE.MeshStandardMaterial({ color: 0x3f7f95, roughness: 0.08, metalness: 0.3 })); grupo.add(agua);
-    const RC = 14, HD = 10, NU = 26, NV = 9, nodo = (i, j, tw) => { const u = i / NU * Math.PI * 2 + tw * j / NV * 0.9, f = j / NV, r = RC * Math.sin(Math.PI / 2 * (1 - f)) + 0.4; return new THREE.Vector3(HC[0] + Math.cos(u) * r, Y0 + HD * Math.sin(Math.PI / 2 * f) * (1 + 0.12 * Math.sin(u * 3)), HC[1] + Math.sin(u) * r); };
+    const agua = new THREE.Mesh(new THREE.CircleGeometry(4.6, 40).rotateX(-Math.PI / 2).translate(HC[0], Y0 + 0.18, HC[1]), new THREE.MeshStandardMaterial({ color: 0x3f7f95, roughness: 0.08, metalness: 0.3 })); grupo.add(agua);
+    const RC = 6.6, HD = 5.2, NU = 18, NV = 7, nodo = (i, j, tw) => { const u = i / NU * Math.PI * 2 + tw * j / NV * 0.9, f = j / NV, r = RC * Math.sin(Math.PI / 2 * (1 - f)) + 0.4; return new THREE.Vector3(HC[0] + Math.cos(u) * r, Y0 + HD * Math.sin(Math.PI / 2 * f) * (1 + 0.12 * Math.sin(u * 3)), HC[1] + Math.sin(u) * r); };
     const varas = []; for (const tw of [1, -1]) for (let i = 0; i < NU; i++) for (let j = 0; j < NV; j++) varas.push([nodo(i, j, tw), nodo(i, j + 1, tw)]);
     for (let j = 1; j < NV; j += 2) for (let i = 0; i < NU; i++) varas.push([nodo(i, j, 1), nodo(i + 1, j, 1)]);
-    const cil = new THREE.CylinderGeometry(0.14, 0.14, 1, 6).translate(0, 0.5, 0), mV = new THREE.InstancedMesh(cil, new THREE.MeshStandardMaterial({ color: 0xe8d2a8, roughness: 0.55 }), varas.length), up = new THREE.Vector3(0, 1, 0);
+    const cil = new THREE.CylinderGeometry(0.07, 0.07, 1, 6).translate(0, 0.5, 0), mV = new THREE.InstancedMesh(cil, new THREE.MeshStandardMaterial({ color: 0xa47b52, roughness: 0.7 }), varas.length), up = new THREE.Vector3(0, 1, 0);
     varas.forEach(([a, b], k) => { const d = b.clone().sub(a), L = d.length(); o3.position.copy(a); o3.quaternion.setFromUnitVectors(up, d.normalize()); o3.scale.set(1, L, 1); o3.updateMatrix(); mV.setMatrixAt(k, o3.matrix); });
     mV.castShadow = !movil; grupo.add(mV);
     // hoteles de insectos y bebederos de aves en el borde
