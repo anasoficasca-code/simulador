@@ -201,6 +201,16 @@ const VARIEDADES = [
   { n: 'Cerezo', base: 3, peso: 0.06, h: [0.98, 0.9, 0.86], sx: 1.05, sy: 1.0 },
   { n: 'Pino patula', base: 0, peso: 0.06, h: [0.66, 0.84, 0.66], sx: 0.6, sy: 1.7 }             // oscuro y columnar
 ];
+// sombra propia de la copa: las hojas de abajo y del interior reciben menos luz (más oscuras y algo más frías), las del borde de arriba más claras
+function sombraCopa(g, m, alto, ancho) {
+  const p = g.attributes.position, n = p.count, c = new Float32Array(n * 3), R = ancho / 2;
+  for (let i = 0; i < n; i++) {
+    const hy = p.getY(i) / alto, r = Math.hypot(p.getX(i), p.getZ(i)) / R, s = (t0, t1, x) => { const t = Math.max(0, Math.min(1, (x - t0) / (t1 - t0))); return t * t * (3 - 2 * t); };
+    const luz = 0.68 + 0.42 * (0.55 * s(0.3, 0.95, hy) + 0.45 * s(0.25, 1.0, r));
+    c[i * 3] = luz * 0.96; c[i * 3 + 1] = luz; c[i * 3 + 2] = luz * (1.0 + 0.06 * (1 - luz));
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(c, 3)); m.vertexColors = true; m.needsUpdate = true;
+}
 function realzarMaterial(m, env, hoja) {
   ajustarMat(m, env, { roughness: 0.9, tinte: hoja ? 1.25 : 1.0, env: 0.4 });
   // las caras que no miran al sol no se ven negras: la textura aporta un poco de luz propia
@@ -392,7 +402,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
     });
     if (MV) niveles.L0 = niveles.L1;
     const b = cajaDe(niveles.L0), cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2, alto = b.max.y - b.min.y, ancho = Math.max(b.max.x - b.min.x, b.max.z - b.min.z);
-    for (const nv of MV ? ['L1'] : ['L0', 'L1']) niveles[nv].forEach(p => { p.geo.translate(-cx, -b.min.y, -cz); realzarMaterial(p.mat, env, p.hoja); });
+    for (const nv of MV ? ['L1'] : ['L0', 'L1']) niveles[nv].forEach(p => { p.geo.translate(-cx, -b.min.y, -cz); realzarMaterial(p.mat, env, p.hoja); if (p.hoja && T3.kenArboles) sombraCopa(p.geo, p.mat, alto, ancho); });
     const hojaRGB = colorPromedioHoja(niveles.L1) || colorPromedioHoja(niveles.L0) || [0.11, 0.17, 0.06];
     for (const nv of MV ? ['L1'] : ['L0', 'L1']) niveles[nv].forEach(p => { if (p.hoja) balanceo(p.mat, alto, T3); });
     const sil = dibujarSiluetas(T3, niveles.L0, alto, ancho);
@@ -420,7 +430,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   especies.forEach(e => { e.ancho0 = e.ancho; });
   const esc = (i) => { const e = especies[SP[i]]; return KEN_A ? Hh[i] / e.alto : Math.min(Hh[i] / e.alto, ESPECIES_ARBOL[SP[i]].ancho / e.ancho); }; // simulador: la copa conserva la proporción del modelo real (llena, como en Unreal)
   const FM = new Float32Array(N * 16), FC = new Float32Array(N * 3);
-  const porte = (i) => { const v = VARIEDADES[VAR[i]], s = esc(i); d.scale.set(s * v.sx, s * v.sy, s * v.sx); };
+  const porte = (i) => { const v = VARIEDADES[VAR[i]], s = esc(i) * (KEN_A ? 0.82 + hash(i * 23 + 7) * 0.36 : 1), w = KEN_A ? 0.88 + hash(i * 29 + 3) * 0.26 : 1; d.scale.set(s * v.sx * w, s * v.sy, s * v.sx * (2 - w)); if (KEN_A) { d.rotation.x = (hash(i * 31 + 1) - 0.5) * 0.09; d.rotation.z = (hash(i * 37 + 5) - 0.5) * 0.09; } };
   for (let i = 0; i < N; i++) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); FM.set(d.matrix.elements, i * 16); const tv = 0.88 + hash(i * 19) * 0.24, h = VARIEDADES[VAR[i]].h, g = (h[0] + h[1] + h[2]) / 3; FC[i * 3] = tv * 1.08 * (0.3 * h[0] + 0.7 * g); FC[i * 3 + 1] = tv * 0.97 * (0.3 * h[1] + 0.7 * g); FC[i * 3 + 2] = tv * 1.05 * (0.3 * h[2] + 0.7 * g); }
   const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) { const g = (h[0] + h[1] + h[2]) / 3; col.setRGB(tv * 1.14 * (0.3 * h[0] + 0.7 * g) + 0.07, tv * 1.04 * j * (0.3 * h[1] + 0.7 * g) + 0.06, tv * 1.1 * (0.3 * h[2] + 0.7 * g) + 0.07); } else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
   const ult = { x: 1e9, z: 1e9, t: 0 }, cand = [];

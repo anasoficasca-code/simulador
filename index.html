@@ -1269,7 +1269,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=59'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=61'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1593,6 +1593,22 @@ function texturasFachada(THREE, renderer) {
   return { ladrillo: pintar(true), pintado: pintar(false), foto };
 }
 // material de los edificios (uno solo para todos): fachada con ventanas alineadas a cada muro, centradas y sin cortes en las esquinas
+// objetos de cubierta de las casas y bloques bajos (modo Kennedy): tanque negro de agua con tapa, antena y claraboya; instancias hijas del bloque
+function objetosTecho(THREE, padre, PR) {
+  if (!T3.geoTecho) {
+    const { mergeGeometries } = T3.BGU || {};
+    T3.geoTecho = {
+      tanque: new THREE.CylinderGeometry(0.62, 0.55, 1.25, 14).translate(0, 0.85, 0),
+      base: new THREE.BoxGeometry(1.5, 0.22, 1.5).translate(0, 0.11, 0),
+      antena: new THREE.CylinderGeometry(0.03, 0.04, 3.2, 5).translate(0, 1.6, 0),
+      claraboya: new THREE.BoxGeometry(1.8, 0.45, 1.2).translate(0, 0.22, 0)
+    };
+    T3.matTecho = { tanque: new THREE.MeshStandardMaterial({ color: 0x1c1e21, roughness: 0.55 }), base: new THREE.MeshStandardMaterial({ color: 0x9a9690, roughness: 0.9 }), antena: new THREE.MeshStandardMaterial({ color: 0x8c9196, roughness: 0.4, metalness: 0.7 }), claraboya: new THREE.MeshStandardMaterial({ color: 0xbcc8cf, roughness: 0.25, metalness: 0.2 }) };
+  }
+  const o = new THREE.Object3D(), poner = (lista, geo, mat) => { if (!lista.length) return; const m = new THREE.InstancedMesh(geo, mat, lista.length); lista.forEach((p, i) => { o.position.set(p[0], p[1], p[2]); o.rotation.set(0, p[3], 0); o.updateMatrix(); m.setMatrixAt(i, o.matrix); }); m.castShadow = true; m.receiveShadow = true; padre.add(m); };
+  const G = T3.geoTecho, M = T3.matTecho;
+  poner(PR.tanque, G.tanque, M.tanque); poner(PR.tanque, G.base, M.base); poner(PR.antena, G.antena, M.antena); poner(PR.claraboya, G.claraboya, M.claraboya);
+}
 function materialEdificios(THREE) {
   if (T3.matEdif) return T3.matEdif;
   const mat = LIVIANO ? new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true }) // celular/gafas: material barato
@@ -1638,10 +1654,10 @@ function materialEdificios(THREE) {
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, T3.roofU);
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec4 wall;\nattribute float bord;\nvarying float vBd;\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wpv = modelMatrix * vec4(position, 1.0); vWP = wpv.xyz; vWs = wpv.xz; vWl = wall; vBd = bord;');
+      .replace('#include <common>', '#include <common>\nattribute vec4 wall;\nattribute float bord;\nattribute float bid;\nvarying float vBid;\nvarying float vBd;\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wpv = modelMatrix * vec4(position, 1.0); vWP = wpv.xyz; vWs = wpv.xz; vWl = wall; vBd = bord; vBid = bid;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces;' + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
+      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces;' + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
       .replace('#include <color_fragment>', `#include <color_fragment>
       vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
       {
@@ -1695,7 +1711,25 @@ function materialEdificios(THREE) {
             float rim = 1.0 - smoothstep(0.75 - aa, 0.75 + aa, dist), somb = (1.0 - smoothstep(0.75, 1.2, dist)) * (1.0 - rim);
             diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 - 0.3 * somb), vec3(0.80, 0.78, 0.74), rim); }
         }
-        ${KEN ? '{ float lk = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.86, 0.76) * (0.62 + 0.5 * lk), 0.42); } // modo Kennedy: fachadas claras como el render de Unreal' : ''}
+        ${KEN ? `{ // modo Kennedy: fachadas claras con el tono propio de cada edificio, chorreos bajo la cornisa, sombra al pie del muro y cubiertas variadas
+          float hb = vBid, lk = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)), kq = floor(hb * 6.0);
+          vec3 tono = kq < 1.0 ? vec3(0.93, 0.88, 0.80) : kq < 2.0 ? vec3(0.96, 0.95, 0.92) : kq < 3.0 ? vec3(0.92, 0.79, 0.69) : kq < 4.0 ? vec3(0.84, 0.66, 0.54) : kq < 5.0 ? vec3(0.86, 0.84, 0.79) : vec3(0.78, 0.58, 0.47);
+          diffuseColor.rgb = mix(diffuseColor.rgb, tono * (0.62 + 0.5 * lk), 0.42);
+          float Hb = vWl.w;
+          if (vWl.z > 0.5) { // muro
+            float s = dot(vWP.xz, vWl.xy), dh = Hb - vWP.y, n1 = fract(sin(floor(s * 1.6) * 12.9898 + hb * 78.233) * 43758.545);
+            float chorreo = (1.0 - smoothstep(0.0, 0.8 + 5.5 * n1, dh)) * (0.35 + 0.65 * n1);           // agua que baja de la cornisa
+            float pie = 1.0 - smoothstep(0.3, 2.4, vWP.y);                                                // sombra de contacto con el piso
+            float mancha = fract(sin(dot(floor(vec2(s * 0.45, vWP.y * 0.35)), vec2(12.9898, 78.233)) + hb * 31.0) * 43758.545);
+            diffuseColor.rgb *= (1.0 - 0.2 * chorreo) * (1.0 - 0.22 * pie) * (0.95 + 0.07 * mancha);
+          } else if (vWl.z > -0.5 && vWP.y > 1.5) { // cubierta
+            float r1 = fract(hb * 7.31), r2 = fract(hb * 13.7);
+            vec2 q = vWP.xz / 3.0; float m2 = fract(sin(dot(floor(q), vec2(12.9898, 78.233))) * 43758.545);
+            vec3 losa = vec3(0.70, 0.69, 0.66) * (0.9 + 0.14 * m2);
+            vec3 zinc = mix(vec3(0.60, 0.64, 0.68), vec3(0.62, 0.42, 0.30), step(0.55, r2)) * (0.86 + 0.14 * sin(vWP.x * 11.0 + vWP.z * 3.0));
+            diffuseColor.rgb = mix(diffuseColor.rgb, Hb < 8.0 && r1 > 0.55 ? zinc : losa, 0.7);
+          }
+        }` : ''}
         diffuseColor.rgb *= 1.0 - 0.32 * uNoche; // de noche los muros se apagan y resaltan las ventanas encendidas
       }`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n        totalEmissiveRadiance += gWinC * gWin * 2.6; // ventana encendida');
@@ -1769,7 +1803,7 @@ function buildChunks(THREE, B) {
   if (!T3.edificios) T3.edificios = [];
   const techosHuerta = []; // Kennedy: terrazas de los edificios de más de 5 pisos (>= 6 pisos de 3 m) que se vuelven huerta
   for (const list of cells.values()) {
-    const P = [], C = [], I = [], WL = [], BDc = [], BDr = [];
+    const P = [], C = [], I = [], WL = [], BDc = [], BDr = [], BID = [], PR = { tanque: [], antena: [], claraboya: [] };
     let vc = 0;
     for (const bi of list) {
       const b = B[bi], h = b.h, ring = b.pts.slice(0, -1), n = ring.length;
@@ -1809,6 +1843,14 @@ function buildChunks(THREE, B) {
       else for (let i = 0; i < n; i++) I.push(base + 2 * n, base + 2 * n + 1 + i, base + 2 * n + 1 + (i + 1) % n);
       vc = base + 3 * n + 1;
       if (REALISTA && !(KEN && h >= HUERTA_H)) vc = techoDosAguas(W, h, bi, col, P, C, I, WL, vc); // los altos de Kennedy llevan huerta en la terraza (cubierta plana)
+      { const hb = ((Math.sin(bi * 127.1 + 311.7) * 43758.5453) % 1 + 1) % 1; while (BID.length < vc) BID.push(hb); // tono propio de cada edificio (shader)
+        if (KEN && !LIVIANO && h >= 4 && h < HUERTA_H) { // cubierta: tanque negro de agua, antena y claraboya, como en los techos de Kennedy
+          const r = (k) => ((Math.sin((bi + k) * 91.7 + 13.1) * 43758.5453) % 1 + 1) % 1, dentroW = (x, z) => { let c2 = false; for (let a = 0, b2 = n - 1; a < n; b2 = a++) { const A = W[a], B2 = W[b2]; if ((A[1] > z) !== (B2[1] > z) && x < (B2[0] - A[0]) * (z - A[1]) / (B2[1] - A[1]) + A[0]) c2 = !c2; } return c2; };
+          const hacia = (k, f) => { const v = W[Math.floor(r(k) * n) % n]; return [cx + (v[0] - cx) * f, cz + (v[1] - cz) * f]; };
+          if (r(1) < 0.78) { const q = hacia(2, 0.55); if (dentroW(q[0], q[1])) PR.tanque.push([q[0], hT, q[1], r(3) * 6]); }
+          if (r(4) < 0.3) { const q = hacia(5, 0.35); if (dentroW(q[0], q[1])) PR.antena.push([q[0], hT, q[1], 0]); }
+          if (r(6) < 0.28) { const q = hacia(7, 0.2); if (dentroW(q[0], q[1])) PR.claraboya.push([q[0], hT, q[1], Math.atan2(W[1][1] - W[0][1], W[1][0] - W[0][0])]); }
+        } }
 
     }
     const g = new THREE.BufferGeometry();
@@ -1816,11 +1858,13 @@ function buildChunks(THREE, B) {
     g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
     g.setAttribute('wall', new THREE.Float32BufferAttribute(WL, 4));
     { const bd = new Float32Array(P.length / 3).fill(-1); for (const k of BDc) bd[k] = 0; for (const k of BDr) bd[k] = 1; g.setAttribute('bord', new THREE.BufferAttribute(bd, 1)); } // 0 en el centro del techo, 1 en su borde
+    { const ba = new Float32Array(P.length / 3); ba.set(BID.slice(0, ba.length)); g.setAttribute('bid', new THREE.BufferAttribute(ba, 1)); }
     g.setIndex(I);
     g.computeVertexNormals();
     const bm = new THREE.Mesh(g, mat);
     bm.castShadow = !LIVIANO; bm.receiveShadow = !LIVIANO;
     T3.scene.add(bm);
+    if (KEN && !LIVIANO) objetosTecho(THREE, bm, PR);
     g.computeBoundingSphere(); T3.edificios.push({ mesh: bm, cx: g.boundingSphere.center.x, cz: g.boundingSphere.center.z, r: g.boundingSphere.radius });
   }
   T3.counts.b = (T3.counts.b || 0) + total; T3.counts.skip = skipped; if (total > 0) T3.edifOK = true;
