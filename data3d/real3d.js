@@ -468,6 +468,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   };
   api.update({ position: new THREE.Vector3(1e8, 0, 1e8) }, true);
   // árboles semitransparentes (vista de simulación: deja ver las calles y los agentes debajo de las copas)
+  api.ver = (on) => { api.visible = on; for (const l of lod) for (const m of [...l.L0, ...l.L1]) m.visible = on; for (const m of [...lejos, ...techos, ...bajos]) m.visible = on; };
   // tinte de todo el arbolado (modo Visión: copas oscuras azul verdoso con brillo propio); null restaura
   api.tinte = (hex, emis) => {
     const mats = new Set();

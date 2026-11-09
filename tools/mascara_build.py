@@ -29,7 +29,11 @@ def propios():
 
 def propios_suelo():  # se recorta solo lo que Google levanta (palmas y edificio derretidos), no la foto del piso: nivel de edificio genérico
     T = json.load(open(os.path.join(D, 'tintal.json'), encoding='utf-8'))  # Biblioteca El Tintal y su plaza de palmas (data3d/tintal.js)
-    return [Polygon(T['zona_modelo'])]
+    P = [Polygon(T['zona_modelo'])]
+    for b in json.load(open(os.path.join(D, 'buildings.json'))):  # torres de ladrillo con balcones (data3d/torres_balcones.js): TORRES_FOTO de index.html
+        p = b['pts']
+        if b['h'] >= 30 and len(p) > 3 and math.hypot(sum(q[0] for q in p) / len(p) - 7024.1, sum(q[1] for q in p) / len(p) - 3655.4) < 180: P.append(Polygon(p).buffer(3))
+    return P
 
 def mascara(B, salida):
     im = Image.new('L', (W, H), 255)
@@ -42,10 +46,11 @@ def mascara(B, salida):
         xs = [q[0] for q in p]; ys = [q[1] for q in p]
         if (max(xs) - min(xs)) < 2 and (max(ys) - min(ys)) < 2 and b['h'] <= 3: continue  # la misma basura que descarta buildChunks
         poly = [(x / R, (YM - y) / R) for x, y in p]
-        dr.polygon(poly, fill=100, outline=100, width=2)  # el borde agranda cada huella ~2,5 m, como antes
+        alto = b['h'] >= 16.5  # torres con huerta en la terraza: en Foto real se dibuja el modelo propio y se recorta Google (nivel 60)
+        dr.polygon(poly, fill=60 if alto else 100, outline=60 if alto else 100, width=2)  # el borde agranda cada huella ~2,5 m, como antes
         n += 1
     for pg in propios_suelo():
-        dr.polygon([(x / R, (YM - y) / R) for x, y in pg.exterior.coords], fill=100, outline=100, width=1)
+        dr.polygon([(x / R, (YM - y) / R) for x, y in pg.exterior.coords], fill=0, outline=0, width=1)  # modelo propio: Google se recorta desde 0,9 m
     for pg in propios():
         dr.polygon([(x / R, (YM - y) / R) for x, y in pg.exterior.coords], fill=0, outline=0, width=1)
     im.save(salida, optimize=True)

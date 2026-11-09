@@ -73,9 +73,11 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     for (let i = 0; i < n; i++) { const p = W[i], q = W[(i + 1) % n]; A += p[0] * q[1] - q[0] * p[1]; cx += p[0]; cz += p[1]; const l = Math.hypot(q[0] - p[0], q[1] - p[1]); if (l > Lmax) { Lmax = l; ang = Math.atan2(q[1] - p[1], q[0] - p[0]); } }
     cx /= n; cz /= n; const area = Math.abs(A) / 2, y = t.h + 0.32; // sobre la capa de la cubierta de E8 (que se pinta 0,3 m sobre el techo)
     if (area < 40) return;
+    const inclinado = window.esDosAguas && window.esDosAguas(W.map(q => [q[0], q[1]]), t.h); // casas a dos aguas: sin huerta
+    if (inclinado) return;
     const ux = Math.cos(ang), uz = Math.sin(ang), vx = -uz, vz = ux, rot = -ang;
     // rejilla de racks a lo largo del eje largo: filas cada 2,6 m, racks de 4 m cada 4,8 m, a más de 1,2 m del antepecho
-    let puestos = 0; const max = Math.min(movil ? 10 : 34, Math.floor(area / 22)), tunel = area > 450 && rnd() < 0.45;
+    let puestos = 0; const conCamas = t.h >= 16.5; /* las terrazas altas ya tienen camas de cultivo (huertas_techo.js) */ const max = conCamas ? 0 : Math.min(movil ? 10 : 34, Math.floor(area / 22)), tunel = area > 450 && rnd() < 0.45;
     for (let v = -40; v <= 40 && puestos < max; v += 2.6) for (let u = -60; u <= 60 && puestos < max; u += 4.8) {
       const x = cx + u * ux + v * vx, z = cz + u * uz + v * vz;
       if (!enPoli(W, x, z) || distBorde(W, x, z) < (tunel && puestos < 2 ? 2.6 : 2.3)) continue;
@@ -86,7 +88,7 @@ export async function iniciarHidroponia({ THREE, T3, techos, movil = false }) {
     }
     if (puestos) { const x = cx - (ux + vx) * 1.2, z = cz - (uz + vz) * 1.2; if (enPoli(W, x, z)) meter('tanque', x, y, z, 0); }
     // balcones: edificios de 4 pisos o más, en los lados largos, una jardinera cada ~5 m en pisos alternos
-    if (t.h >= 11) {
+    if (t.h >= 16.5) { // balcones de las torres (las que se modelan también en Foto real)
       const ccw = A > 0;
       for (let i = 0; i < n; i++) {
         const p = W[i], q = W[(i + 1) % n], L = Math.hypot(q[0] - p[0], q[1] - p[1]); if (L < 7) continue;

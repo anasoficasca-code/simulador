@@ -962,7 +962,7 @@ async function crearMallaGoogle(T) {
         // la cámara (la imagen no cambia: mismo punto en pantalla), así los edificios, carros, árboles y animales propios quedan siempre encima
         .replace('#include <project_vertex>', '#include <project_vertex>\nif (uEmpuje > 0.0) { float dl = max(length(mvPosition.xyz), 1.0); vec4 pE = projectionMatrix * vec4(mvPosition.xyz * (1.0 + uEmpuje / dl), 1.0); gl_Position.z = min(pE.z / pE.w, 0.99999) * gl_Position.w; }');
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vWPm; uniform sampler2D uMask; uniform float uOn, uCut; uniform vec2 uLC, uDim; uniform vec4 uGrade; uniform vec3 uTint, uZona; uniform float uMonte;')
+        .replace('#include <common>', '#include <common>\nvarying vec3 vWPm; uniform sampler2D uMask; uniform float uOn, uCut; uniform vec2 uLC, uDim; uniform vec4 uGrade; uniform vec3 uTint, uZona; uniform float uMonte, uEmpuje;')
         // gradación tipo render de maqueta (Umbra): quita la bruma gris de la foto aérea, sube saturación y contraste y la calienta un poco
         .replace('#include <opaque_fragment>', `{
           vec3 c = max(outgoingLight - uGrade.w * vec3(0.030, 0.036, 0.048), 0.0) / (1.0 - uGrade.w * 0.04);
@@ -970,6 +970,7 @@ async function crearMallaGoogle(T) {
           c = max(mix(vec3(l), c, uGrade.x), 0.0);
           c += uGrade.w * vec3(0.026, 0.032, 0.046) * (1.0 - smoothstep(0.0, 0.16, l)); // sombras abiertas y azuladas (luz de cielo), no negras
           c = pow(c / 0.18, vec3(uGrade.y)) * 0.18 * uGrade.z * uTint;
+          if (uEmpuje > 0.0) { c = mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 0.86); outgoingLight = mix(vec3(dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722))), outgoingLight, 0.86); } // Kennedy: un poco menos saturada
           outgoingLight = mix(outgoingLight, c, 1.0 - smoothstep(uZona.z, uZona.z + 350.0, distance(vWPm.xz, uZona.xy))); // afuera de la zona, la foto tal cual
           if (uMonte > 0.5) { // cerros: la foto aérea de lejos sale lavada (bruma de la toma): se le quita el velo y se recupera el verde del bosque y el páramo
             float alto = smoothstep(25.0, 140.0, vWPm.y) * smoothstep(1500.0, 4500.0, distance(vWPm.xz, uZona.xy));
@@ -984,7 +985,7 @@ async function crearMallaGoogle(T) {
           if (uOn > 0.5 && vWPm.y > 0.9 && distance(vWPm.xz, uZona.xy) < uZona.z) { // recorte de edificios de Google solo donde están los propios
             vec2 mu = vec2((vWPm.x + uLC.x) * uDim.x, 1.0 - (uLC.y - vWPm.z) * uDim.y);
             float mk = texture2D(uMask, mu).r; // 1 libre · 0,39 edificio genérico (corte en uCut) · 0 modelo detallado: Corabastos, Bavaria (corte a 0,9 m)
-            if (mu.x > 0.0 && mu.x < 1.0 && mu.y > 0.0 && mu.y < 1.0 && mk < 0.5 && (vWPm.y > uCut || mk < 0.2)) discard;
+            if (mu.x > 0.0 && mu.x < 1.0 && mu.y > 0.0 && mu.y < 1.0 && mk < 0.5 && (vWPm.y > uCut || mk < 0.2 || (mk < 0.3 && vWPm.y > 2.5))) discard; // 0,24: torre propia
           }`);
     };
     m.customProgramCacheKey = () => 'recorteHuellasG';
@@ -1021,8 +1022,19 @@ async function crearMallaGoogle(T) {
   // Kennedy (?modo=kennedy): TODO lo propio (edificios, calles, agua, árboles, estrategias) va SIEMPRE encima de la foto de Google: nada queda enterrado ni tapado
   if (REALISTA && !KEN) return;
   const cd = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }));
-  cd.frustumCulled = false; cd.renderOrder = -5; cd.onBeforeRender = (r) => r.clearDepth(); T.scene.add(cd);
+  cd.frustumCulled = false; cd.renderOrder = -5; cd.onBeforeRender = (r) => r.clearDepth(); T.scene.add(cd); T.borraProf = cd;
 }
+// Kennedy · FOTO REAL (por defecto, como God's Eye): la malla 3D de Google es el mundo, con sus casas, vías y árboles reales y su profundidad;
+// lo propio queda solo donde está la propuesta (Bavaria, Corabastos, Biblioteca El Tintal, torres con balcones, huertas). Apagado: el modelo de cajas.
+function fotoReal(on) {
+  T3.fotoReal = on;
+  if (T3.borraProf) T3.borraProf.visible = !on;
+  if (T3.maskU) { T3.maskU.uCut.value = on ? 1e5 : 2.5; T3.maskU.uEmpuje.value = on ? 0 : 18; }
+  if (T3.roofU) T3.roofU.uSoloAltos.value = on ? 1 : 0; // Foto real: de lo propio quedan solo las torres con huerta; las casas son las de la foto
+  for (const e of T3.edificios || []) for (const ch of e.mesh.children) ch.visible = !on; // tanques y antenas de las casas modeladas
+  for (const m of T3.viasMallas || []) m.visible = !on;
+}
+window.fotoReal = fotoReal;
 // huellas de los edificios del modelo dibujadas en un lienzo (blanco = libre, negro = edificio) en coordenadas del modelo, norte arriba
 const MASK = { XM: 10800, YM: 6400, RES: 2.5 };
 // edificios en binario (data3d/edif/*.bin, generados desde buildings.json): por edificio n.º de vértices, altura·10 y vértices en 0,25 m (el primero absoluto, los demás como diferencia)
@@ -1269,7 +1281,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=61'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=62'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1290,7 +1302,7 @@ async function initTodoReal() {
     const deTintal = (TI, b) => { if (!TI) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } return enPoli(TI.zona_modelo, x / n, y / n); };
     const cargarEdif = async (f) => { const [BV, CO, TI] = await Promise.all([pBav, pCora, pTin]); return decodificarEdificios(EI, await (await fetch('data3d/edif/' + f)).arrayBuffer()).filter(b => enZona(b.pts[0][0], b.pts[0][1]) && !deBavaria(BV, b) && !deCora(CO, b) && !deTintal(TI, b)); }; // vista realista: solo la zona del proyecto
     const agregarHuellas = () => {}; // la máscara de huellas ya viene precalculada (data3d/edif/mascara*.png)
-    if (!GOOGLE && !(LIVIANO && !MEDIO)) pMalla.then(() => { if (T3.maskU) cargarMascara(T3, LIVIANO ? 'mascara_humedal.png?v=4' : 'mascara.png?v=4'); });
+    if (!GOOGLE && !(LIVIANO && !MEDIO)) pMalla.then(() => { if (T3.maskU) cargarMascara(T3, LIVIANO ? 'mascara_humedal.png?v=6' : 'mascara.png?v=6'); });
     let B = [];
     // edificios 3D propios (huellas y alturas reales) también en la vista fotorrealista: la malla de Google en Kennedy los trae
     // casi planos ("derretidos"); como en las maquetas de Umbra, se levantan volúmenes limpios y el techo toma el color de la foto aérea
@@ -1378,6 +1390,7 @@ async function initTodoReal() {
         T3.kenArboles = KEN; // simulador: copas opacas, especies de Bogotá y más árboles 3D reales, como el render de Unreal
         const TIN = await pTin; if (TIN && TIN.zona_modelo) TT = { ...TT, t: TT.t.filter(t => !enPoli(TIN.zona_modelo, t[0], t[1])) }; // sin árboles bajo las palmas de la plaza ni en la huerta de la Biblioteca El Tintal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
+        if (KEN && T3.trees && T3.trees.ver) T3.trees.ver(false); // Kennedy: los árboles reales son los de la foto 3D de Google (literalmente reales)
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
@@ -1613,7 +1626,7 @@ function materialEdificios(THREE) {
   if (T3.matEdif) return T3.matEdif;
   const mat = LIVIANO ? new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true }) // celular/gafas: material barato
     : new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true, roughness: 0.86, metalness: 0, envMap: T3.env || null, envMapIntensity: 0.55 });
-  T3.roofU = { uOrto: { value: null }, uOrtoVP: { value: new THREE.Matrix4() }, uOrtoOn: { value: 0 }, uNoche: { value: 0 }, uLuces: { value: 0.5 } }; // uNoche/uLuces: ventanas encendidas (data3d/cielo.js)
+  T3.roofU = { uOrto: { value: null }, uOrtoVP: { value: new THREE.Matrix4() }, uOrtoOn: { value: 0 }, uNoche: { value: 0 }, uLuces: { value: 0.5 }, uSoloAltos: { value: 0 } }; // uNoche/uLuces: ventanas encendidas (data3d/cielo.js)
   if (REALISTA) {
     const tx = texturasFachada(THREE, T3.renderer);
     Object.assign(T3.roofU, { tFachB: { value: tx.ladrillo.c }, tFachP: { value: tx.pintado.c }, tFachBN: { value: tx.ladrillo.n }, tFachPN: { value: tx.pintado.n }, tFachBR: { value: tx.ladrillo.r }, tFachPR: { value: tx.pintado.r },
@@ -1657,8 +1670,9 @@ function materialEdificios(THREE) {
       .replace('#include <common>', '#include <common>\nattribute vec4 wall;\nattribute float bord;\nattribute float bid;\nvarying float vBid;\nvarying float vBd;\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wpv = modelMatrix * vec4(position, 1.0); vWP = wpv.xyz; vWs = wpv.xz; vWl = wall; vBd = bord; vBid = bid;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces;' + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
+      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos;' + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
       .replace('#include <color_fragment>', `#include <color_fragment>
+      if (uSoloAltos > 0.5 && abs(vWl.w) < 16.5) discard; // Foto real: las casas y bloques bajos son los de la foto de Google
       vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
       {
         ${FACHADA || ''}
@@ -1751,6 +1765,13 @@ function materialEdificios(THREE) {
 // gris o gris verdosa (videos de dron del humedal). Se arma en los bloques casi rectangulares y alargados: cumbrera sobre el lado largo,
 // pendiente de ~20°, alero de 30 cm y los dos piñones del color del muro.
 const LAMINAS = [[0.47, 0.5, 0.5], [0.4, 0.46, 0.44], [0.53, 0.54, 0.54], [0.36, 0.4, 0.42], [0.55, 0.36, 0.3]].map(c => c.map(x => Math.pow(x, 2.2)));
+window.esDosAguas = (W, h) => { // misma prueba que techoDosAguas (cubierta inclinada: sin huerta encima)
+  const n = W.length; if (!REALISTA || h < 5 || h > 22 || n < 4 || h >= 16.5) return false; let L = 0, ux = 1, uz = 0;
+  for (let i = 0; i < n; i++) { const a = W[i], b = W[(i + 1) % n], l = Math.hypot(b[0] - a[0], b[1] - a[1]); if (l > L) { L = l; ux = (b[0] - a[0]) / l; uz = (b[1] - a[1]) / l; } }
+  const vx = -uz, vz = ux; let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, area = 0;
+  for (let i = 0; i < n; i++) { const p = W[i], q = W[(i + 1) % n], u = p[0] * ux + p[1] * uz, v = p[0] * vx + p[1] * vz; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v); area += p[0] * q[1] - q[0] * p[1]; }
+  const Lu = u1 - u0, Lv = v1 - v0; return !(Math.abs(area) / 2 / (Lu * Lv) < 0.86 || Lu / Lv < 1.3 || Lv < 6 || Lv > 22);
+};
 function techoDosAguas(W, h, bi, col, P, C, I, WL, vc) {
   const n = W.length; if (h < 5 || h > 22 || n < 4) return vc;
   let L = 0, ux = 1, uz = 0; // eje largo = el muro más largo
@@ -2817,7 +2838,7 @@ function buildRoads(THREE, N) {
   const po = (m, f) => { m.polygonOffset = true; m.polygonOffsetFactor = -f; m.polygonOffsetUnits = -f; };
   po(mVia, 2); po(mAcera, 1);
   const mRaya = new THREE.MeshBasicMaterial({ color: 0xf2f0e6, side: THREE.DoubleSide }); po(mRaya, 4);
-  mk(GA, mAcera, true, 1); mk(GS, mAcera, false, 1); mk(GV, mVia, true, 2); mk(GR, mRaya, true, 3);
+  T3.viasMallas = [mk(GA, mAcera, true, 1), mk(GS, mAcera, false, 1), mk(GV, mVia, true, 2), mk(GR, mRaya, true, 3)];
   if (GP.P.length) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(GP.P, 3)); g.setIndex(GP.I); g.computeVertexNormals();
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xb9b6ae, roughness: 0.85 })); m.castShadow = !LIVIANO; m.receiveShadow = !LIVIANO; T3.scene.add(m); } // concreto de los puentes
   T3.counts.vias = N.edges.length;
@@ -3346,7 +3367,7 @@ $('b-hd').onclick = async () => {
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   // Biblioteca El Tintal (modelo propio) y canchas reales de OpenStreetMap: no dependen de la simulación, se cargan en paralelo
-  listoK().then(() => import('./data3d/tintal.js?v=6')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
+  listoK().then(() => import('./data3d/tintal.js?v=7')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
@@ -3364,6 +3385,16 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
     .then(() => { // botón para apagar y prender la foto 3D de Google (el suelo de base)
       const ag = document.getElementById('gs-ag');
       if (ag && !document.getElementById('fb-btn')) { const b = document.createElement('button'); b.id = 'fb-btn'; b.className = 'on'; b.textContent = 'Foto base'; b.title = 'Apaga o prende la foto 3D de Google (el suelo de base)'; b.style.cssText = 'width:100%;margin-top:6px'; b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.tiles) T3.tiles.group.visible = on; }; ag.parentElement.insertAdjacentElement('afterend', b); }
+      if (!document.getElementById('fr-btn')) { // vista: foto 3D real (God's Eye) o modelo de cajas
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'fr-btn'; b.className = 'on'; b.textContent = 'Foto real 3D'; b.title = 'Prendido: casas, vías y árboles reales de la foto 3D (como God\'s Eye). Apagado: modelo de volúmenes'; b.style.cssText = 'width:100%;margin-top:6px';
+        b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); fotoReal(on); };
+        (fb || ag.parentElement).insertAdjacentElement('afterend', b); fotoReal(true);
+      }
+      if (!document.getElementById('ar-btn')) { // árboles: por defecto los reales de la foto 3D de Google (como God's Eye); el botón trae los modelos 3D
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.textContent = 'Árboles modelo 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
+        b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.trees && T3.trees.ver) T3.trees.ver(on); };
+        (fb || ag.parentElement).insertAdjacentElement('afterend', b);
+      }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'vi-btn'; b.textContent = '✦ Visión'; b.title = 'Ver la propuesta: Bavaria Común, Corabastos, red de huertas y humedales'; b.style.cssText = 'width:100%;margin-top:6px;background:linear-gradient(100deg,#2a1d6b,#5b3fd6);color:#fff;border:1px solid #8b74ff;letter-spacing:.2em';
         let V = null, pV = null;

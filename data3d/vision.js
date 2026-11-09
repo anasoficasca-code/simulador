@@ -196,8 +196,9 @@ body.vision #gs-der,body.vision #hid-red,body.vision .es-et,body.vision #bt-pan,
     paso();
   }
   const cambiar = (obj, mat) => obj && obj.traverse(o => { if (o.isMesh) { if (!guardado.has(o)) guardado.set(o, o.material); o.material = mat; } });
-  let on = false;
+  let on = false, visReal = false;
   function ver(v) {
+    if (v) { visReal = !!T3.fotoReal; if (window.fotoReal) window.fotoReal(false); } // la visión se dibuja sobre el modelo de volúmenes
     on = v; grupo.visible = v; T3.vision = v; document.body.classList.toggle('vision', v); panel.style.display = v ? 'block' : 'none';
     const sc = T3.scene, U = T3.cielo && T3.cielo.U;
     if (v) {
@@ -226,6 +227,7 @@ body.vision #gs-der,body.vision #hid-red,body.vision .es-et,body.vision #bt-pan,
       if (T3.trees && T3.trees.tinte) T3.trees.tinte(null);
       if (edges) edges.visible = false;
       if (T3.cielo && T3.cielo.refrescar) T3.cielo.refrescar();
+      if (visReal && window.fotoReal) window.fotoReal(true);
     }
     for (const e of ETQ) e.d.style.display = 'none';
   }
