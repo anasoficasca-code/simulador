@@ -881,7 +881,7 @@ const DIA = { // ambiente de día soleado (se usa al crear la escena y al volver
   hemiCielo: 0xb4d3ff, hemiSuelo: 0x7a6f4a, hemi: REALISTA ? 1.15 : 0.86, // luz de cielo azulada arriba y rebote cálido del suelo
   solColor: 0xffe6bf, sol: REALISTA ? 2.5 : 3.0, exposicion: 1.0 // sol cálido y fuerte: más contraste entre luz y sombra
 };
-if (KEN) Object.assign(DIA, { niebla: 0xa7b9c6, densNiebla: 0.000036, hemiCielo: 0xcfe2ff, hemiSuelo: 0x9a8f72, hemi: 1.45, solColor: 0xfff0d6, sol: 2.7, exposicion: 1.05 }); // luz del giro de Unreal: media mañana clara, sombras abiertas; bruma azul grisácea y tenue: a 12 km los cerros conservan su verde (antes la bruma 0xc7d3de, más densa, los volvía blancos)
+if (KEN) Object.assign(DIA, { niebla: 0xd3dfe9, densNiebla: 0.000042, hemiCielo: 0xdcecff, hemiSuelo: 0xa7a088, hemi: 1.7, solColor: 0xfff3e0, sol: 3.0, exposicion: 1.12 }); // luz del giro de Unreal: media mañana clara, sombras abiertas; bruma azul grisácea y tenue: a 12 km los cerros conservan su verde (antes la bruma 0xc7d3de, más densa, los volvía blancos)
 const LC = { x: 5341.33, y: 3161.9 };
 const lw = (x, y) => [x - LC.x, LC.y - y]; // z invertido: el territorio estaba en espejo (norte/sur al revés)
 window.REN3D = { get T3() { return T3; }, lw, get traf() { return TRAF; }, get peat() { return PEAT; }, get aves() { return AVES; }, get pajaro() { return PAJARO; } }; // acceso para pruebas
@@ -948,7 +948,7 @@ async function crearMallaGoogle(T) {
   aplicarMalla(T, tiles);
   // la foto ya trae su luz y sus sombras: se muestra tal cual (emisiva), sin que el sol de la escena la aplaste ni la queme
   // máscara de huellas del modelo: donde hay un edificio propio se recorta lo que Google levanta (su versión "derretida") y queda solo su foto del suelo
-  T.maskU = { uGrade: { value: REALISTA && !GOOGLE ? new THREE.Vector4(1.2, 0.9, 1.22, 1) : new THREE.Vector4(1, 1, 1, 0) }, uTint: { value: REALISTA && !GOOGLE ? new THREE.Vector3(1.04, 1.0, 0.93) : new THREE.Vector3(1, 1, 1) }, // saturación, contraste, brillo, quitar bruma · tinte
+  T.maskU = { uGrade: { value: REALISTA && !GOOGLE ? new THREE.Vector4(1.2, 0.9, 1.22, 1) : KEN ? new THREE.Vector4(1.18, 0.95, 1.14, 0.8) : new THREE.Vector4(1, 1, 1, 0) }, uRender: { value: KEN ? 1 : 0 }, uTint: { value: REALISTA && !GOOGLE ? new THREE.Vector3(1.04, 1.0, 0.93) : new THREE.Vector3(1, 1, 1) }, // saturación, contraste, brillo, quitar bruma · tinte
     uMask: { value: null }, uOn: { value: 0 }, uLC: { value: new THREE.Vector2(LC.x, LC.y) }, uDim: { value: new THREE.Vector2(1 / MASK.XM, 1 / MASK.YM) }, uCut: { value: 2.5 }, uEmpuje: { value: KEN ? 18 : 0 }, uMonte: { value: KEN ? 1 : 0 }, // Kennedy: la foto de Google va siempre DETRÁS de lo propio (ver project_vertex)
     uZona: { value: new THREE.Vector3(ZONA.x - LC.x, LC.y - ZONA.y, ZON ? (KEN ? Math.max(ZONA.r, 2400) : ZONA.r) : 1e9) } }; // Kennedy: el recorte llega también a Corabastos y Bavaria (en celular el radio de carga es menor) // fuera de la zona: malla de Google tal cual
   const recorte = (m) => {
@@ -962,7 +962,7 @@ async function crearMallaGoogle(T) {
         // la cámara (la imagen no cambia: mismo punto en pantalla), así los edificios, carros, árboles y animales propios quedan siempre encima
         .replace('#include <project_vertex>', '#include <project_vertex>\nif (uEmpuje > 0.0) { float dl = max(length(mvPosition.xyz), 1.0); vec4 pE = projectionMatrix * vec4(mvPosition.xyz * (1.0 + uEmpuje / dl), 1.0); gl_Position.z = min(pE.z / pE.w, 0.99999) * gl_Position.w; }');
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec3 vWPm; uniform sampler2D uMask; uniform float uOn, uCut; uniform vec2 uLC, uDim; uniform vec4 uGrade; uniform vec3 uTint, uZona; uniform float uMonte;')
+        .replace('#include <common>', '#include <common>\nvarying vec3 vWPm; uniform sampler2D uMask; uniform float uOn, uCut; uniform vec2 uLC, uDim; uniform vec4 uGrade; uniform vec3 uTint, uZona; uniform float uMonte, uRender;')
         // gradación tipo render de maqueta (Umbra): quita la bruma gris de la foto aérea, sube saturación y contraste y la calienta un poco
         .replace('#include <opaque_fragment>', `{
           vec3 c = max(outgoingLight - uGrade.w * vec3(0.030, 0.036, 0.048), 0.0) / (1.0 - uGrade.w * 0.04);
@@ -970,6 +970,13 @@ async function crearMallaGoogle(T) {
           c = max(mix(vec3(l), c, uGrade.x), 0.0);
           c += uGrade.w * vec3(0.026, 0.032, 0.046) * (1.0 - smoothstep(0.0, 0.16, l)); // sombras abiertas y azuladas (luz de cielo), no negras
           c = pow(c / 0.18, vec3(uGrade.y)) * 0.18 * uGrade.z * uTint;
+          if (uRender > 0.5) { // modo Kennedy: estilo render de arquitectura (vegetación verde viva y fresca, pavimentos y techos claros y limpios)
+            float lr = dot(c, vec3(0.2126, 0.7152, 0.0722)), verde = smoothstep(-0.015, 0.05, c.g - max(c.r * 0.97, c.b * 1.08)) * smoothstep(0.03, 0.09, lr) /* prados secos verde amarillento incluidos */, gris = 1.0 - smoothstep(0.03, 0.12, max(max(c.r, c.g), c.b) - min(min(c.r, c.g), c.b));
+            vec3 vv = max(mix(vec3(lr), c, 1.55), 0.0) * vec3(0.86, 1.12, 0.74) * 1.08;      // follaje y prados: verde fresco
+            c = mix(c, vv, verde * 0.85);
+            c = mix(c, vec3(lr) * 1.12 + vec3(0.02, 0.022, 0.026), gris * 0.6);                 // vías y cubiertas: gris claro limpio
+            outgoingLight = c;
+          } else
           outgoingLight = mix(outgoingLight, c, 1.0 - smoothstep(uZona.z, uZona.z + 350.0, distance(vWPm.xz, uZona.xy))); // afuera de la zona, la foto tal cual
           if (uMonte > 0.5) { // cerros: la foto aérea de lejos sale lavada (bruma de la toma): se le quita el velo y se recupera el verde del bosque y el páramo
             float alto = smoothstep(25.0, 140.0, vWPm.y) * smoothstep(1500.0, 4500.0, distance(vWPm.xz, uZona.xy));
@@ -1269,7 +1276,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=57'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    try { T3.R = await import('./data3d/real3d.js?v=58'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1695,7 +1702,7 @@ function materialEdificios(THREE) {
             float rim = 1.0 - smoothstep(0.75 - aa, 0.75 + aa, dist), somb = (1.0 - smoothstep(0.75, 1.2, dist)) * (1.0 - rim);
             diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 - 0.3 * somb), vec3(0.80, 0.78, 0.74), rim); }
         }
-        ${KEN ? '{ float lk = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.92, 0.86, 0.76) * (0.62 + 0.5 * lk), 0.42); } // modo Kennedy: fachadas claras como el render de Unreal' : ''}
+        ${KEN ? '{ float lk = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.97, 0.95, 0.91) * (0.66 + 0.48 * lk), 0.58); } // modo Kennedy: fachadas claras como el render de Unreal' : ''}
         diffuseColor.rgb *= 1.0 - 0.32 * uNoche; // de noche los muros se apagan y resaltan las ventanas encendidas
       }`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n        totalEmissiveRadiance += gWinC * gWin * 2.6; // ventana encendida');
@@ -3302,7 +3309,7 @@ $('b-hd').onclick = async () => {
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   // Biblioteca El Tintal (modelo propio) y canchas reales de OpenStreetMap: no dependen de la simulación, se cargan en paralelo
-  listoK().then(() => import('./data3d/tintal.js?v=4')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
+  listoK().then(() => import('./data3d/tintal.js?v=5')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
@@ -3326,7 +3333,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
         b.onclick = async () => { b.disabled = true; try { if (!pV) pV = import('./data3d/vision.js?v=2').then(m => m.crearVision({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, movil: MOVIL })); V = await pV; const on = !V.on; V.ver(on); b.classList.toggle('on', on); b.textContent = on ? '✦ Salir de la visión' : '✦ Visión'; } catch (e) { console.warn('visión:', e); say('⚠️ No cargó la visión', 5000); } b.disabled = false; };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
-      return import('./data3d/cielo.js?v=5');
+      return import('./data3d/cielo.js?v=6');
     }).then(m => { T3.cielo = m.iniciarCielo({ THREE: T3.THREE, T3, luzMalla }); }) // cielo y luz de 24 horas con el reloj de la simulación
     .then(() => import('./data3d/biotica.js?v=12')).then(m => m.iniciarBiotica({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0, movil: MOVIL, huertas: EST ? EST.sitios() : null }))
     .then(() => import('./data3d/actores.js?v=7')).then(m => m.iniciarActores({ THREE: T3.THREE, T3, lw, OX: 2095.67, OZ: -109.06, Y0: 2.0 })).then(a => { T3.actores = a; }) // capa de redes de actores (9 estrategias del Excel)
