@@ -53,7 +53,7 @@ export async function crearVision({ THREE, T3, lw, OX, OZ, movil = false }) {
       }
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(L, 3));
-    grupo.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial(aditivo({ color: 0xe9e4ff, opacity: 0.55 }))));
+    grupo.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial(aditivo({ color: 0xe9e4ff, opacity: 0.32 }))));
   }
   // pabellón efímero: cubierta ondulada de retícula de luz sobre columnas delgadas, con camas de cultivo encendidas debajo
   const pabellon = (cx, cz, ancho, largo, rot, alto, colA, conCamas) => {
@@ -62,7 +62,7 @@ export async function crearVision({ THREE, T3, lw, OX, OZ, movil = false }) {
     pg.rotateY(rot).translate(cx, 0, cz);
     const gr = new THREE.Group();
     gr.add(new THREE.Mesh(pg, new THREE.MeshBasicMaterial(aditivo({ color: colA, opacity: 0.12, side: THREE.DoubleSide }))));
-    gr.add(new THREE.LineSegments(new THREE.WireframeGeometry(pg), new THREE.LineBasicMaterial(aditivo({ color: 0xf2eeff, opacity: 0.5 }))));
+    gr.add(new THREE.LineSegments(new THREE.WireframeGeometry(pg), new THREE.LineBasicMaterial(aditivo({ color: 0xf2eeff, opacity: 0.3 }))));
     const L = [], cs = Math.cos(rot), sn = Math.sin(rot), loc = (u, v) => [cx + u * cs + v * sn, cz - u * sn + v * cs];
     for (const [u, v] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4], [0, 0]]) { const q = loc(u * ancho, v * largo); L.push(q[0], 0, q[1], q[0], alto - 1, q[1]); }
     if (conCamas) for (let k = -3; k <= 3; k++) { const a = loc(-ancho * 0.38, k * largo / 8), b = loc(ancho * 0.38, k * largo / 8); L.push(a[0], 0.9, a[1], b[0], 0.9, b[1]); }
@@ -95,46 +95,46 @@ export async function crearVision({ THREE, T3, lw, OX, OZ, movil = false }) {
       }
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setIndex(I);
-    grupo.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial(aditivo({ color: 0x1fcf86, opacity: 0.5, side: THREE.DoubleSide }))));
+    grupo.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial(aditivo({ color: 0x1fcf86, opacity: 0.32, side: THREE.DoubleSide }))));
     const gl = new THREE.BufferGeometry(); gl.setAttribute('position', new THREE.Float32BufferAttribute(L, 3));
-    grupo.add(new THREE.LineSegments(gl, new THREE.LineBasicMaterial(aditivo({ color: 0x9dffd8, opacity: 0.7 }))));
+    grupo.add(new THREE.LineSegments(gl, new THREE.LineBasicMaterial(aditivo({ color: 0x9dffd8, opacity: 0.4 }))));
     const gb = new THREE.BufferGeometry(); gb.setAttribute('position', new THREE.Float32BufferAttribute(B, 3)); gb.setAttribute('color', new THREE.Float32BufferAttribute(BC, 3));
-    grupo.add(new THREE.Points(gb, new THREE.PointsMaterial(aditivo({ size: 1.8, vertexColors: true, opacity: 0.95 }))));
+    grupo.add(new THREE.Points(gb, new THREE.PointsMaterial(aditivo({ size: 1.2, vertexColors: true, opacity: 0.85 }))));
   }
 
   /* ---------- 02 Corabastos y 04 humedales: bordes de luz ---------- */
-  const borde = (W, col, y, anchos) => { const L = []; for (const o of anchos) { const c = cent(W); for (let k = 0; k < W.length; k++) { const a = W[k], d = W[(k + 1) % W.length], s = (p) => [c[0] + (p[0] - c[0]) * o, c[1] + (p[1] - c[1]) * o]; const A = s(a), D = s(d); L.push(A[0], y, A[1], D[0], y, D[1]); } } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(L, 3)); grupo.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial(aditivo({ color: col, opacity: 0.9 })))); };
+  const borde = (W, col, y, anchos) => { const L = []; for (const o of anchos) { const c = cent(W); for (let k = 0; k < W.length; k++) { const a = W[k], d = W[(k + 1) % W.length], s = (p) => [c[0] + (p[0] - c[0]) * o, c[1] + (p[1] - c[1]) * o]; const A = s(a), D = s(d); L.push(A[0], y, A[1], D[0], y, D[1]); } } const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(L, 3)); grupo.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial(aditivo({ color: col, opacity: 0.55 })))); };
   if (coraPoly) borde(coraPoly, 0xff6fae, 1.2, [1, 0.985, 0.97, 1.02]);
   for (const h of humedales) borde(h.W, 0x38bdf8, 1.0, [1, 1.03, 1.06, 1.1]);
 
   /* ---------- red densa: arcos con pulsos de luz ---------- */
   const arcos = []; // [a, b, color, intensidad]
   const cerca = (p, L, k) => L.map(q => [q, (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2]).sort((a, b) => a[1] - b[1]).slice(0, k).map(x => x[0]);
-  const nodosT = []; { const lista = techos.filter(t => t.alta), paso = Math.max(1, Math.floor(lista.length / (movil ? 350 : 1100))); for (let i = 0; i < lista.length; i += paso) nodosT.push([...cent(lista[i].W), lista[i].h]); }
+  const nodosT = []; { const lista = techos.filter(t => t.alta), paso = Math.max(1, Math.floor(lista.length / (movil ? 220 : 520))); for (let i = 0; i < lista.length; i += paso) nodosT.push([...cent(lista[i].W), lista[i].h]); }
   const nodosP = parques.map(p => [p.c[0], p.c[1], 8]);
   const nodosB = bavEdif.map(e => [e.c[0], e.c[1], e.h]);
   const nodosW = humedales.map(h => [...cent(h.W), 2]);
   const nodoC = [coraC[0], coraC[1], 12], nodoH = [hub[0], hub[1], 20];
   for (const b of nodosB) { for (const q of cerca(b, nodosB, 4).slice(1)) arcos.push([b, q, COL.bav2, 0.8]); arcos.push([b, nodoH, COL.bav, 0.9]); } // dentro de Bavaria Común
   for (let k = 0; k < 7; k++) arcos.push([[hub[0] + (rnd() - 0.5) * 120, hub[1] + (rnd() - 0.5) * 120, 20], [coraC[0] + (rnd() - 0.5) * 160, coraC[1] + (rnd() - 0.5) * 120, 12], COL.cora, 1]); // Bavaria ↔ Corabastos
-  for (const p of nodosP) { arcos.push([nodoH, p, COL.bav, 0.75]); for (const t of cerca(p, nodosT, 10)) arcos.push([p, t, COL.huerta, 0.55]); } // bioinsumos y conocimiento: hub → parques → huertas
-  for (const t of nodosT) { for (const q of cerca(t, nodosT, 3).slice(1)) arcos.push([t, q, COL.roof, 0.28]); const s = cerca(t, tiendas.map(q => [q[0], q[1], 3]), 1)[0]; if (s) arcos.push([t, s, COL.tienda, 0.4]); }
-  for (let i = 0; i < nodosT.length; i += 6) arcos.push([nodoH, nodosT[i], COL.bav, 0.35]);
-  for (let i = 0; i < tiendas.length; i += 5) arcos.push([[tiendas[i][0], tiendas[i][1], 3], nodoC, COL.tienda, 0.3]); // comercio barrial ↔ Corabastos (menos fletes)
+  for (const p of nodosP) { arcos.push([nodoH, p, COL.bav, 0.75]); for (const t of cerca(p, nodosT, 6)) arcos.push([p, t, COL.huerta, 0.55]); } // bioinsumos y conocimiento: hub → parques → huertas
+  for (const t of nodosT) { for (const q of cerca(t, nodosT, 2).slice(1)) arcos.push([t, q, COL.roof, 0.3]); const s = cerca(t, tiendas.map(q => [q[0], q[1], 3]), 1)[0]; if (s) arcos.push([t, s, COL.tienda, 0.4]); }
+  for (let i = 0; i < nodosT.length; i += 14) arcos.push([nodoH, nodosT[i], COL.bav, 0.4]);
+  for (let i = 0; i < tiendas.length; i += 10) arcos.push([[tiendas[i][0], tiendas[i][1], 3], nodoC, COL.tienda, 0.3]); // comercio barrial ↔ Corabastos (menos fletes)
   for (const w of nodosW) { for (const p of cerca(w, nodosP, 4)) arcos.push([w, p, COL.humedal, 0.7]); arcos.push([w, nodoH, COL.humedal, 0.7]); arcos.push([w, nodoC, COL.humedal, 0.6]); }
   const SEG = 14, pos = [], col = [], curvas = [];
   for (const [a, b, c, k] of arcos) {
     const d = Math.hypot(b[0] - a[0], b[1] - a[1]); if (d < 2) continue;
-    const h = Math.min(260, 10 + d * 0.16), P = [];
+    const h = Math.min(170, 6 + d * 0.11), P = [];
     for (let s = 0; s <= SEG; s++) { const u = s / SEG; P.push([a[0] + (b[0] - a[0]) * u, a[2] + (b[2] - a[2]) * u + Math.sin(Math.PI * u) * h, a[1] + (b[1] - a[1]) * u]); }
-    for (let s = 0; s < SEG; s++) { pos.push(...P[s], ...P[s + 1]); for (let j = 0; j < 2; j++) col.push(c.r * k, c.g * k, c.b * k); }
+    for (let s = 0; s < SEG; s++) { pos.push(...P[s], ...P[s + 1]); for (let j = 0; j < 2; j++) { const f = k * (0.12 + 0.88 * Math.pow(Math.sin(Math.PI * (s + j) / SEG), 1.6)); col.push(c.r * f, c.g * f, c.b * f); } } // hilo fino: se desvanece en las puntas
     curvas.push({ P, c, k });
   }
   const gR = new THREE.BufferGeometry(); gR.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); gR.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  const red = new THREE.LineSegments(gR, new THREE.LineBasicMaterial(aditivo({ vertexColors: true, opacity: 0.75 }))); red.frustumCulled = false; grupo.add(red);
-  const NP = Math.min(curvas.length, movil ? 1200 : 4000), pp = new Float32Array(NP * 3), pc = new Float32Array(NP * 3), gP = new THREE.BufferGeometry();
+  const red = new THREE.LineSegments(gR, new THREE.LineBasicMaterial(aditivo({ vertexColors: true, opacity: 0.42 }))); red.frustumCulled = false; grupo.add(red);
+  const NP = Math.min(curvas.length, movil ? 700 : 1800), pp = new Float32Array(NP * 3), pc = new Float32Array(NP * 3), gP = new THREE.BufferGeometry();
   gP.setAttribute('position', new THREE.BufferAttribute(pp, 3)); gP.setAttribute('color', new THREE.BufferAttribute(pc, 3));
-  const pulsos = new THREE.Points(gP, new THREE.PointsMaterial(aditivo({ size: 4.5, vertexColors: true, opacity: 1 }))); pulsos.frustumCulled = false; grupo.add(pulsos);
+  const pulsos = new THREE.Points(gP, new THREE.PointsMaterial(aditivo({ size: 2.4, vertexColors: true, opacity: 0.95 }))); pulsos.frustumCulled = false; grupo.add(pulsos);
   const elegidas = []; for (let i = 0; i < NP; i++) { const cv = curvas[Math.floor(i * curvas.length / NP)]; elegidas.push({ cv, f: rnd(), v: 0.12 + rnd() * 0.15 }); pc.set([cv.c.r, cv.c.g, cv.c.b], i * 3); }
   // luciérnagas: brillos verdes y lilas sobre Bavaria Común y los parques
   { const F = [], FC = [], zonas = [bavSitio, ...parques.map(p => p.W)].filter(W => W.length);
@@ -146,10 +146,10 @@ export async function crearVision({ THREE, T3, lw, OX, OZ, movil = false }) {
   /* ---------- etiquetas numeradas y panel de objetivos ---------- */
   const css = document.createElement('style'); css.textContent = `
 .vi-et{position:fixed;z-index:9;transform:translate(-50%,-100%);display:none;pointer-events:none;font:600 11px system-ui,-apple-system,"Segoe UI",sans-serif;color:#eef2ff;text-align:center;max-width:230px}
-.vi-et .n{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--c);background:rgba(10,8,30,.75);color:#fff;font:800 13px/1 system-ui;box-shadow:0 0 18px var(--c)}
-.vi-et b{display:block;margin-top:6px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--c);text-shadow:0 0 10px var(--c)}
-.vi-et small{display:block;margin-top:3px;font-weight:500;color:#c7cbe8;line-height:1.35}
-.vi-et::after{content:'';display:block;width:1px;height:46px;margin:6px auto 0;background:linear-gradient(var(--c),transparent)}
+.vi-et .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1px solid var(--c);background:rgba(6,6,20,.7);color:#fff;font:600 10px/1 system-ui;letter-spacing:.05em;box-shadow:0 0 10px color-mix(in srgb,var(--c) 60%,transparent)}
+.vi-et b{display:block;margin-top:6px;font-size:10px;font-weight:600;letter-spacing:.32em;text-transform:uppercase;color:#fff;text-shadow:0 0 8px var(--c)}
+.vi-et small{display:block;margin-top:3px;font-weight:400;font-size:10px;color:#aeb3d6;line-height:1.35}
+.vi-et::after{content:'';display:block;width:1px;height:60px;margin:6px auto 0;background:linear-gradient(var(--c),transparent);opacity:.7}
 #vi-panel{position:fixed;z-index:12;right:14px;top:14px;width:min(360px,calc(100vw - 28px));max-height:calc(100vh - 28px);overflow:auto;display:none;padding:18px 18px 14px;border-radius:14px;background:rgba(9,8,28,.82);border:1px solid rgba(185,167,255,.28);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#e8e9ff;font:13px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 #vi-panel h2{margin:0;font-size:12px;letter-spacing:.42em;text-transform:uppercase;color:#b9a7ff;font-weight:600}
 #vi-panel h3{margin:4px 0 10px;font-size:22px;letter-spacing:.3em;text-transform:uppercase;font-weight:800;color:#fff}
