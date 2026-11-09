@@ -34,5 +34,5 @@ export async function crearColectivo({ THREE, T3, lw }) {
   const d = document.createElement('div'); d.id = 'cb-diag';
   d.innerHTML = `<button class="x" aria-label="Cerrar">✕</button><h3>Actor · E1 Bavaria Común</h3><h4>Colectivo Salvemos el Bosque Bavaria</h4>${svg}<p>La comunidad que defiende el bosque no solo busca detener la urbanización: quiere recuperar el control sobre su salud, el aire y un espacio propio para encontrarse. En la propuesta, el colectivo autoorganiza las asambleas y los laboratorios del Instituto Biotecnológico, que emite conocimiento y bioinsumos hacia la red de huertas y reduce la presión sobre Corabastos.</p>`;
   document.body.appendChild(d); d.querySelector('.x').onclick = () => { d.style.display = 'none'; };
-  return { ver: (on) => { grupo.visible = on; d.style.display = on ? 'block' : 'none'; } };
+  return { ver: (on) => { grupo.visible = on; } // el diagrama ahora es la red de gobernanza de E1 (data3d/red_gobernanza.js) };
 }
