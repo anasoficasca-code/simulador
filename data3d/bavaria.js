@@ -149,6 +149,36 @@ export function construirBavaria({ THREE, T3, lw, D, liviano }) {
     for (const m of [fuste, base]) { m.castShadow = sombras; m.receiveShadow = sombras; tg.add(m); }
     grupo.add(tg);
   }
+  // ---- huertas del Instituto Bavaria Común: parcelas de cultivo en hileras en los claros del predio (fuera de edificios y del bosque denso) ----
+  {
+    const W = (D.sitio || []).map(p => lw(p[0], p[1])), EDS = D.edif.map(e => e.p.map(p => lw(p[0], p[1])));
+    const dentro = (P, x, z) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
+    const cerca = (P, x, z, d) => { for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[j], b = P[i], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / L2)); if (Math.hypot(x - a[0] - t * dx, z - a[1] - t * dz) < d) return true; } return false; };
+    const ARB = (T3.bavArboles || []).map(a => lw(a[0], a[1])), ocupado = (x, z) => ARB.some(q => (q[0] - x) ** 2 + (q[1] - z) ** 2 < 36);
+    // textura: hileras de cultivo vistas desde arriba (4 cultivos en franjas) con caminos de tierra
+    const cv2 = document.createElement('canvas'); cv2.width = 256; cv2.height = 256; const g2 = cv2.getContext('2d');
+    g2.fillStyle = '#6b5440'; g2.fillRect(0, 0, 256, 256);
+    const CUL = [['#6fa83f', '#8fc55a'], ['#4e8a35', '#6aa648'], ['#8a3f52', '#5f8a3a'], ['#9cbf55', '#c2d870']];
+    for (let r = 0; r < 8; r++) { const y = r * 32 + 6, [c1, c2] = CUL[r % 4]; g2.fillStyle = '#4a3a2c'; g2.fillRect(0, y - 3, 256, 26); for (let x = 6; x < 256; x += 9) { g2.fillStyle = (x / 9 | 0) % 2 ? c1 : c2; g2.beginPath(); g2.ellipse(x, y + 10, 5.5, 7, 0, 0, 7); g2.fill(); } }
+    const texH = new THREE.CanvasTexture(cv2); texH.colorSpace = THREE.SRGBColorSpace; texH.anisotropy = 8;
+    const matH = new THREE.MeshStandardMaterial({ map: texH, roughness: 0.95, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+    const matBorde = new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 0.9 });
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const q of W) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]); }
+    const PL = []; // parcelas de 14 x 9 m cada 18 x 13 m
+    for (let x = x0 + 10; x < x1 - 10; x += 18) for (let z = z0 + 10; z < z1 - 10; z += 13) {
+      if (!dentro(W, x, z) || cerca(W, x, z, 12)) continue;
+      if (EDS.some(E => dentro(E, x, z) || cerca(E, x, z, 9))) continue;
+      if (ocupado(x, z)) continue;
+      PL.push([x, z]);
+    }
+    if (PL.length) {
+      const o3 = new THREE.Object3D(), plano = new THREE.PlaneGeometry(14, 9).rotateX(-Math.PI / 2), caja = new THREE.BoxGeometry(14.4, 0.35, 9.4);
+      const mP = new THREE.InstancedMesh(plano, matH, PL.length), mB = new THREE.InstancedMesh(caja, matBorde, PL.length);
+      PL.forEach(([x, z], i) => { o3.position.set(x, 0.55, z); o3.rotation.set(0, 0, 0); o3.updateMatrix(); mP.setMatrixAt(i, o3.matrix); o3.position.y = 0.2; o3.updateMatrix(); mB.setMatrixAt(i, o3.matrix); });
+      mP.receiveShadow = mB.receiveShadow = true; grupo.add(mB, mP);
+    }
+    grupo.userData.huertas = PL.length;
+  }
   T3.scene.add(grupo);
   // el arbolado del predio (data3d/bavaria_arboles.json) lo dibuja real3d.js con los mismos modelos reales del territorio (ver index.html)
   return grupo;

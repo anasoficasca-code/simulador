@@ -1341,7 +1341,7 @@ async function initTodoReal() {
       })();
     }
     marcarPaso('edif');
-    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && import('./data3d/bavaria.js?v=5').then(m => { T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
+    if (!GOOGLE && !(LIVIANO && !MEDIO)) pBav.then(BV => BV && window.cargarJSON('data3d/bavaria_arboles.json?v=3').then(BA => { T3.bavArboles = (BA && BA.arboles || []).filter(a => a[4] === 1); }).catch(() => {}).then(() => import('./data3d/bavaria.js?v=6')).then(m => { /* huertas en los claros (no sobre el bosque denso) */ T3.bavaria = m.construirBavaria({ THREE, T3, lw, D: BV, liviano: LIVIANO }); }))
       .catch(e => console.warn('fábrica Bavaria:', e));
     if (!GOOGLE && !(LIVIANO && !MEDIO)) pCora.then(CO => CO && import('./data3d/corabastos.js?v=2').then(m => { T3.corabastos = m.construirCorabastos({ THREE, T3, lw, D: CO, liviano: LIVIANO }); }))
       .catch(e => console.warn('Corabastos:', e));
