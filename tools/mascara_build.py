@@ -25,6 +25,9 @@ def propios():
     B = json.load(open(os.path.join(D, 'bavaria.json')))
     for e in B['edif']: P.append(Polygon(e['p']).buffer(3))
     for t in B['tanques']: P.append(Point(t).buffer(9))
+    from shapely.geometry import box as _box
+    I = json.load(open(os.path.join(D, 'inem', 'inem.json')))['caja_giro']  # sector INEM Kennedy (modelo oficial de Bogotá, data3d/inem.js)
+    for (a, b) in json.load(open(os.path.join(D, 'inem', 'inem.json')))['huellas_giro']: xs = [a[0] + 7437, b[0] + 7437]; ys = [3270.96 - a[1], 3270.96 - b[1]]; P.append(_box(min(xs) - 1, min(ys) - 1, max(xs) + 1, max(ys) + 1))
     import math as _m
     for r in json.load(open(os.path.join(D, 'conjuntos.json')))['barras']:  # conjuntos de bloques de cubierta roja (data3d/conjuntos.js)
         ux, uy = _m.cos(r['a']), _m.sin(r['a']); vx, vy = -uy, ux; L2, W2 = r['L'] / 2 + 2, r['W'] / 2 + 2
