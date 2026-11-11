@@ -37,8 +37,8 @@
   #loader{position:fixed;inset:0;z-index:60;display:block;background:#0b1015;overflow:hidden;transition:opacity .9s ease,visibility .9s}
   #loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
   .cv-fotos{position:absolute;inset:0;overflow:hidden;background:#0b1015}
-  .cv-fotos img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.92);animation:cvAp 1.6s ease both}
-  .cv-velo{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,16,21,.9) 0%,rgba(11,16,21,.55) 42%,rgba(11,16,21,.08) 100%),linear-gradient(0deg,rgba(11,16,21,.85) 0%,transparent 40%)}
+  .cv-fotos img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.95);animation:cvAp 1.6s ease both}
+  .cv-velo{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,16,21,.82) 0%,rgba(11,16,21,.45) 38%,rgba(11,16,21,0) 62%),linear-gradient(0deg,rgba(11,16,21,.8) 0%,transparent 38%)}
   .cv-city{display:none}
   .cv-card{position:absolute;left:clamp(20px,6vw,96px);right:clamp(20px,6vw,96px);bottom:clamp(28px,8vh,90px);max-width:880px;font-family:'Inter',system-ui,sans-serif;color:#e9ebec;animation:cvIn 1s cubic-bezier(.2,.7,.2,1) both}
   .cv-brand{font:500 11px 'JetBrains Mono',ui-monospace,monospace;letter-spacing:.18em;text-transform:uppercase;color:#e2a55b}
@@ -160,7 +160,7 @@
 
 <div id="loader">
   <div class="cv-fotos" id="cvFotos">
-    <img class="on" src="presentacion/img/planta.jpg" alt="Kennedy en planta: manzanas, vías y humedales" />
+    <img class="on" src="presentacion/img/portada_render.jpg" alt="Kennedy en 3D: humedal El Burro, torres y barrios" />
   </div>
   <div class="cv-velo"></div>
   <div class="cv-city" id="cvCity"></div>
@@ -1097,7 +1097,7 @@ function cargarMascara(T, f) {
 // CUBIERTAS REALES: se dibuja la malla de Google vista desde arriba (cámara ortográfica) en una textura que cubre ~1,8 km
 // alrededor de la cámara; los techos de los edificios del modelo toman de ahí el color real de su cubierta.
 function crearOrto(T) {
-  const THREE = T.THREE, S = T.movil ? 1024 : 2048, H = 900;
+  const THREE = T.THREE, S = T.movil ? 1024 : 4096, H = 900; /* 4096: ~0,45 m por píxel, se ven tanques, tejas y patios */
   const cam = new THREE.OrthographicCamera(-H, H, H, -H, 10, 2600);
   cam.up.set(0, 0, -1); cam.layers.set(1); // norte arriba; solo la malla de Google
   T.ortho = { cam, H, rt: new THREE.WebGLRenderTarget(S, S, { depthBuffer: true }), cx: 1e9, cz: 1e9, t: 0, cargadas: -1, vp: new THREE.Matrix4() };
@@ -1312,7 +1312,7 @@ async function initTodoReal() {
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
     if (KEN) import('./data3d/ui_sobrio.js?v=2').then(m => m.iniciarUI()).catch(e => console.warn('interfaz:', e)); /* interfaz sobria: un sistema visual para todos los paneles */
-    if (KEN && !LIVIANO) T3.splatLejos = true; /* árboles: reales de cerca, splat de lejos */ try { T3.R = await import('./data3d/real3d.js?v=66'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    /* árboles: reales con sombra hasta ~900 m y siluetas del mismo árbol más lejos (sin copas difusas) */ try { T3.R = await import('./data3d/real3d.js?v=67'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1719,7 +1719,7 @@ function materialEdificios(THREE) {
       .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos, uUsos;' + (KEN && !LIVIANO ? '\nuniform sampler2D tLosaC, tLosaN, tLosaR;' : '') + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
       .replace('#include <color_fragment>', `#include <color_fragment>
       if (uSoloAltos > 0.5 && abs(vWl.w) < 16.5) discard; // Foto real: las casas y bloques bajos son los de la foto de Google
-      float gTecho = 0.0; vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
+      float gOrto = 0.0; float gTecho = 0.0; vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
       {
         ${FACHADA || ''}
         float L = vWl.z, H = vWl.w;
@@ -1761,7 +1761,7 @@ function materialEdificios(THREE) {
             if (uvr.x > 0.0 && uvr.x < 1.0 && uvr.y > 0.0 && uvr.y < 1.0) {
               vec4 foto = texture2D(uOrto, uvr);
               float borde = smoothstep(0.0, 0.06, min(min(uvr.x, 1.0 - uvr.x), min(uvr.y, 1.0 - uvr.y))); // se funde en el borde de la zona cubierta
-              diffuseColor.rgb = mix(diffuseColor.rgb, foto.rgb * 1.08, foto.a * borde);
+              diffuseColor.rgb = mix(diffuseColor.rgb, foto.rgb * 1.08, foto.a * borde); gOrto = foto.a * borde;
             }
           }
         }
@@ -1788,7 +1788,7 @@ function materialEdificios(THREE) {
             vec3 losa = vec3(0.70, 0.69, 0.66) * (0.9 + 0.14 * m2);
             ${KEN && !LIVIANO ? 'losa *= mix(vec3(1.0), texture2D(tLosaC, vWP.xz / 6.0).rgb * 1.9, 0.75); gTecho = 1.0;' : ''}
             vec3 zinc = mix(vec3(0.60, 0.64, 0.68), vec3(0.62, 0.42, 0.30), step(0.55, r2)) * (0.86 + 0.14 * sin(vWP.x * 11.0 + vWP.z * 3.0));
-            diffuseColor.rgb = mix(diffuseColor.rgb, Hb < 8.0 && r1 > 0.55 ? zinc : losa, 0.7);
+            diffuseColor.rgb = mix(diffuseColor.rgb, Hb < 8.0 && r1 > 0.55 ? zinc : losa, 0.7 * (1.0 - 0.9 * gOrto)); /* con foto aérea, la cubierta real de Kennedy manda */
           }
         }` : ''}
         if (uUsos > 0.5) { /* usos del suelo: el edificio entero (muros y techo) con el color de su uso */
