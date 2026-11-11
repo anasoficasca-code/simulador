@@ -1318,11 +1318,12 @@ async function initTodoReal() {
     // Biblioteca El Tintal y su plaza: modelo propio (data3d/tintal.js); sus cajas genéricas se quitan
     const pTin = KEN ? window.cargarJSON('data3d/tintal.json?v=2').catch(() => null) : Promise.resolve(null);
     const pInem = KEN ? window.cargarJSON('data3d/inem/celdas.json?v=1').then(L => new Set(L)).catch(() => null) : Promise.resolve(null); // sector INEM: celdas de 6 m con construcción del modelo oficial (data3d/inem.js)
+    T3.pUsos = KEN ? window.cargarJSON('data3d/usos_edif.json?v=1').then(D => { const M = new Map(); for (const k in D) { const a = D[k], c = +k; for (let i = 0; i < a.length; i += 2) M.set(a[i] * 100003 + a[i + 1], c); } T3.usosMapa = M; return M; }).catch(() => null) : Promise.resolve(null); /* usos del suelo por edificio (data3d/usos_suelo.js) */
     const deInem = (IN, b) => { if (!IN) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } x /= n; y /= n; return IN.has(Math.floor(x / 6) + '_' + Math.floor(y / 6)); };
     const pConj = KEN ? window.cargarJSON('data3d/conjuntos.json?v=3').catch(() => null) : Promise.resolve(null); // conjuntos de cubierta roja (data3d/conjuntos.js)
     const deConj = (CJ, b) => { if (!CJ) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } x /= n; y /= n; return CJ.barras.some(r => { const dx = x - r.c[0], dy = y - r.c[1], u = dx * Math.cos(r.a) + dy * Math.sin(r.a), w = -dx * Math.sin(r.a) + dy * Math.cos(r.a); return Math.abs(u) < r.L / 2 + 2 && Math.abs(w) < r.W / 2 + 2; }); };
     const deTintal = (TI, b) => { if (!TI) return false; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } return enPoli(TI.zona_modelo, x / n, y / n); };
-    const cargarEdif = async (f) => { const [BV, CO, TI, CJ, IN] = await Promise.all([pBav, pCora, pTin, pConj, pInem]); return decodificarEdificios(EI, await (await fetch('data3d/edif/' + f)).arrayBuffer()).filter(b => enZona(b.pts[0][0], b.pts[0][1]) && !deBavaria(BV, b) && !deCora(CO, b) && !deTintal(TI, b) && !deConj(CJ, b) && !deInem(IN, b)); }; // vista realista: solo la zona del proyecto
+    const cargarEdif = async (f) => { const [BV, CO, TI, CJ, IN] = await Promise.all([pBav, pCora, pTin, pConj, pInem, T3.pUsos]); return decodificarEdificios(EI, await (await fetch('data3d/edif/' + f)).arrayBuffer()).filter(b => enZona(b.pts[0][0], b.pts[0][1]) && !deBavaria(BV, b) && !deCora(CO, b) && !deTintal(TI, b) && !deConj(CJ, b) && !deInem(IN, b)); }; // vista realista: solo la zona del proyecto
     const agregarHuellas = () => {}; // la máscara de huellas ya viene precalculada (data3d/edif/mascara*.png)
     if (!GOOGLE && !(LIVIANO && !MEDIO)) pMalla.then(() => { if (T3.maskU) cargarMascara(T3, LIVIANO ? 'mascara_humedal.png?v=11' : 'mascara.png?v=11'); });
     let B = [];
@@ -1649,7 +1650,7 @@ function materialEdificios(THREE) {
   if (T3.matEdif) return T3.matEdif;
   const mat = LIVIANO ? new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true }) // celular/gafas: material barato
     : new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true, roughness: 0.86, metalness: 0, envMap: T3.env || null, envMapIntensity: 0.55 });
-  T3.roofU = { uOrto: { value: null }, uOrtoVP: { value: new THREE.Matrix4() }, uOrtoOn: { value: 0 }, uNoche: { value: 0 }, uLuces: { value: 0.5 }, uSoloAltos: { value: 0 } };
+  T3.roofU = { uOrto: { value: null }, uOrtoVP: { value: new THREE.Matrix4() }, uOrtoOn: { value: 0 }, uNoche: { value: 0 }, uLuces: { value: 0.5 }, uSoloAltos: { value: 0 }, uUsos: { value: 0 } };
   if (KEN && !LIVIANO) { const tl = new THREE.TextureLoader(), cargaT = (n, srgb) => { const t = tl.load('data3d/textures/' + n); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.anisotropy = 8; return t; };
     Object.assign(T3.roofU, { tLosaC: { value: cargaT('losa_color.jpg', true) }, tLosaN: { value: cargaT('losa_normal.jpg') }, tLosaR: { value: cargaT('losa_rugosidad.jpg') } }); } // cubiertas de concreto PBR (Poly Haven, CC0) // uNoche/uLuces: ventanas encendidas (data3d/cielo.js)
   if (REALISTA) {
@@ -1695,7 +1696,7 @@ function materialEdificios(THREE) {
       .replace('#include <common>', '#include <common>\nattribute vec4 wall;\nattribute float bord;\nattribute float bid;\nvarying float vBid;\nvarying float vBd;\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wpv = modelMatrix * vec4(position, 1.0); vWP = wpv.xyz; vWs = wpv.xz; vWl = wall; vBd = bord; vBid = bid;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos;' + (KEN && !LIVIANO ? '\nuniform sampler2D tLosaC, tLosaN, tLosaR;' : '') + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
+      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos, uUsos;' + (KEN && !LIVIANO ? '\nuniform sampler2D tLosaC, tLosaN, tLosaR;' : '') + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
       .replace('#include <color_fragment>', `#include <color_fragment>
       if (uSoloAltos > 0.5 && abs(vWl.w) < 16.5) discard; // Foto real: las casas y bloques bajos son los de la foto de Google
       float gTecho = 0.0; vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
@@ -1751,7 +1752,7 @@ function materialEdificios(THREE) {
             diffuseColor.rgb = mix(diffuseColor.rgb * (1.0 - 0.3 * somb), vec3(0.80, 0.78, 0.74), rim); }
         }
         ${KEN ? `{ // modo Kennedy: fachadas claras con el tono propio de cada edificio, chorreos bajo la cornisa, sombra al pie del muro y cubiertas variadas
-          float hb = vBid, lk = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)), kq = floor(hb * 6.0);
+          float hb = fract(vBid), lk = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)), kq = floor(hb * 6.0);
           vec3 tono = kq < 1.0 ? vec3(0.93, 0.88, 0.80) : kq < 2.0 ? vec3(0.96, 0.95, 0.92) : kq < 3.0 ? vec3(0.92, 0.79, 0.69) : kq < 4.0 ? vec3(0.84, 0.66, 0.54) : kq < 5.0 ? vec3(0.86, 0.84, 0.79) : vec3(0.78, 0.58, 0.47);
           diffuseColor.rgb = mix(diffuseColor.rgb, tono * (0.62 + 0.5 * lk), 0.42);
           float Hb = vWl.w;
@@ -1770,6 +1771,12 @@ function materialEdificios(THREE) {
             diffuseColor.rgb = mix(diffuseColor.rgb, Hb < 8.0 && r1 > 0.55 ? zinc : losa, 0.7);
           }
         }` : ''}
+        if (uUsos > 0.5) { /* usos del suelo: el edificio entero (muros y techo) con el color de su uso */
+          float uc = floor(vBid + 0.001);
+          vec3 cu = uc < 0.5 ? vec3(0.62, 0.63, 0.65) : uc < 1.5 ? vec3(0.957, 0.827, 0.369) : uc < 2.5 ? vec3(0.902, 0.224, 0.275) : uc < 3.5 ? vec3(0.271, 0.482, 0.616) : uc < 4.5 ? vec3(0.482, 0.176, 0.557) : uc < 5.5 ? vec3(0.541, 0.788, 0.149) : uc < 6.5 ? vec3(0.286, 0.314, 0.341) : vec3(0.678, 0.71, 0.741);
+          cu = pow(cu, vec3(2.2));
+          diffuseColor.rgb = cu * (vWl.z > 0.5 ? 0.88 + 0.12 * smoothstep(0.0, 6.0, vWP.y) : 1.05);
+        }
         diffuseColor.rgb *= 1.0 - 0.32 * uNoche; // de noche los muros se apagan y resaltan las ventanas encendidas
       }`);
     sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n        totalEmissiveRadiance += gWinC * gWin * 2.6; // ventana encendida');
@@ -1840,6 +1847,11 @@ function techoDosAguas(W, h, bi, col, P, C, I, WL, vc) {
   a = add(pA, h, col.w); b = add(pD, h, col.w); c = add(r0, h + hr - 0.2, col.w); I.push(a, c, b);
   a = add(pB, h, col.w); b = add(pC, h, col.w); c = add(r1, h + hr - 0.2, col.w); I.push(a, b, c);
   return vc;
+}
+function usoDe(b) { /* código de uso (0 = sin dato) por la celda de 2 m del centroide; si no está, la vecina más cercana */
+  const M = T3.usosMapa; if (!M) return 0; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } x /= n * 2; y /= n * 2;
+  const i0 = Math.floor(x), j0 = Math.floor(y), c0 = M.get(i0 * 100003 + j0); if (c0) return c0;
+  let mejor = 0, dm = 9; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const c = M.get((i0 + di) * 100003 + j0 + dj); if (!c) continue; const d = (i0 + di + 0.5 - x) ** 2 + (j0 + dj + 0.5 - y) ** 2; if (d < dm) { dm = d; mejor = c; } } return mejor;
 }
 function buildChunks(THREE, B) {
   const torresFoto = [];
@@ -1917,7 +1929,8 @@ function buildChunks(THREE, B) {
         }
       }
       if (REALISTA && !(KEN && h >= HUERTA_H)) vc = techoDosAguas(W, h, bi, col, P, C, I, WL, vc); // los altos de Kennedy llevan huerta en la terraza (cubierta plana)
-      { const hb = ((Math.sin(bi * 127.1 + 311.7) * 43758.5453) % 1 + 1) % 1; while (BID.length < vc) BID.push(hb); // tono propio de cada edificio (shader)
+      { const hb = ((Math.sin(bi * 127.1 + 311.7) * 43758.5453) % 1 + 1) % 1, uso = usoDe(b); while (BID.length < vc) BID.push(hb * 0.98 + uso); // tono propio de cada edificio (shader); parte entera = uso del suelo
+        if (KEN) { const S = T3.usosStats || (T3.usosStats = { n: [0, 0, 0, 0, 0, 0, 0, 0], alturas: [] }); S.n[uso]++; S.alturas.push(h); }
         if (KEN && !LIVIANO && h >= 4 && h < HUERTA_H) { // cubierta: tanque negro de agua, antena y claraboya, como en los techos de Kennedy
           const r = (k) => ((Math.sin((bi + k) * 91.7 + 13.1) * 43758.5453) % 1 + 1) % 1, dentroW = (x, z) => { let c2 = false; for (let a = 0, b2 = n - 1; a < n; b2 = a++) { const A = W[a], B2 = W[b2]; if ((A[1] > z) !== (B2[1] > z) && x < (B2[0] - A[0]) * (z - A[1]) / (B2[1] - A[1]) + A[0]) c2 = !c2; } return c2; };
           const hacia = (k, f) => { const v = W[Math.floor(r(k) * n) % n]; return [cx + (v[0] - cx) * f, cz + (v[1] - cz) * f]; };
@@ -3450,6 +3463,13 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       if (!document.getElementById('ar-btn')) { // árboles: por defecto los reales de la foto 3D de Google (como God's Eye); el botón trae los modelos 3D
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
         b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.arbolesSplat) T3.arbolesSplat.ver(on); else if (T3.trees && T3.trees.ver) T3.trees.ver(on); };
+        (fb || ag.parentElement).insertAdjacentElement('afterend', b);
+      }
+      if (KEN && !document.getElementById('us-btn')) { /* usos del suelo: edificios pintados por su uso real + panel (data3d/usos_suelo.js) */
+        const fb = document.getElementById('ar-btn'), b = document.createElement('button'); b.id = 'us-btn'; b.textContent = 'Usos del suelo'; b.title = 'Pinta cada edificio con su uso real (shapefile Usos_kennedy)'; b.style.cssText = 'width:100%;margin-top:6px';
+        b.onclick = async () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); T3.roofU.uUsos.value = on ? 1 : 0;
+          const pn = document.getElementById('usos-panel'); if (!on) { if (pn) pn.remove(); return; }
+          try { (await import('./data3d/usos_suelo.js?v=2')).panelUsos({ T3 }); } catch (e) { console.warn('usos del suelo:', e); } };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
