@@ -95,10 +95,77 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 host.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#0b1015');
-const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, -8000, 12000);
+// cámara de lente larga (casi axonométrica) para que la malla fotorrealista de Google cargue su detalle
+const FOV = 20;
+const cam = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 10, 60000);
+scene.fog = new THREE.Fog('#0b1015', 20000, 40000);
 scene.add(new THREE.HemisphereLight(0xdfe9f2, 0x1a1f24, 1.1));
 const sol = new THREE.DirectionalLight(0xfff1dc, 2.1); sol.position.set(-600, 900, 400); scene.add(sol);
 const sol2 = new THREE.DirectionalLight(0x9fb7d0, 0.6); sol2.position.set(700, 500, -300); scene.add(sol2);
+
+/* ---------------- malla fotorrealista de Google (la misma del simulador) ---------------- */
+// Google Photorealistic 3D Tiles: la fábrica, el bosque y los barrios tal como están, con su foto. Encima va solo lo de la propuesta.
+const GKEY = 'AIzaSyCF2MXjc0DYRFrHk7j_BCyxVpWOdYqDIC4'; // la misma llave del simulador (index.html)
+const MXg = 111320 * Math.cos(4.63 * Math.PI / 180), MYg = 110540;
+const aLL = (x, y) => [-74.17 + (x - 5193.24) / MXg, 4.63 + (y - 2090.06) / MYg]; // modelo -> [lng, lat]
+const G = { tiles: null, dy: 0, M: null, luz: 1, luzObj: 1, mats: new Set(), ok: null, calib: 0, t: 0, atrib: 0 };
+const SIN_G = new URLSearchParams(location.search).get('google') === '0';
+const REAL = () => !SIN_G && G.ok !== false; // con la malla: la foto es el mundo y lo propio va encima
+const gradoU = { uSat: { value: 1.18 }, uCon: { value: 0.92 }, uBri: { value: 1.18 } };
+async function crearGoogle() {
+  const [TR, PL] = await Promise.all([import('3d-tiles-renderer'), import('3d-tiles-renderer/plugins')]);
+  const { DRACOLoader } = await import('three/addons/loaders/DRACOLoader.js');
+  const draco = new DRACOLoader().setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/gltf/');
+  const tiles = new TR.TilesRenderer();
+  tiles.registerPlugin(new PL.GoogleCloudAuthPlugin({ apiToken: GKEY, autoRefreshToken: true }));
+  tiles.registerPlugin(new PL.GLTFExtensionsPlugin({ dracoLoader: draco }));
+  tiles.setCamera(cam); tiles.setResolutionFromRenderer(cam, renderer);
+  tiles.errorTarget = 40; G.meta = MOVIL ? 14 : 5;
+  const q = aLL(CX, CY), D2R = Math.PI / 180, frame = new THREE.Matrix4();
+  TR.WGS84_ELLIPSOID.getEastNorthUpFrame(q[1] * D2R, q[0] * D2R, frame);
+  frame.multiply(new THREE.Matrix4().makeTranslation(0, 0, 2564)); // altura elipsoidal del suelo de Kennedy (medida en el simulador); luego se calibra
+  G.M = new THREE.Matrix4().makeRotationX(-Math.PI / 2).multiply(frame.invert());
+  tiles.group.matrixAutoUpdate = false; aplicarG(tiles);
+  tiles.addEventListener('load-model', ({ scene: s }) => s.traverse(c => {
+    const m = c.isMesh && c.material; if (!m || !m.map) return;
+    m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    if (!m.isMeshBasicMaterial) { m.emissiveMap = m.map; m.emissive.setScalar(G.luz); m.color.setScalar(0); m.roughness = 1; m.metalness = 0; }
+    else m.color.setScalar(G.luz);
+    m.toneMapped = false;
+    m.onBeforeCompile = (sh) => { // gradación tipo maqueta: menos bruma, más saturación (como el simulador)
+      Object.assign(sh.uniforms, gradoU);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uSat, uCon, uBri;')
+        .replace('#include <opaque_fragment>', `{ vec3 c = max(outgoingLight - vec3(0.030, 0.036, 0.048), 0.0) / 0.96; float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+          c = max(mix(vec3(l), c, uSat), 0.0); c += vec3(0.026, 0.032, 0.046) * (1.0 - smoothstep(0.0, 0.16, l)); outgoingLight = pow(c / 0.18, vec3(uCon)) * 0.18 * uBri; }
+          #include <opaque_fragment>`);
+    };
+    m.customProgramCacheKey = () => 'gradoBavaria'; m.needsUpdate = true;
+    G.mats.add(m); c.renderOrder = -10;
+  }));
+  tiles.addEventListener('dispose-model', ({ scene: s }) => s.traverse(c => { if (c.isMesh) G.mats.delete(c.material); }));
+  tiles.addEventListener('load-error', (e) => console.warn('tesela', e && e.error && e.error.message, e && e.url));
+  scene.add(tiles.group); G.tiles = tiles; G.ok = true;
+}
+const aplicarG = (tl = G.tiles) => { tl.group.matrix.makeTranslation(0, G.dy, 0).multiply(G.M); tl.group.matrixWorldNeedsUpdate = true; tl.group.updateMatrixWorld(true); };
+// el suelo de la foto se pone en y = 0 midiendo la malla sobre las puertas del predio (cruces de calle): percentil bajo para no medir techos ni copas
+function calibrarG() {
+  const st = G.tiles.stats; if (st.downloading + st.parsing > 4 || G.tiles.errorTarget > 12) return false;
+  const rc = new THREE.Raycaster(), ab = new THREE.Vector3(0, -1, 0), hits = [];
+  for (const [x, y] of D.entradas) for (const d of [[0, 0], [12, 0], [-12, 0], [0, 12], [0, -12]]) { const [X, Z] = W(x + d[0], y + d[1]); rc.set(new THREE.Vector3(X, 400, Z), ab); const h = rc.intersectObject(G.tiles.group, true)[0]; if (h && Math.abs(h.point.y) < 60) hits.push(h.point.y); }
+  if (hits.length < 12) return false;
+  hits.sort((a, b) => a - b); G.dy -= hits[Math.floor(hits.length * 0.25)]; aplicarG(); return true;
+}
+function actualizarG(dt) {
+  const tl = G.tiles; if (!tl) return;
+  try {
+    tl.setResolutionFromRenderer(cam, renderer); cam.updateMatrixWorld(); tl.update();
+    const st = tl.stats; if (tl.errorTarget > G.meta && st.downloading === 0 && st.parsing === 0 && st.visible > 3) tl.errorTarget = Math.max(G.meta, Math.round(tl.errorTarget * 0.62));
+    G.t += dt; if (G.calib < 2 && G.t > [3, 12][G.calib]) { if (calibrarG()) G.calib++; else G.t = 0; }
+    if (Math.abs(G.luz - G.luzObj) > 0.005) { G.luz += (G.luzObj - G.luz) * Math.min(1, dt * 4); for (const m of G.mats) { if (m.isMeshBasicMaterial) m.color.setScalar(G.luz); else m.emissive.setScalar(G.luz); } }
+    if ((G.atrib -= dt) <= 0) { G.atrib = 2; if (location.search.includes('debug')) console.log('malla', JSON.stringify(tl.stats), tl.errorTarget, G.dy.toFixed(1), G.mats.size); const t = tl.getAttributions().filter(a => a.type === 'string').map(a => a.value).join(' · '); const el = document.getElementById('atrib'); if (el) el.textContent = /^google/i.test(t) ? t : 'Google' + (t ? ' · ' + t : ''); }
+  } catch (err) { if (!G.fallo) { G.fallo = true; console.warn('malla', err); } }
+}
+if (!SIN_G) crearGoogle().catch(err => { console.warn('sin malla de Google', err); G.ok = false; setEscena(escena); });
 
 const raiz = new THREE.Group(); scene.add(raiz);
 const capas = {}; // grupos que se separan en la axonometría explotada
@@ -113,7 +180,7 @@ const loteMat = new THREE.MeshLambertMaterial({ color: '#1d2a22', transparent: t
 const lote = new THREE.Mesh(new THREE.ShapeGeometry(forma(D.sitio)), loteMat); lote.rotation.x = -Math.PI / 2; lote.position.y = 0.05; capas.suelo.add(lote);
 // borde del lote (línea) y muro
 const bordePts = D.sitio.concat([D.sitio[0]]).map(([x, y]) => { const [X, Z] = W(x, y); return new THREE.Vector3(X, 0.4, Z); });
-const bordeMat = new THREE.LineBasicMaterial({ color: '#e3a64a', transparent: true });
+const bordeMat = new THREE.LineBasicMaterial({ color: '#e3a64a', transparent: true, depthTest: false });
 const borde = new THREE.Line(new THREE.BufferGeometry().setFromPoints(bordePts), bordeMat); capas.suelo.add(borde);
 const muroGeo = (() => { const g = []; for (let i = 0; i < D.sitio.length; i++) { const a = D.sitio[i], b = D.sitio[(i + 1) % D.sitio.length]; const [ax, az] = W(...a), [bx, bz] = W(...b); const L = Math.hypot(bx - ax, bz - az); if (L < 0.5) continue; const m = new THREE.BoxGeometry(L, 3.2, 0.5); m.rotateY(-Math.atan2(bz - az, bx - ax)); m.translate((ax + bx) / 2, 1.6, (az + bz) / 2); g.push(m); } return mergeGeometries(g); })();
 const muroMat = new THREE.MeshLambertMaterial({ color: '#8c7d6c', transparent: true });
@@ -180,7 +247,7 @@ D.edif.forEach((e, i) => {
     if (!(pr && pr.inv)) { const g = new THREE.ExtrudeGeometry(forma(e.p), { depth: e.h * 0.25, bevelEnabled: false }); g.rotateX(-Math.PI / 2); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: HOY.esqueleto, transparent: true })); m.userData = { i, hoy: HOY.esqueleto, prog: pr ? pr.c : '#5a6168' }; capas.edif.add(m); edifMeshes.push(m); }
     return;
   }
-  const g = new THREE.ExtrudeGeometry(forma(e.p), { depth: e.h, bevelEnabled: false }); g.rotateX(-Math.PI / 2);
+  const g = new THREE.ExtrudeGeometry(forma(e.p), { depth: e.h + 1.5, bevelEnabled: false }); g.rotateX(-Math.PI / 2); // 1,5 m más: cubre la versión de la foto
   const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: HOY[e.s] || '#8a5a44', transparent: true }));
   m.userData = { i, hoy: HOY[e.s] || '#8a5a44', prog: pr ? pr.c : '#6b7076' };
   const ed = new THREE.LineSegments(new THREE.EdgesGeometry(g, 30), new THREE.LineBasicMaterial({ color: '#0b1015', transparent: true, opacity: 0.55 })); m.add(ed);
@@ -193,7 +260,7 @@ for (const t of D.tanques) { const [X, Z] = W(...t); const g = new THREE.Group()
 const angL = D.angulo; const nx = -Math.sin(angL), ny = Math.cos(angL);
 const rotBancal = Math.atan2(nx, -ny);
 const CULT = ['#7fb85a', '#9ccc65', '#5f9a48', '#b5c95a', '#6fae6b', '#c4a35a', '#8c6bb0', '#d27a5a'];
-const bancalGeo = new THREE.BoxGeometry(1.2, 0.5, 8); bancalGeo.translate(0, 0.25, 0);
+const bancalGeo = new THREE.BoxGeometry(1.2, 0.5, 8); bancalGeo.translate(0, 1.2, 0); // levantado: el suelo de la foto tiene escombro y relieve
 const camas = D.bancales.slice();
 const camasInv = [];
 D.edif.forEach((e, i) => { if (!(PROG[i] && PROG[i].inv)) return; const ux = Math.cos(e.ang), uy = Math.sin(e.ang); for (let u = -260; u <= 260; u += 2) for (let v = -260; v <= 260; v += 9.5) { const x = e.cx + ux * u - uy * v, y = e.cy + uy * u + ux * v; const ok = [[-0.6, -4], [0.6, -4], [-0.6, 4], [0.6, 4]].every(([a, b]) => dentroPol(e.p, x + ux * a - uy * b, y + uy * a + ux * b)); if (ok && (Math.round(u / 2) % 6 !== 0)) camasInv.push([x, y, e.ang]); } });
@@ -204,7 +271,7 @@ const bancales = new THREE.InstancedMesh(bancalGeo, new THREE.MeshLambertMateria
 }
 capas.suelo.add(bancales);
 // zonas: compostaje (antiguo parqueadero) y patio de carga
-const rectZ = (x0, y0, x1, y1, col, y = 0.2) => { const m = new THREE.Mesh(new THREE.ShapeGeometry(forma([[x0, y0], [x1, y0], [x1, y1], [x0, y1]])), new THREE.MeshLambertMaterial({ color: col, transparent: true })); m.rotation.x = -Math.PI / 2; m.position.y = y; return m; };
+const rectZ = (x0, y0, x1, y1, col, y = 0.2) => { const m = new THREE.Mesh(new THREE.ShapeGeometry(forma([[x0, y0], [x1, y0], [x1, y1], [x0, y1]])), new THREE.MeshLambertMaterial({ color: col, transparent: true })); m.rotation.x = -Math.PI / 2; m.position.y = y + 1.2; m.renderOrder = 2; return m; };
 const COMPOST = [9485, 3005, 9555, 3060];
 const compost = new THREE.Group(); compost.add(rectZ(...COMPOST, '#6b4f33'));
 { const g = new THREE.CylinderGeometry(1.4, 2.2, 1.6, 6); g.rotateZ(Math.PI / 2); g.scale(1, 1, 1); for (let r = 0; r < 6; r++) { const m = new THREE.Mesh(new THREE.BoxGeometry(60, 1.6, 2.6), new THREE.MeshLambertMaterial({ color: '#8a6440', transparent: true })); const [X, Z] = W(9520, 3011 + r * 8.5); m.position.set(X, 1, Z); compost.add(m); } }
@@ -223,8 +290,8 @@ const mkLineas = (segs, ancho, y) => {
   const pos = [], idx = [];
   segs.forEach((s, k) => { for (let i = 1; i < s.p.length; i++) { const [ax, az] = W(...s.p[i - 1]), [bx, bz] = W(...s.p[i]); pos.push(ax, y, az, bx, y, bz); idx.push(k); } });
   const g = new LineSegmentsGeometry(); g.setPositions(pos);
-  const mat = new LineMaterial({ linewidth: ancho, vertexColors: true, transparent: true, worldUnits: false }); mat.resolution.set(innerWidth, innerHeight); lineMats.push(mat);
-  const l = new LineSegments2(g, mat); l.userData = { idx, segs, n: idx.length }; return l;
+  const mat = new LineMaterial({ linewidth: ancho, vertexColors: true, transparent: true, worldUnits: false, depthTest: false }); mat.resolution.set(innerWidth, innerHeight); lineMats.push(mat);
+  const l = new LineSegments2(g, mat); l.renderOrder = 6; l.userData = { idx, segs, n: idx.length }; return l;
 };
 const existentes = SEG.filter(s => s.a);
 const red = mkLineas(existentes, MOVIL ? 1.8 : 2.4, 0.9); capas.red.add(red);
@@ -291,7 +358,7 @@ HUM.forEach(h => { const a = new THREE.Vector3(0, 10, 0), b = new THREE.Vector3(
 
 // guías de la axonometría explotada (verticales en las esquinas del rectángulo del lote)
 const esquinas = (() => { const c = Math.cos(angL), s = Math.sin(angL); let mnu = 1e9, mxu = -1e9, mnv = 1e9, mxv = -1e9; D.sitio.forEach(([x, y]) => { const u = (x - CX) * c + (y - CY) * s, v = -(x - CX) * s + (y - CY) * c; mnu = Math.min(mnu, u); mxu = Math.max(mxu, u); mnv = Math.min(mnv, v); mxv = Math.max(mxv, v); }); return [[mnu, mnv], [mxu, mnv], [mxu, mxv], [mnu, mxv]].map(([u, v]) => W(CX + u * c - v * s, CY + u * s + v * c)); })();
-const OFF = { suelo: 0, red: 260, edif: 520, bosque: 800, flujos: 1060 };
+const OFF = !SIN_G ? { suelo: 130, red: 260, edif: 390, bosque: 0, flujos: 540 } : { suelo: 0, red: 260, edif: 520, bosque: 800, flujos: 1060 }; // con la malla: la base es el territorio real (suelo y bosque de la foto)
 const guiasMat = new THREE.LineDashedMaterial({ color: '#8b9aa7', dashSize: 6, gapSize: 5, transparent: true, opacity: 0 });
 const guias = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(esquinas.flatMap(([X, Z]) => [new THREE.Vector3(X, 0, Z), new THREE.Vector3(X, OFF.flujos, Z)])), guiasMat); guias.computeLineDistances(); raiz.add(guias);
 
@@ -302,7 +369,7 @@ const addEt = (html, pos, grupos, cls = '', capa = null) => { const d = document
 Object.entries(PROG).forEach(([i, p]) => { const [X, Z] = centroEdif(+i); if (MOVIL && ![2, 3, 4, 5, 7, 23].includes(+i)) return; addEt(`<i style="background:${p.c}"></i>${p.n}`, [X, D.edif[i].h + 6, Z], ['prog', 'plan'], '', 'edif'); });
 addEt('<i style="background:#6b4f33"></i>Compostaje', [ZC[0], 6, ZC[1]], ['prog', 'flujos', 'suelo'], '', 'suelo');
 { const p = W(9150, 3150); addEt('<i style="background:#3a4a58"></i>Patio de carga', [p[0], 4, p[1]], ['prog'], '', 'suelo'); }
-['Suelo productivo', 'Pasajes', 'Edificios recuperados', 'Bosque', 'Flujos'].forEach((n, k) => { const key = ['suelo', 'red', 'edif', 'bosque', 'flujos'][k]; addEt(`${String(k + 1).padStart(2, '0')} · ${n}`, [0, 0, 0], ['capas'], 'capa', key); });
+(!SIN_G ? ['Territorio real y bosque (malla de Google)', 'Suelo productivo', 'Pasajes', 'Edificios recuperados', 'Flujos'] : ['Suelo productivo', 'Pasajes', 'Edificios recuperados', 'Bosque', 'Flujos']).forEach((n, k) => { const key = (!SIN_G ? ['bosque', 'suelo', 'red', 'edif', 'flujos'] : ['suelo', 'red', 'edif', 'bosque', 'flujos'])[k]; addEt(`${String(k + 1).padStart(2, '0')} · ${n}`, [0, 0, 0], ['capas'], 'capa', key); });
 HUM.forEach(h => addEt(h.n + (h.cora ? '' : ''), [h.v.x, 30, h.v.z], ['corredor', 'kennedy']));
 addEt('Predio Bavaria', [0, 40, 0], ['kennedy', 'corredor']);
 ENT.forEach(([x, y], k) => { if (k % 2 && MOVIL) return; const [X, Z] = W(x, y); addEt(`P${k + 1}`, [X, 8, Z], ['puertas']); });
@@ -325,7 +392,7 @@ const E = {
   sx_desp_nain: { cam: { s: 3300, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', red: 'b0', pas: 1, borde: 1, ley: 'nain' },
   sx_desp_nach: { cam: { s: 3300, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', red: 'b2', pas: 1, borde: 1, ley: 'nach' },
   sx_delta: { cam: { s: 2600, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', red: 'd', pas: 1, borde: 1, ley: 'delta' },
-  capas: { cam: { s: 2500, az: -40, el: 17, y: 540 }, ctx: 0, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, expl: 1, flu: 1, et: 'capas', ley: 'capas' },
+  capas: { luz: 0.5, cam: { s: !SIN_G ? 1350 : 2300, az: -40, el: 30, y: !SIN_G ? 280 : 540 }, ctx: 0, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, expl: 1, flu: 1, et: 'capas', ley: 'capas' },
   capa_suelo: { cam: { s: 1250, az: -40, el: 40 }, ctx: 0.35, edif: 'ghost', arb: 'g', pas: 1, banc: 1, inv: 1, et: 'suelo', ley: 'suelo' },
   capa_inv: { cam: { s: 620, az: -70, el: 34, t: 'inv' }, ctx: 0.35, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, ley: 'inv' },
   capa_techos: { cam: { s: 2300, az: -35, el: 42 }, ctx: 1, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, techos: 1, ley: 'techos' },
@@ -343,8 +410,8 @@ const invT = (() => { const a = centroEdif(2), b = centroEdif(0); return [(a[0] 
 const rampaCSS = `linear-gradient(90deg,${RAMPA.join(',')})`;
 const LEY = {
   kennedy: '<div class="t">Kennedy</div><div class="f"><i style="background:#e3a64a"></i>Predio de la antigua fábrica</div><div class="f"><i style="background:#5fb3d9"></i>Humedales cercanos</div><div class="f"><i style="background:#e0664f"></i>Corabastos</div>',
-  hoy: '<div class="t">El predio hoy</div><div class="f"><i style="background:#9b9387"></i>Naves en esqueleto</div><div class="f"><i style="background:#8a5a44"></i>Bloques de ladrillo</div><div class="f"><i style="background:#7b8287"></i>Torre administrativa</div><div class="f"><i style="background:#8c7d6c"></i>Muro perimetral</div>',
-  bosque: `<div class="t">Arbolado</div><div class="f"><i style="background:#4f7a46"></i>${V.arboles} copas reales (Esri, z19)</div><div class="f"><i style="background:#2f5a2a"></i>${fmt(S.bosque_ha, 1)} ha de bosque denso</div>`,
+  hoy: '<div class="t">El predio hoy</div><div class="f"><i style="background:#e3a64a"></i>Límite del predio</div><div class="f">Malla fotorrealista de Google: naves, silos, bosque y muro tal como están</div>',
+  bosque: `<div class="t">Arbolado</div><div class="f"><i style="background:#4f7a46"></i>${V.arboles} copas detectadas (Esri, z19)</div><div class="f"><i style="background:#2f5a2a"></i>${fmt(S.bosque_ha, 1)} ha de bosque denso</div>`,
   cerrado: '<div class="t">Acceso</div><div class="f"><i style="background:#8c7d6c"></i>Muro: el predio no se puede cruzar</div>',
   sxgris: '<div class="t">Red analizada</div><div class="f"><i style="background:#56636e"></i>Vías OSM a 2,3 km del predio</div>',
   nain: `<div class="t">Integración angular (NAIN)</div><div class="rampa" style="background:${rampaCSS}"></div><div class="ext"><span>segregado</span><span>integrado</span></div>`,
@@ -352,7 +419,7 @@ const LEY = {
   nach: `<div class="t">Elección angular (NACH)</div><div class="rampa" style="background:${rampaCSS}"></div><div class="ext"><span>poco paso</span><span>mucho paso</span></div>`,
   delta: `<div class="t">Cambio de integración R800</div><div class="rampa" style="background:linear-gradient(90deg,#5fb3d9,#2b4a66,#2e3842,#6a5228,#ffb340)"></div><div class="ext"><span>−${fmt(SX.dmax * 100, 1)} %</span><span>sin cambio</span><span>+${fmt(SX.dmax * 100, 1)} %</span></div>`,
   pasajes: `<div class="t">Pasajes nuevos</div><div class="f"><i style="background:#f2efe6"></i>${V.pasajes_km} km peatonales y en bici</div><div class="f"><i style="background:#e3a64a"></i>${V.entradas} puertas en cruces existentes</div>`,
-  capas: '<div class="t">Axonometría explotada</div><div class="f">01 suelo · 02 pasajes · 03 edificios · 04 bosque · 05 flujos</div>',
+  capas: !SIN_G ? '<div class="t">Axonometría explotada</div><div class="f">01 territorio real · 02 suelo productivo · 03 pasajes · 04 edificios · 05 flujos</div>' : '<div class="t">Axonometría explotada</div><div class="f">01 suelo · 02 pasajes · 03 edificios · 04 bosque · 05 flujos</div>',
   suelo: `<div class="t">Suelo productivo</div><div class="f"><i style="background:#8fc46a"></i>${V.bancales} bancales de 1,2 × 8 m</div><div class="f"><i style="background:#6b4f33"></i>Compostaje (antiguo parqueadero)</div><div class="f"><i style="background:#3a4a58"></i>Patio de carga</div>`,
   inv: '<div class="t">Invernaderos</div><div class="f"><i style="background:#d8efe9"></i>Cubierta liviana sobre la retícula</div><div class="f"><i style="background:#c86a4a"></i>Camas de tomate y pimentón</div><div class="f"><i style="background:#8fc46a"></i>Vivero de nativas</div>',
   techos: `<div class="t">Red de huertas</div><div class="f"><i style="background:#8fc46a"></i>${V.techos_n} cubiertas productivas</div><div class="f"><i style="background:#7fb85a"></i>Bancales del predio</div>`,
@@ -374,6 +441,10 @@ const setEscena = (k) => {
   obj.edif = e.edif === 'ghost' ? 0.25 : 1; obj.prog = e.edif === 'prog' ? 1 : 0; obj.muro = e.muro ? 1 : 0;
   obj.arb = e.arb === 1 ? 1 : e.arb === 'g' ? 0.3 : 0; obj.red = e.red ? 1 : 0; obj.pas = e.pas ? 1 : 0;
   obj.banc = e.banc === 1 ? 1 : e.banc === 'g' ? 0.35 : 0; obj.inv = e.inv ? 1 : 0; obj.techos = e.techos ? 1 : 0; obj.flu = e.flu ? 1 : 0; obj.expl = e.expl ? 1 : 0; obj.corr = e.corr ? 1 : 0; obj.borde = e.borde ? 1 : 0;
+  if (REAL()) { // la foto ya muestra la fábrica, el bosque, el muro y los barrios: de lo propio queda solo lo nuevo
+    obj.ctx = e.ctx === 'sector' ? 0.6 : 0; obj.edif = e.edif === 'prog' ? 1 : 0; obj.prog = 1; obj.muro = 0; obj.arb = 0; // los árboles son los de la foto
+    G.luzObj = e.luz ?? (e.red ? 0.38 : e.ctx === 'sector' ? 0.75 : 1);
+  }
   if (e.red) pintarRed(e.red); else pintarRed(e.pas ? 'gris' : modoRed);
   const t = e.cam.t === 'inv' ? invT : (e.cam.t || [0, 0]);
   camObj = { s: e.cam.s * (MOVIL ? 1.15 : 1), az: e.cam.az, el: e.cam.el, x: t[0], z: t[1], y: e.cam.y || 0 };
@@ -385,15 +456,16 @@ const lerp = (a, b, f) => a + (b - a) * f;
 /* ---------------- cámara ---------------- */
 const controles = new OrbitControls(cam, renderer.domElement); controles.enabled = false; controles.enableDamping = true; controles.zoomToCursor = true;
 let explorar = false, giro = !QUIETO;
+const distCam = (s) => { const asp = innerWidth / innerHeight; const vh = asp >= 1 ? s : s / asp; return vh / 2 / Math.tan(FOV / 2 * Math.PI / 180); };
 const ajustarCam = () => {
-  const w = innerWidth, h = innerHeight, asp = w / h;
-  const s = camAct.s; let vh = asp >= 1 ? s : s / asp; let vw = vh * asp;
+  const w = innerWidth, h = innerHeight;
   // dónde cae el objetivo en pantalla: a la derecha en escritorio (hay texto a la izquierda), arriba en celular
-  const fx = MOVIL ? 0.5 : (w > 1000 ? 0.62 : 0.55), fy = MOVIL ? 0.36 : 0.5;
-  cam.left = -vw * fx; cam.right = vw * (1 - fx); cam.top = vh * fy; cam.bottom = -vh * (1 - fy); cam.zoom = 1; cam.updateProjectionMatrix();
+  const fx = explorar ? 0.5 : MOVIL ? 0.5 : (w > 1000 ? 0.62 : 0.55), fy = explorar ? 0.5 : MOVIL ? 0.36 : 0.5;
+  cam.aspect = w / h; cam.setViewOffset(w, h, w / 2 - fx * w, h / 2 - fy * h, w, h);
+  const R = cam.position.distanceTo(controles.target); cam.near = Math.max(5, R * 0.08); cam.far = R * 4 + 4000; cam.updateProjectionMatrix();
 };
 const ponerCam = () => {
-  const az = (camAct.az + giroAz) * Math.PI / 180, el = camAct.el * Math.PI / 180, R = 4000;
+  const az = (camAct.az + giroAz) * Math.PI / 180, el = camAct.el * Math.PI / 180, R = distCam(camAct.s);
   const t = new THREE.Vector3(camAct.x, camAct.y, camAct.z);
   cam.position.set(t.x + R * Math.cos(el) * Math.sin(az), t.y + R * Math.sin(el), t.z + R * Math.cos(el) * Math.cos(az)); cam.lookAt(t); controles.target.copy(t);
   ajustarCam();
@@ -419,7 +491,9 @@ function cuadro() {
   opac(ctxMat, est.ctx * 0.95); ctxG.visible = est.ctx > 0.01 || est.techos > 0.01;
   opac(techosMat, est.techos);
   edifMeshes.forEach(m => { m.material.color.set(m.userData.hoy).lerp(new THREE.Color(m.userData.prog), est.prog); opac(m.material, est.edif); });
-  reticula.children.forEach(m => opac(m.material, est.edif));
+  reticula.children.forEach(m => opac(m.material, REAL() ? est.inv * est.edif : est.edif));
+  if (REAL()) { opac(loteMat, 0); lote.visible = false; piso.position.y = -120; } else { lote.visible = true; piso.position.y = -0.3; }
+  actualizarG(dt); if (explorar) ajustarCam();
   cubiertas.children.forEach(m => { m.material.opacity = m.userData.base * est.inv; m.visible = est.inv > 0.02; });
   opac(muroMat, est.muro * est.edif);
   arbMats.forEach(m => opac(m, est.arb)); arboles.visible = est.arb > 0.02;
@@ -427,6 +501,7 @@ function cuadro() {
   opac(bancales.material, est.banc); compost.children.forEach(m => opac(m.material, est.banc)); opac(patio.material, est.banc);
   bordeMat.opacity = 0.35 + 0.65 * est.borde * (0.6 + 0.4 * Math.sin(t * 2.5));
   loteMat.color.set('#1d2a22').lerp(new THREE.Color('#22301f'), est.banc);
+  if (REAL()) { techosMat.depthTest = false; techos.renderOrder = 3; bancales.material.depthTest = false; bancales.renderOrder = 2; compost.children.forEach(m => { m.material.depthTest = false; m.renderOrder = 2; }); patio.material.depthTest = false; }
   flujoMat.opacity = est.flu; guiaFlujos.material.opacity = est.flu * 0.18;
   if (est.flu > 0.02) { rutas.forEach((r, i) => { for (let k = 0; k < NP; k++) { const u = ((t * (r.cora ? 0.05 : 0.11) + k / NP + i * 0.37) % 1); fpos.set([lerp(r.a[0], r.b[0], u), 5 + Math.sin(u * Math.PI) * 18, lerp(r.a[1], r.b[1], u)], (i * NP + k) * 3); } }); flujoGeo.attributes.position.needsUpdate = true; }
   corrMats.forEach(m => { m.opacity = est.corr * 0.75; m.visible = est.corr > 0.02; });

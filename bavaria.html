@@ -12,7 +12,10 @@
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+  "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+  "3d-tiles-renderer": "https://unpkg.com/3d-tiles-renderer@0.3.45/src/index.js",
+  "3d-tiles-renderer/plugins": "https://unpkg.com/3d-tiles-renderer@0.3.45/src/plugins/index.js"
 } }
 </script>
 <style>
@@ -44,7 +47,7 @@ h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-.01em}
 .et{position:absolute;transform:translate(-50%,-100%);font:500 11px/1.25 var(--mono);color:var(--tx);white-space:nowrap;padding:3px 7px;border-radius:4px;background:rgba(9,13,18,.82);border:1px solid var(--line2);transition:opacity .35s}
 .et::after{content:"";position:absolute;left:50%;bottom:-7px;width:1px;height:7px;background:var(--line2)}
 .et i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:0}
-.et.capa{transform:translate(0,-50%);background:none;border:none;color:var(--mu);letter-spacing:.12em;text-transform:uppercase}
+.et.capa{transform:translate(0,-50%);color:var(--tx);letter-spacing:.12em;text-transform:uppercase;border-left:2px solid var(--amb)}
 .et.capa::after{display:none}
 /* leyenda y controles */
 #hud{position:fixed;right:16px;bottom:16px;z-index:5;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
@@ -108,6 +111,7 @@ main{position:relative;z-index:3}
 .chip{display:inline-block;font:500 10.5px var(--mono);padding:2px 7px;border-radius:20px;border:1px solid var(--line2);color:var(--mu);margin:2px 4px 2px 0}
 .nota{font:12px/1.55 var(--mono);color:var(--mu);border-left:2px solid var(--line2);padding-left:12px;margin-top:20px;max-width:900px}
 .fuentes li{font:12px/1.6 var(--mono);color:var(--mu);margin-bottom:6px;word-break:break-word}
+#atrib{position:fixed;left:10px;bottom:8px;z-index:5;font:10px/1.3 var(--sans);color:rgba(255,255,255,.75);text-shadow:0 1px 3px #000;pointer-events:none;max-width:60vw}
 #carga{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;background:var(--bg);font:12px var(--mono);color:var(--mu);letter-spacing:.14em;transition:opacity .6s}
 #carga.fuera{opacity:0;pointer-events:none}
 @media (max-width:760px){
@@ -131,6 +135,7 @@ main{position:relative;z-index:3}
 <div id="carga">CARGANDO EL PREDIO…</div>
 <div id="lienzo" aria-hidden="true"></div>
 <div id="etiquetas" aria-hidden="true"></div>
+<div id="atrib">Google</div>
 <div id="hud">
   <div class="btns">
     <button class="btn" id="b-giro" aria-pressed="true" type="button">Giro</button>
@@ -172,7 +177,7 @@ main{position:relative;z-index:3}
   <div class="paso" data-escena="bosque"><div class="tarj">
     <div class="k">El bosque</div>
     <h3>Un bosque que nadie planeó</h3>
-    <p>Entre las naves creció un bosque de eucaliptos, pinos, acacias y urapanes. En la foto aérea se detectan <b data-v="arboles"></b> copas, <b data-v="arboles_bosque"></b> de ellas en masas densas; cada árbol del modelo está en la posición de una copa real.</p>
+    <p>Entre las naves creció un bosque de eucaliptos, pinos, acacias y urapanes. En la foto aérea se detectan <b data-v="arboles"></b> copas, <b data-v="arboles_bosque"></b> de ellas en masas densas. El modelo es la malla fotorrealista de Google: lo que se ve es el bosque real.</p>
     <p>El estudio de Torres-Ariza y Gil-T (<i>Intropica</i>, 2023) registró en el bosque y el humedal Madre de Agua <b>80 especies de aves</b>, 33 migratorias y 4 amenazadas.</p>
   </div></div>
   <div class="paso" data-escena="cerrado"><div class="tarj">

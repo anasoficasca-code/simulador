@@ -4,10 +4,11 @@
 
 Web: https://anasoficasca-code.github.io/simulador/bavaria.html
 
-Relato con scroll sobre una axonometría 3D (cámara ortográfica) del predio de la antigua fábrica de Bavaria, intercalado con láminas de diagramas: Kennedy en cifras, Colectivo Salvemos el Bosque Bavaria, sintaxis espacial antes y después, axonometría explotada por capas (suelo productivo, pasajes, edificios recuperados, bosque, flujos), alimentación y cultivos, producción, residuos y compostaje, Corabastos y trabajo, federación de asambleas y red de especies.
+Relato con scroll sobre la malla fotorrealista de Google (la misma del simulador, con la gradación de color de la maqueta y cámara de lente larga, casi axonométrica) del predio de la antigua fábrica de Bavaria, intercalado con láminas de diagramas: Kennedy en cifras, Colectivo Salvemos el Bosque Bavaria, sintaxis espacial antes y después, axonometría explotada por capas (suelo productivo, pasajes, edificios recuperados, bosque, flujos), alimentación y cultivos, producción, residuos y compostaje, Corabastos y trabajo, federación de asambleas y red de especies.
 
 - Datos: `data3d/bavaria_pres.json`, generado con `python tools/bavaria_pres_datos.py` (predio, edificios y 3.250 copas reales de `data3d/bavaria*.json`; contexto de `buildings.json`; bancales sobre el suelo libre; cubiertas productivas).
 - Sintaxis espacial: análisis angular de segmentos (método DepthmapX) reimplementado, NAIN Rn y R800 y NACH Rn, sin muestreo, antes (predio cerrado) y después (pasajes nuevos). Si no hay conexión a Overpass usa la red OSM de `giro_sim.json`.
+- Sobre la foto va solo lo propuesto: pasajes, bancales, invernaderos, programa de los edificios, flujos y sintaxis. Con `?google=0` vuelve a la maqueta de cajas.
 - Vista fija para capturas: `bavaria.html?escena=capas` (claves en `E` de `data3d/bavaria_pres.js`); `&arb=0` omite los árboles; `?solo=l-residuos` muestra solo esa lámina.
 - Las cifras de diseño van marcadas «propuesta» y las estimaciones «est.»; las fuentes están al final de la página.
 
