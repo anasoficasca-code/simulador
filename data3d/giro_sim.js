@@ -561,6 +561,11 @@ export async function iniciarSimulacion(cfg = {}) {
         <div class="gs-ley"><span>pocos</span><i style="background:linear-gradient(90deg,${grad})"></i><span>muchos</span></div>`);
       izq.querySelectorAll('#gs-fc button').forEach(b => b.onclick = () => { FC.visible = !!b.dataset.v; izq.querySelectorAll('#gs-fc button').forEach(x => x.classList.toggle('on', x === b)); });
       FC.visible = true; // prendida al abrir
+      { /* cuántos carros hay en la calle a esta hora (demanda según el reloj: index.html, demandaHora) */
+        izq.querySelector('#gs-fc').insertAdjacentHTML('beforebegin', '<div id="gs-dem" style="font-size:10.5px;color:#94a3b8;margin:2px 0 6px"></div>');
+        const dem = izq.querySelector('#gs-dem');
+        setInterval(() => { const TR = T3.TRAF; if (!TR || TR.demanda == null) { dem.textContent = ''; return; } const p = TR.demanda, est = p >= 0.9 ? 'hora pico' : p >= 0.6 ? 'tráfico medio' : p >= 0.3 ? 'tráfico bajo' : 'casi vacío'; dem.innerHTML = `Vehículos en la calle: <b style="color:#e5e7eb">${Math.round(p * 100)} %</b> · ${est}`; }, 1000);
+      }
     }
 
     // ---- clic en un agente o en una convención: ficha con su comportamiento, sus interacciones y su ruta ----

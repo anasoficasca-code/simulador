@@ -2400,8 +2400,13 @@ async function buildTraffic(THREE) {
   if (window.trafficPaint) window.trafficPaint();
   updateTraffic(0);
 }
+/* demanda de tráfico según la hora del reloj de la simulación (perfil típico de Bogotá: picos 6-8 y 17-19, madrugada casi vacía).
+   La grabación SUMO es de hora pico (100 %); a cada hora sale solo esa fracción de los vehículos (siempre los mismos por id). */
+const DEMANDA_H = [0.08, 0.05, 0.04, 0.04, 0.09, 0.34, 0.82, 1.0, 0.86, 0.66, 0.6, 0.64, 0.74, 0.72, 0.64, 0.68, 0.84, 1.0, 0.96, 0.76, 0.52, 0.36, 0.23, 0.13];
+function demandaHora() { const r = T3.reloj; if (!r || !(r.t >= 0)) return 1; const h = (r.t / 60) % 24, a = Math.floor(h), f = h - a; return DEMANDA_H[a] + (DEMANDA_H[(a + 1) % 24] - DEMANDA_H[a]) * f; }
 function updateTraffic(dt) {
   if (!TRAF) return;
+  const pDem = demandaHora(); TRAF.demanda = pDem;
   if (TRAF.playing) TRAF.t += dt * (TRAF.vel || 1);
   if (TRAF.t > TRAF.dur) TRAF.t -= (TRAF.dur + 1);
   if (window.trafficUI) window.trafficUI(TRAF.t, TRAF.dur);
@@ -2418,6 +2423,7 @@ function updateTraffic(dt) {
   if (F) F.begin();
   if (VS) { VS.inicio(); if (!TRAF.obj) { TRAF.obj = new Array(TRAF.NV + 1); TRAF.tipo = new Int8Array(TRAF.NV + 1).fill(-1); TRAF.headF = new Float32Array(TRAF.NV + 1); } }
   for (let i = 0; i < A.ids.length && n < TRAF.maxi; i++) {
+    if (pDem < 0.999 && ((A.ids[i] * 2654435761) >>> 0) / 4294967296 > pDem) continue; /* a esta hora ese vehículo no está en la calle */
     const x0 = A.xs[i] - LC.x, y0 = LC.y - A.ys[i];
     const j = m.get(A.ids[i]);
     let x1 = x0, y1 = y0;
@@ -2729,7 +2735,7 @@ function crearFlujoCarros(THREE, N, ANCHO, dedupe, yVia, RUTAS) {
   const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
   mesh.renderOrder = 4; mesh.frustumCulled = false; mesh.visible = false; T3.scene.add(mesh);
   const acum = new Float32Array(E.length); // carros·segundo con olvido exponencial
-  const TAU = 120; // s simulados: el color muestra el flujo de los últimos ~2 minutos
+  const TAU = 60; // s simulados: el color muestra el flujo del último minuto (cambia rápido con la hora)
   // escala de carros por km de vía (por carril aprox.): verde -> amarillo -> naranja -> rojo -> vino
   const ESC = [[0, [0.10, 0.72, 0.29]], [7, [0.55, 0.85, 0.20]], [16, [0.98, 0.84, 0.10]], [28, [0.98, 0.50, 0.08]], [45, [0.90, 0.12, 0.10]], [75, [0.55, 0.03, 0.08]]];
   const colorDe = (d) => { if (d <= ESC[0][0]) return ESC[0][1]; for (let i = 1; i < ESC.length; i++) if (d <= ESC[i][0]) { const [a, ca] = ESC[i - 1], [b, cb] = ESC[i], t = (d - a) / (b - a); return [ca[0] + (cb[0] - ca[0]) * t, ca[1] + (cb[1] - ca[1]) * t, ca[2] + (cb[2] - ca[2]) * t]; } return ESC[ESC.length - 1][1]; };
@@ -3447,7 +3453,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=21'), import('./data3d/estrategias.js?v=14'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=22'), import('./data3d/estrategias.js?v=14'), listoK()])
     .then(async ([m, me]) => {
       try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0, movil: MOVIL, dentro: (x, z) => enZona(x + LC.x, LC.y - z) /* huertas hidropónicas solo donde está el modelo de edificios */ }); } catch (e) { console.warn('estrategias:', e); }
       if (EST && EST.hidroponia) setTimeout(() => EST.hidroponia(), 1500); // techos y balcones con huerta y sus animales desde el inicio
