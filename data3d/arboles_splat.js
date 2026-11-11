@@ -17,7 +17,7 @@ export function crearArbolesSplat({ THREE, T3, movil = false }) {
     vertexShader: `attribute float tam; varying vec3 vC; uniform float uEsc;
       #include <fog_pars_vertex>
       void main(){ vC = color; vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mvPosition;
-        gl_PointSize = clamp(tam * uEsc / -mvPosition.z, 1.5, 90.0);
+        gl_PointSize = clamp(tam * uEsc / -mvPosition.z, 1.5, 55.0);
         #include <fog_vertex>
       }`,
     fragmentShader: `varying vec3 vC;
@@ -33,8 +33,8 @@ export function crearArbolesSplat({ THREE, T3, movil = false }) {
   const pts = new THREE.Points(g, mat); pts.frustumCulled = false; pts.renderOrder = 3; T3.scene.add(pts);
   const h = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
   // paleta de copas (como la captura): verde amarillento, oliva, verde medio, verde oscuro, toques amarillo-otoño
-  const LUZ = [[0.13, 0.19, 0.06], [0.11, 0.17, 0.055], [0.15, 0.18, 0.06], [0.09, 0.16, 0.06], [0.17, 0.17, 0.05], [0.08, 0.14, 0.065]]; /* más oscuras */
-  const SOM = [[0.015, 0.03, 0.014], [0.022, 0.036, 0.014], [0.012, 0.026, 0.018]];
+  const LUZ = [[0.085, 0.13, 0.04], [0.07, 0.115, 0.035], [0.1, 0.12, 0.04], [0.06, 0.11, 0.04], [0.11, 0.11, 0.03], [0.05, 0.095, 0.045]]; /* más oscuras */
+  const SOM = [[0.009, 0.019, 0.009], [0.013, 0.023, 0.009], [0.007, 0.016, 0.011]];
   let n = 0, ult = { x: 1e9, z: 1e9 };
   function rehacer(cx, cz) {
     const cand = [];
@@ -42,7 +42,7 @@ export function crearArbolesSplat({ THREE, T3, movil = false }) {
     cand.sort((a, b) => a[0] - b[0]);
     n = 0;
     for (let k = 0; k < cand.length && k < MAXA; k++) {
-      const i = cand[k][1], H = Math.max(5, Hh[i]), Rc = H * (0.32 + h(i * 3) * 0.14), base = H * 0.38, alto = H - base;
+      const i = cand[k][1], H = Math.max(6, Hh[i]) * (h(i * 61) < 0.3 ? 1.55 + h(i * 67) * 0.5 : 1.12), /* 30 % de árboles grandes (eucaliptos, urapanes, pinos): 1,5-2 veces más altos */ Rc = H * (0.32 + h(i * 3) * 0.14), base = H * 0.38, alto = H - base;
       const L = LUZ[Math.floor(h(i * 7) * LUZ.length)], Sm = SOM[Math.floor(h(i * 11) * SOM.length)], tv = 0.85 + h(i * 13) * 0.3;
       // 2-4 lóbulos por copa
       const lob = 2 + Math.floor(h(i * 17) * 3), cen = [];

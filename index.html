@@ -1419,7 +1419,7 @@ async function initTodoReal() {
         const TIN = await pTin; if (TIN && TIN.zona_modelo) TT = { ...TT, t: TT.t.filter(t => !enPoli(TIN.zona_modelo, t[0], t[1])) }; // sin árboles bajo las palmas de la plaza ni en la huerta de la Biblioteca El Tintal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
         if (T3.fotoReal && T3.trees && T3.trees.ver) T3.trees.ver(false); // Foto real: los árboles son los de la foto
-        if (KEN && T3.trees && T3.trees.pos) { try { T3.arbolesSplat = (await import('./data3d/arboles_splat.js?v=4')).crearArbolesSplat({ THREE, T3, movil: MOVIL }); if (T3.arbolesSplat) T3.trees.ver(false); } catch (e) { console.warn('árboles splat:', e); } } // copas tipo gaussian splat (como las capturas de Luma)
+        if (KEN && T3.trees && T3.trees.pos) { try { T3.arbolesSplat = (await import('./data3d/arboles_splat.js?v=6')).crearArbolesSplat({ THREE, T3, movil: MOVIL }); if (T3.arbolesSplat) T3.trees.ver(false); } catch (e) { console.warn('árboles splat:', e); } } // copas tipo gaussian splat (como las capturas de Luma)
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
