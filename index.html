@@ -788,7 +788,8 @@ function flight(ms) {
     o.update();
     updateAves();
     updatePeatones(dt);
-    if (T3.trees && T3.trees.visible !== false) T3.trees.update(cam); // con Foto real los árboles son los de la foto: no se recalculan
+    if (T3.trees && T3.trees.visible !== false) T3.trees.update(cam);
+    if (T3.arbolesSplat && T3.arbolesSplat.visible) T3.arbolesSplat.update(cam); // con Foto real los árboles son los de la foto: no se recalculan
     if (T3.huertas) T3.huertas.actualizar(cam); // plantas 3D de las terrazas cercanas
     if (T3.torres) T3.torres.actualizar(cam); // huertas de los balcones cercanos
     if (T3.plants) T3.plants.update(cam);
@@ -1412,6 +1413,7 @@ async function initTodoReal() {
         const TIN = await pTin; if (TIN && TIN.zona_modelo) TT = { ...TT, t: TT.t.filter(t => !enPoli(TIN.zona_modelo, t[0], t[1])) }; // sin árboles bajo las palmas de la plaza ni en la huerta de la Biblioteca El Tintal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
         if (T3.fotoReal && T3.trees && T3.trees.ver) T3.trees.ver(false); // Foto real: los árboles son los de la foto
+        if (KEN && T3.trees && T3.trees.pos) { try { T3.arbolesSplat = (await import('./data3d/arboles_splat.js?v=3')).crearArbolesSplat({ THREE, T3, movil: MOVIL }); if (T3.arbolesSplat) T3.trees.ver(false); } catch (e) { console.warn('árboles splat:', e); } } // copas tipo gaussian splat (como las capturas de Luma)
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
@@ -3446,8 +3448,8 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
         (fb || ag.parentElement).insertAdjacentElement('afterend', b); /* por defecto apagado: todos los edificios del modelo y carga rápida */ // por defecto: vista fotorrealista como God's Eye, en cuanto llega la foto
       }
       if (!document.getElementById('ar-btn')) { // árboles: por defecto los reales de la foto 3D de Google (como God's Eye); el botón trae los modelos 3D
-        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = T3.fotoReal ? '' : 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
-        b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.trees && T3.trees.ver) T3.trees.ver(on); };
+        const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
+        b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.arbolesSplat) T3.arbolesSplat.ver(on); else if (T3.trees && T3.trees.ver) T3.trees.ver(on); };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
