@@ -1,5 +1,16 @@
 # REN3D realista · Maqueta de Kennedy
 
+## Presentación «Distrito Bavaria Común» (`bavaria.html`)
+
+Web: https://anasoficasca-code.github.io/simulador/bavaria.html
+
+Relato con scroll sobre una axonometría 3D (cámara ortográfica) del predio de la antigua fábrica de Bavaria, intercalado con láminas de diagramas: Kennedy en cifras, Colectivo Salvemos el Bosque Bavaria, sintaxis espacial antes y después, axonometría explotada por capas (suelo productivo, pasajes, edificios recuperados, bosque, flujos), alimentación y cultivos, producción, residuos y compostaje, Corabastos y trabajo, federación de asambleas y red de especies.
+
+- Datos: `data3d/bavaria_pres.json`, generado con `python tools/bavaria_pres_datos.py` (predio, edificios y 3.250 copas reales de `data3d/bavaria*.json`; contexto de `buildings.json`; bancales sobre el suelo libre; cubiertas productivas).
+- Sintaxis espacial: análisis angular de segmentos (método DepthmapX) reimplementado, NAIN Rn y R800 y NACH Rn, sin muestreo, antes (predio cerrado) y después (pasajes nuevos). Si no hay conexión a Overpass usa la red OSM de `giro_sim.json`.
+- Vista fija para capturas: `bavaria.html?escena=capas` (claves en `E` de `data3d/bavaria_pres.js`); `&arb=0` omite los árboles; `?solo=l-residuos` muestra solo esa lámina.
+- Las cifras de diseño van marcadas «propuesta» y las estimaciones «est.»; las fuentes están al final de la página.
+
 ## Simulador tipo God's Eye
 
 La maqueta abre como simulador de vigilancia y tráfico (`data3d/simulador.js`), con la interfaz y los sensores inspirados en [God's Eye View](https://github.com/bilawalsidhu/gods-eye-view) (MIT, © 2026 Bilawal Sidhu):
