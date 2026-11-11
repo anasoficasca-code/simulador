@@ -33,8 +33,8 @@ export function crearArbolesSplat({ THREE, T3, movil = false }) {
   const pts = new THREE.Points(g, mat); pts.frustumCulled = false; pts.renderOrder = 3; T3.scene.add(pts);
   const h = (n) => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
   // paleta de copas (como la captura): verde amarillento, oliva, verde medio, verde oscuro, toques amarillo-otoño
-  const LUZ = [[0.30, 0.38, 0.12], [0.26, 0.34, 0.11], [0.36, 0.36, 0.12], [0.22, 0.32, 0.12], [0.40, 0.34, 0.10], [0.19, 0.29, 0.13]];
-  const SOM = [[0.035, 0.065, 0.03], [0.05, 0.08, 0.03], [0.03, 0.055, 0.04]];
+  const LUZ = [[0.13, 0.19, 0.06], [0.11, 0.17, 0.055], [0.15, 0.18, 0.06], [0.09, 0.16, 0.06], [0.17, 0.17, 0.05], [0.08, 0.14, 0.065]]; /* más oscuras */
+  const SOM = [[0.015, 0.03, 0.014], [0.022, 0.036, 0.014], [0.012, 0.026, 0.018]];
   let n = 0, ult = { x: 1e9, z: 1e9 };
   function rehacer(cx, cz) {
     const cand = [];

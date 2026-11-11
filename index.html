@@ -1414,7 +1414,7 @@ async function initTodoReal() {
         const TIN = await pTin; if (TIN && TIN.zona_modelo) TT = { ...TT, t: TT.t.filter(t => !enPoli(TIN.zona_modelo, t[0], t[1])) }; // sin árboles bajo las palmas de la plaza ni en la huerta de la Biblioteca El Tintal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
         if (T3.fotoReal && T3.trees && T3.trees.ver) T3.trees.ver(false); // Foto real: los árboles son los de la foto
-        if (KEN && T3.trees && T3.trees.pos) { try { T3.arbolesSplat = (await import('./data3d/arboles_splat.js?v=3')).crearArbolesSplat({ THREE, T3, movil: MOVIL }); if (T3.arbolesSplat) T3.trees.ver(false); } catch (e) { console.warn('árboles splat:', e); } } // copas tipo gaussian splat (como las capturas de Luma)
+        if (KEN && T3.trees && T3.trees.pos) { try { T3.arbolesSplat = (await import('./data3d/arboles_splat.js?v=4')).crearArbolesSplat({ THREE, T3, movil: MOVIL }); if (T3.arbolesSplat) T3.trees.ver(false); } catch (e) { console.warn('árboles splat:', e); } } // copas tipo gaussian splat (como las capturas de Luma)
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
@@ -1775,7 +1775,7 @@ function materialEdificios(THREE) {
           float uc = floor(vBid + 0.001);
           vec3 cu = uc < 0.5 ? vec3(0.62, 0.63, 0.65) : uc < 1.5 ? vec3(0.957, 0.827, 0.369) : uc < 2.5 ? vec3(0.902, 0.224, 0.275) : uc < 3.5 ? vec3(0.271, 0.482, 0.616) : uc < 4.5 ? vec3(0.482, 0.176, 0.557) : uc < 5.5 ? vec3(0.541, 0.788, 0.149) : uc < 6.5 ? vec3(0.286, 0.314, 0.341) : vec3(0.678, 0.71, 0.741);
           cu = pow(cu, vec3(2.2));
-          diffuseColor.rgb = cu * (vWl.z > 0.5 ? 0.88 + 0.12 * smoothstep(0.0, 6.0, vWP.y) : 1.05);
+          diffuseColor.rgb = mix(diffuseColor.rgb, cu * (vWl.z > 0.5 ? 0.9 + 0.1 * smoothstep(0.0, 6.0, vWP.y) : 1.0), 0.55); /* suave: deja ver la fachada */
         }
         diffuseColor.rgb *= 1.0 - 0.32 * uNoche; // de noche los muros se apagan y resaltan las ventanas encendidas
       }`);
@@ -1851,7 +1851,7 @@ function techoDosAguas(W, h, bi, col, P, C, I, WL, vc) {
 function usoDe(b) { /* código de uso (0 = sin dato) por la celda de 2 m del centroide; si no está, la vecina más cercana */
   const M = T3.usosMapa; if (!M) return 0; const p = b.pts, n = p.length - 1; let x = 0, y = 0; for (let i = 0; i < n; i++) { x += p[i][0]; y += p[i][1]; } x /= n * 2; y /= n * 2;
   const i0 = Math.floor(x), j0 = Math.floor(y), c0 = M.get(i0 * 100003 + j0); if (c0) return c0;
-  let mejor = 0, dm = 9; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const c = M.get((i0 + di) * 100003 + j0 + dj); if (!c) continue; const d = (i0 + di + 0.5 - x) ** 2 + (j0 + dj + 0.5 - y) ** 2; if (d < dm) { dm = d; mejor = c; } } return mejor;
+  let mejor = 0, dm = 9; for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const c = M.get((i0 + di) * 100003 + j0 + dj); if (!c) continue; const d = (i0 + di + 0.5 - x) ** 2 + (j0 + dj + 0.5 - y) ** 2; if (d < dm) { dm = d; mejor = c; } } return mejor || 1; /* sin lote con uso: residencial (las casas del barrio) */
 }
 function buildChunks(THREE, B) {
   const torresFoto = [];
@@ -3468,8 +3468,10 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       if (KEN && !document.getElementById('us-btn')) { /* usos del suelo: edificios pintados por su uso real + panel (data3d/usos_suelo.js) */
         const fb = document.getElementById('ar-btn'), b = document.createElement('button'); b.id = 'us-btn'; b.textContent = 'Usos del suelo'; b.title = 'Pinta cada edificio con su uso real (shapefile Usos_kennedy)'; b.style.cssText = 'width:100%;margin-top:6px';
         b.onclick = async () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); T3.roofU.uUsos.value = on ? 1 : 0;
+          const pintar = () => import('./data3d/usos_suelo.js?v=5').then(m => m.pintarModelos({ THREE: T3.THREE, T3, on: b.classList.contains('on') })).catch(e => console.warn('usos modelos:', e)); /* biblioteca, conjuntos, torres, Bavaria, Corabastos */
+          pintar(); if (on) for (const t of [4000, 12000, 30000, 60000]) setTimeout(pintar, t); /* los modelos que terminan de cargar después */
           const pn = document.getElementById('usos-panel'); if (!on) { if (pn) pn.remove(); return; }
-          try { (await import('./data3d/usos_suelo.js?v=2')).panelUsos({ T3 }); } catch (e) { console.warn('usos del suelo:', e); } };
+          try { (await import('./data3d/usos_suelo.js?v=5')).panelUsos({ T3 }); } catch (e) { console.warn('usos del suelo:', e); } };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
