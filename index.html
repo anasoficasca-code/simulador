@@ -2735,9 +2735,9 @@ function crearFlujoCarros(THREE, N, ANCHO, dedupe, yVia, RUTAS) {
   const mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
   mesh.renderOrder = 4; mesh.frustumCulled = false; mesh.visible = false; T3.scene.add(mesh);
   const acum = new Float32Array(E.length); // carros·segundo con olvido exponencial
-  const TAU = 60; // s simulados: el color muestra el flujo del último minuto (cambia rápido con la hora)
+  const TAU = 10; // s: el color muestra el flujo de los últimos ~10 s (se mueve con los carros y cambia con la hora)
   // escala de carros por km de vía (por carril aprox.): verde -> amarillo -> naranja -> rojo -> vino
-  const ESC = [[0, [0.10, 0.72, 0.29]], [7, [0.55, 0.85, 0.20]], [16, [0.98, 0.84, 0.10]], [28, [0.98, 0.50, 0.08]], [45, [0.90, 0.12, 0.10]], [75, [0.55, 0.03, 0.08]]];
+  const ESC = [[0, [0.10, 0.72, 0.29]], [2.5, [0.55, 0.85, 0.20]], [6, [0.98, 0.84, 0.10]], [11, [0.98, 0.50, 0.08]], [18, [0.90, 0.12, 0.10]], [30, [0.55, 0.03, 0.08]]];
   const colorDe = (d) => { if (d <= ESC[0][0]) return ESC[0][1]; for (let i = 1; i < ESC.length; i++) if (d <= ESC[i][0]) { const [a, ca] = ESC[i - 1], [b, cb] = ESC[i], t = (d - a) / (b - a); return [ca[0] + (cb[0] - ca[0]) * t, ca[1] + (cb[1] - ca[1]) * t, ca[2] + (cb[2] - ca[2]) * t]; } return ESC[ESC.length - 1][1]; };
   let tPint = 0;
   const api = { mesh, escala: ESC, get visible() { return mesh.visible; }, set visible(v) { mesh.visible = v; if (v) api.pintar(); } };
@@ -2751,20 +2751,21 @@ function crearFlujoCarros(THREE, N, ANCHO, dedupe, yVia, RUTAS) {
       for (const [ei, ax, az, bx, bz] of c) { const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1e-9, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2)), ex = x - ax - t * dx, ez = z - az - t * dz, d = ex * ex + ez * ez; if (d < md) { md = d; mejor = ei; } }
       if (mejor >= 0) acum[mejor] += dt;
     }
-    if (mesh.visible && (tPint -= dt) <= 0) { tPint = 1.5; api.pintar(); }
+    if (mesh.visible && (tPint -= dt) <= 0) { tPint = 0.4; api.pintar(); }
   };
   // al abrir: se recorren los 2 minutos de simulación alrededor de la hora de inicio, así la capa ya sale con color
   api.precalentar = (TR) => {
     const V = { n: 0, x: new Float32Array(TR.maxi), z: new Float32Array(TR.maxi) }; let usados = 0;
     const t0 = Math.floor(TR.t);
+    const pD = TR.demanda != null ? TR.demanda : 1;
     for (let t = t0 - TAU; t <= t0 + TAU && usados < TAU; t++) { const S = TR.steps[(t + TR.NS) % TR.NS]; if (!S) continue;
-      V.n = Math.min(S.ids.length, TR.maxi); for (let i = 0; i < V.n; i++) { V.x[i] = S.xs[i] - LC.x; V.z[i] = LC.y - S.ys[i]; } api.contar(V, 1); usados++; }
-    api.listo = usados > 10; if (mesh.visible) api.pintar(); return usados;
+      V.n = 0; for (let i = 0; i < S.ids.length && V.n < TR.maxi; i++) { if (pD < 0.999 && ((S.ids[i] * 2654435761) >>> 0) / 4294967296 > pD) continue; V.x[V.n] = S.xs[i] - LC.x; V.z[V.n] = LC.y - S.ys[i]; V.n++; } api.contar(V, 1); usados++; }
+    api.listo = usados >= Math.min(5, TAU); /* antes nunca quedaba listo y se recalentaba en cada cuadro con todos los carros: el color no cambiaba */ if (mesh.visible) api.pintar(); return usados;
   };
   api.pintar = () => {
     for (let ei = 0; ei < E.length; ei++) {
       const carril = Math.max(1, Math.round(E[ei].w / 3.5)), dens = acum[ei] / TAU / (E[ei].L / 1000) / carril * 2; // carros promedio en la vía / km / carril (x2: ambos sentidos comparten la cinta)
-      const c = colorDe(dens), al = acum[ei] > 0.5 ? 0.9 : 0.0, [b0, nv] = vRango[ei];
+      const c = colorDe(dens), al = acum[ei] > 0.6 ? Math.min(0.92, 0.25 + dens * 0.12) : 0.0, [b0, nv] = vRango[ei]; /* vía sin carros: no se pinta; pocos carros: tenue */
       for (let v = b0; v < b0 + nv; v++) { const o = v * 4; col[o] = c[0]; col[o + 1] = c[1]; col[o + 2] = c[2]; col[o + 3] = al; }
     }
     g.attributes.color.needsUpdate = true;
