@@ -98,7 +98,8 @@ export function crearRuidoCierre({ THREE, T3, LC }) {
   async function cerrar(ie, estado) {
     if (ie == null) { cerrada = null; desvios = new Map(); marcar(null); estado('Sin cierre: el tráfico va por su ruta normal.'); return; }
     if (!T3.TRAF) { estado('La simulación de tráfico aún está cargando; intenta en un momento.'); return; }
-    estado('Calculando desvíos reales por las calles vecinas…'); await new Promise(r => setTimeout(r, 30));
+    estado('Bajando el tráfico grabado y calculando desvíos…'); { const TR = T3.TRAF; if (TR.pedirTrozo) await Promise.all([...Array(Math.ceil(TR.NS / TR.chunk))].map((_, k) => TR.pedirTrozo(k))); } /* el tráfico se baja por partes: el cierre necesita todo */
+    await new Promise(r => setTimeout(r, 30));
     const n = calcularDesvios(ie); cerrada = ie; marcar(ie);
     const vc = VIAS_CRITICAS.find(v => v.e === ie);
     estado(`${vc ? vc.n : 'Vía'}: cerrada. ${n} vehículos desviados por calles vecinas.`);
