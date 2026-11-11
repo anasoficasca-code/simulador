@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b1015" />
+<title>Federación Policéntrica · Kennedy</title>
+<meta name="description" content="Simulación territorial de Kennedy (Bogotá): abastecimiento, movilidad, humedales y una red policéntrica de alimento, conocimiento y cuidado." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 fill=%27%230b1015%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%275%27 fill=%27%23c86d51%27/%3E%3Ccircle cx=%277%27 cy=%278%27 r=%273%27 fill=%27%237fb59a%27/%3E%3Ccircle cx=%2725%27 cy=%279%27 r=%273%27 fill=%27%237fb59a%27/%3E%3Ccircle cx=%2724%27 cy=%2725%27 r=%273%27 fill=%27%237fb59a%27/%3E%3Ccircle cx=%277%27 cy=%2724%27 r=%273%27 fill=%27%237fb59a%27/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0b1015; --bg2:#111921; --bg3:#17212b; --line:rgba(160,180,195,.16); --line2:rgba(160,180,195,.3);
+  --tx:#e6e9ea; --tx2:#a3adb3; --tx3:#6d7a82;
+  --acc:#c86d51; --acc2:#e0917a; --verde:#7fb59a; --agua:#6fa8c7; --oro:#d9b45b; --lila:#a493d6;
+  --mono:'JetBrains Mono',ui-monospace,monospace; --sans:'Space Grotesk',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--acc2)}
+img{max-width:100%;display:block}
+.mono{font-family:var(--mono);letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:var(--tx3)}
+.wrap{width:min(1180px,calc(100% - 32px));margin:0 auto}
+/* barra superior */
+.top{position:fixed;inset:0 0 auto 0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:14px 24px;background:linear-gradient(var(--bg) 40%,transparent);pointer-events:none}
+.top>*{pointer-events:auto}
+.top .mono{color:var(--tx2)}
+.top a.sim{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx);text-decoration:none;border:1px solid var(--line2);padding:8px 14px;border-radius:999px;background:rgba(17,25,33,.8);backdrop-filter:blur(6px)}
+.top a.sim:hover{border-color:var(--acc);color:var(--acc2)}
+.prog{position:fixed;top:0;left:0;height:2px;background:var(--acc);z-index:60;width:0}
+/* índice lateral */
+.idx{position:fixed;right:22px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:10px}
+.idx a{display:flex;align-items:center;justify-content:flex-end;gap:10px;text-decoration:none;font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--tx3)}
+.idx a span{opacity:0;transition:opacity .2s}
+.idx a:hover span,.idx a.on span{opacity:1}
+.idx a i{width:7px;height:7px;border-radius:50%;border:1px solid var(--tx3);display:block}
+.idx a.on{color:var(--acc2)} .idx a.on i{background:var(--acc);border-color:var(--acc)}
+@media (max-width:900px){.idx{display:none}}
+/* portada */
+.portada{position:relative;min-height:100svh;display:flex;align-items:flex-end;overflow:hidden}
+.portada img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:saturate(.75) brightness(.55)}
+.portada::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,16,21,.2) 0%,rgba(11,16,21,.35) 45%,var(--bg) 100%)}
+.portada .wrap{position:relative;z-index:2;padding:0 0 9vh}
+.portada h1{font-size:clamp(44px,9vw,120px);line-height:.95;font-weight:600;letter-spacing:-.03em;margin:18px 0 18px}
+.portada h1 em{font-style:normal;color:var(--acc2)}
+.portada p.sub{font-size:clamp(17px,2.2vw,24px);color:var(--tx2);max-width:760px;font-weight:300}
+.portada .meta{margin-top:28px;display:flex;gap:28px;flex-wrap:wrap}
+.baja{margin-top:42px;font-family:var(--mono);font-size:11px;letter-spacing:.2em;color:var(--tx3)}
+.baja b{display:block;font-weight:400;margin-top:6px;animation:b 1.8s infinite}
+@keyframes b{50%{transform:translateY(5px)}}
+/* capítulos */
+section.cap{padding:16vh 0 8vh;border-top:1px solid var(--line)}
+.cab{max-width:860px;margin-bottom:56px}
+.cab .mono{color:var(--acc2)}
+.cab h2{font-size:clamp(32px,5vw,58px);line-height:1.04;letter-spacing:-.02em;font-weight:500;margin:14px 0 18px}
+.cab p{color:var(--tx2);font-size:clamp(16px,1.6vw,19px);max-width:740px}
+h3{font-size:22px;font-weight:500;letter-spacing:-.01em;margin-bottom:10px}
+.nota{font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--tx3);margin-top:12px;letter-spacing:.02em}
+.nota b{color:var(--tx2);font-weight:500}
+.sup{font-family:var(--mono);font-size:10px;color:var(--oro);border:1px solid rgba(217,180,91,.4);border-radius:4px;padding:0 5px;margin-left:4px;letter-spacing:.06em;vertical-align:2px}
+/* relaciones */
+.rel{display:grid;grid-template-columns:1.25fr 1fr;gap:36px;align-items:center}
+.rel svg{width:100%;height:auto;display:block;background:radial-gradient(circle at 50% 50%,#141e27,transparent 70%);border-radius:18px}
+.rel .n0 circle{fill:var(--acc)}
+.rel g.r{opacity:0;transition:opacity .7s}
+.rel g.r.on{opacity:1}
+.rel g.r line{stroke:var(--line2);stroke-width:1.4;stroke-dasharray:4 4}
+.rel g.r.on line{animation:flu 1.2s linear infinite}
+@keyframes flu{to{stroke-dashoffset:-16}}
+.rel text{font-family:var(--sans);fill:var(--tx);font-size:12px}
+.rel .ctrl{display:flex;flex-direction:column;gap:16px}
+.rel .ficha{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:22px;min-height:210px}
+.rel .ficha .mono{color:var(--acc2)}
+.rel .ficha h3{margin-top:10px}
+.rel .ficha p{color:var(--tx2);font-size:15px}
+.btn{font:500 14px var(--sans);color:var(--bg);background:var(--acc2);border:0;border-radius:999px;padding:12px 20px;cursor:pointer;align-self:flex-start;transition:background .2s}
+.btn:hover{background:#eba892}
+.btn.sec{background:transparent;color:var(--tx2);border:1px solid var(--line2)}
+@media (max-width:860px){.rel{grid-template-columns:1fr}}
+/* cifras */
+.cifras{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:48px}
+.cifras div{background:var(--bg);padding:22px 20px}
+.cifras b{display:block;font-size:clamp(26px,3.4vw,40px);font-weight:500;letter-spacing:-.02em;line-height:1.1}
+.cifras span{display:block;color:var(--tx2);font-size:13.5px;margin-top:6px}
+.cifras small{display:block;font-family:var(--mono);font-size:10px;color:var(--tx3);margin-top:8px;letter-spacing:.06em}
+@media (max-width:860px){.cifras{grid-template-columns:1fr 1fr}}
+/* bloque imagen + texto */
+.par{display:grid;grid-template-columns:1.15fr 1fr;gap:40px;align-items:center;margin:56px 0}
+.par.inv{grid-template-columns:1fr 1.15fr}
+.par.inv figure{order:2}
+figure{margin:0}
+figure img{border-radius:14px;border:1px solid var(--line);width:100%}
+figcaption{font-family:var(--mono);font-size:10.5px;color:var(--tx3);margin-top:10px;letter-spacing:.04em;line-height:1.5}
+.par p{color:var(--tx2)}
+.par p+p{margin-top:12px}
+@media (max-width:860px){.par,.par.inv{grid-template-columns:1fr}.par.inv figure{order:0}}
+/* dona usos */
+.dona{display:flex;gap:28px;align-items:center;flex-wrap:wrap}
+.dona svg{width:200px;height:200px;flex:none}
+.dona svg path{transition:opacity .2s;cursor:pointer}
+.ley{flex:1;min-width:230px;display:flex;flex-direction:column;gap:7px;font-size:14px}
+.ley div{display:grid;grid-template-columns:12px 1fr auto 56px;gap:10px;align-items:center;padding:3px 6px;border-radius:6px}
+.ley div.hl{background:var(--bg3)}
+.ley i{width:12px;height:12px;border-radius:3px}
+.ley em{font-style:normal;color:var(--tx3);font-family:var(--mono);font-size:12px}
+.ley b{font-weight:500;text-align:right;font-family:var(--mono);font-size:13px;color:var(--acc2)}
+/* demanda por hora */
+.demanda{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:26px}
+.demanda .fila{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.demanda .hora{font-size:44px;font-weight:500;letter-spacing:-.02em}
+.demanda .pct{font-family:var(--mono);font-size:14px;color:var(--tx2)}
+.demanda .pct b{font-size:22px;color:var(--acc2);font-weight:500}
+.demanda svg{width:100%;height:auto;display:block}
+.demanda input{width:100%;margin-top:12px;accent-color:var(--acc)}
+/* estrategias */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.tabs button{font:500 13px var(--mono);letter-spacing:.06em;color:var(--tx2);background:var(--bg2);border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer}
+.tabs button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.est{display:grid;grid-template-columns:1fr 1.2fr;gap:26px}
+.est .info{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:26px}
+.est .info h3{font-size:26px}
+.est .info p{color:var(--tx2)}
+.est .cifra{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:baseline}
+.est .cifra b{font-size:26px;font-weight:500;color:var(--acc2)}
+.est .cifra span{color:var(--tx2);font-size:14px}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rol{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:16px}
+.rol .mono{display:flex;align-items:center;gap:8px}
+.rol .mono i{width:8px;height:8px;border-radius:50%}
+.rol ul{list-style:none;margin-top:10px;display:flex;flex-direction:column;gap:9px}
+.rol li b{font-weight:500;font-size:14.5px;display:block}
+.rol li span{color:var(--tx3);font-size:13px;display:block;line-height:1.45}
+@media (max-width:900px){.est{grid-template-columns:1fr}.roles{grid-template-columns:1fr}}
+/* objetivos */
+.obj{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:10px}
+.obj div{background:var(--bg2);border:1px solid var(--line);border-top:3px solid var(--c);border-radius:12px;padding:20px}
+.obj i{font-style:normal;font-family:var(--mono);color:var(--c);font-size:12px}
+.obj b{display:block;font-weight:500;margin:8px 0;font-size:16.5px;line-height:1.3}
+.obj span{color:var(--tx2);font-size:14px}
+@media (max-width:980px){.obj{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.obj{grid-template-columns:1fr}}
+/* barras polinizadores */
+.barras{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.barras div{display:grid;grid-template-columns:130px 1fr 44px;gap:12px;align-items:center;font-size:14px}
+.barras em{height:10px;border-radius:5px;background:var(--c);display:block;width:0;transition:width 1.2s cubic-bezier(.2,.8,.2,1)}
+.barras b{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--tx2);text-align:right}
+/* gobernanza: anillo */
+.anillo{display:grid;grid-template-columns:1fr 1fr;gap:36px;align-items:center}
+.anillo svg{width:100%;height:auto}
+.anillo text{font-family:var(--sans);font-size:12px;fill:var(--tx)}
+@media (max-width:860px){.anillo{grid-template-columns:1fr}}
+/* límites */
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.lista{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:26px}
+.lista ul{list-style:none;margin-top:14px;display:flex;flex-direction:column;gap:14px}
+.lista li{padding-left:18px;position:relative;color:var(--tx2);font-size:15px}
+.lista li::before{content:"";position:absolute;left:0;top:10px;width:7px;height:7px;border-radius:50%;background:var(--c)}
+.lista li b{color:var(--tx);font-weight:500}
+@media (max-width:860px){.dos{grid-template-columns:1fr}}
+.cierre{text-align:center;padding:14vh 0}
+.cierre h2{font-size:clamp(28px,4.4vw,52px);font-weight:500;letter-spacing:-.02em;max-width:900px;margin:0 auto 26px;line-height:1.1}
+.cierre a.btn{text-decoration:none;display:inline-block}
+footer{border-top:1px solid var(--line);padding:30px 0 50px;color:var(--tx3);font-size:13px}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.rev{opacity:0;transform:translateY(18px);transition:opacity .8s,transform .8s}
+.rev.vis{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rev{opacity:1;transform:none}*{animation:none!important;transition:none!important}}
+@media (max-width:600px){.top{padding:12px 16px}.top .mono{display:none}section.cap{padding:11vh 0 6vh}}
+</style>
+</head>
+<body>
+<div class="prog" id="prog"></div>
+<header class="top"><span class="mono">Kennedy · Federación policéntrica</span><a class="sim" href="./">Abrir el simulador 3D ↗</a></header>
+<nav class="idx" id="idx"></nav>
+
+<!-- 00 PORTADA -->
+<section class="portada" id="c0" data-n="00" data-t="Portada">
+  <img src="presentacion/img/portada.jpg" alt="Modelo 3D de Kennedy: edificios, vías y la glorieta de la Av. 1° de Mayo" />
+  <div class="wrap">
+    <div class="mono">Modelamiento dinámico y simulación · Corte III</div>
+    <h1>Federación<br><em>Policéntrica</em> · Kennedy</h1>
+    <p class="sub">Simulación territorial de una red de alimento, conocimiento y ecosistemas que reparte lo que hoy se concentra en un solo punto.</p>
+    <div class="baja">DESPLÁZATE<b>↓</b></div>
+  </div>
+</section>
+
+<!-- 01 PROBLEMA -->
+<section class="cap" id="c1" data-n="01" data-t="Problema">
+  <div class="wrap">
+    <div class="cab rev">
+      <div class="mono">01 · Formulación del problema</div>
+      <h2>Un territorio que depende de un solo centro.</h2>
+      <p>En Kennedy el abastecimiento se concentra en Corabastos, el bosque de Bavaria está en disputa y los humedales quedan encerrados entre bordes construidos. Cada problema refuerza a los demás: por eso se lee como un sistema de relaciones.</p>
+    </div>
+    <div class="rel rev">
+      <svg id="relSvg" viewBox="0 0 600 460" role="img" aria-label="Sistema de relaciones del problema"></svg>
+      <div class="ctrl">
+        <div class="ficha" id="relFicha"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="relBtn">Descubrir primera relación →</button><button class="btn sec" id="relReset">Reiniciar</button></div>
+        <div class="mono" id="relCont">00 / 06 · construyendo relaciones</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 TERRITORIO -->
+<section class="cap" id="c2" data-n="02" data-t="Territorio">
+  <div class="wrap">
+    <div class="cab rev">
+      <div class="mono">02 · El territorio modelado</div>
+      <h2>Kennedy en un modelo que se puede recorrer.</h2>
+      <p>El simulador reúne en una sola escena los edificios, la red vial, el arbolado, los humedales y los usos del suelo, con datos abiertos y oficiales. Estas son las piezas con las que trabaja.</p>
+    </div>
+    <div class="cifras rev">
+      <div><b data-n="243538">0</b><span>edificios modelados con su altura</span><small>OpenStreetMap</small></div>
+      <div><b data-n="19037">0</b><span>tramos de vía analizados</span><small>Red vial · OSM</small></div>
+      <div><b data-n="95001">0</b><span>árboles ubicados en el modelo</span><small>Arbolado urbano + parques</small></div>
+      <div><b data-n="5900" data-pre="~">0</b><span>construcciones con fachada fotográfica en el sector INEM</span><small>IDECA / SDP · visor 3D</small></div>
+    </div>
+    <div class="par rev">
+      <figure><img src="presentacion/img/usos.jpg" alt="Edificios de Kennedy pintados por uso del suelo" loading="lazy" /><figcaption>Cada edificio pintado con el uso de su lote. Amarillo: residencial · rojo: comercio y servicios · azul: dotacional · morado: industrial.</figcaption></figure>
+      <div>
+        <div class="mono" style="color:var(--acc2)">02.1 · Usos del suelo</div>
+        <h3 style="margin-top:10px">Una ciudad de vivienda con ejes de comercio.</h3>
+        <p>El uso de cada edificio sale del lote que lo contiene (shapefile <b>Usos_kennedy</b>, 50.878 lotes). Pasa el cursor por la dona.</p>
+        <div class="dona" style="margin-top:20px"><svg id="dona" viewBox="0 0 200 200"></svg><div class="ley" id="ley"></div></div>
+        <p class="nota"><b>Cómo se calculó:</b> unión espacial por el centroide de cada edificio. Un tercio de los edificios cae en lotes sin uso asignado; en el simulador se muestran como residenciales.</p>
+      </div>
+    </div>
+    <div class="par inv rev">
+      <figure><img src="presentacion/img/inem.jpg" alt="Sector INEM Kennedy con el modelo oficial de Bogotá" loading="lazy" /><figcaption>Sector INEM Kennedy: casas con su fachada real, tomadas del visor 3D de la Alcaldía.</figcaption></figure>
+      <div>
+        <div class="mono" style="color:var(--acc2)">02.2 · El modelo oficial</div>
+        <h3 style="margin-top:10px">Donde hay más detalle, se usa.</h3>
+        <p>En el sector del INEM, el modelo oficial de Bogotá (escena de CityEngine de IDECA y la Secretaría de Planeación) reemplaza a los volúmenes genéricos: cada lote trae su foto de fachada.</p>
+        <p>En el resto de la localidad los edificios son extrusiones de OpenStreetMap con su altura, tono y cubierta.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 MOVILIDAD -->
+<section class="cap" id="c3" data-n="03" data-t="Movilidad">
+  <div class="wrap">
+    <div class="cab rev">
+      <div class="mono">03 · Movilidad, flujo y ruido</div>
+      <h2>Los carros cambian con la hora del día.</h2>
+      <p>El tráfico es una simulación SUMO de miles de vehículos sobre las vías reales. A cada hora sale a la calle una parte distinta de ellos, y la capa de flujo pinta cada vía según cuántos carros la usan en ese momento.</p>
+    </div>
+    <div class="cifras rev">
+      <div><b data-n="4202">0</b><span>vehículos en la simulación SUMO</span><small>Recorridos grabados</small></div>
+      <div><b data-n="2581">0</b><span>vehículos a la vez en la calle, como máximo</span><small>Hora pico</small></div>
+      <div><b data-n="25">0</b><span>minutos grabados, que se repiten</span><small>1.500 pasos de 1 s</small></div>
+      <div><b data-n="135">0</b><span>vehículos desviados al cerrar la vía crítica 1</span><small>Ruta más corta (Dijkstra)</small></div>
+    </div>
+    <div class="demanda rev">
+      <div class="fila"><div><div class="mono">Vehículos en la calle según la hora</div><div class="hora" id="demHora">07:30</div></div><div class="pct"><b id="demPct">100 %</b> · <span id="demEst">hora pico</span></div></div>
+      <svg id="demSvg" viewBox="0 0 720 200" role="img" aria-label="Perfil de demanda de tráfico por hora"></svg>
+      <input type="range" id="demRange" min="0" max="23.75" step="0.25" value="7.5" aria-label="Hora del día" />
+      <p class="nota"><b>Supuesto <span class="sup">SUP</span>:</b> perfil típico de tráfico de Bogotá (picos de 6 a 8 y de 17 a 19). No es un conteo medido en Kennedy: con aforos de la Secretaría de Movilidad se reemplaza.</p>
+    </div>
+    <div class="par rev">
+      <figure><img src="presentacion/img/flujo_pico.jpg" alt="Flujo de carros en hora pico" loading="lazy" /><figcaption>Hora pico (17:53): las avenidas en rojo concentran el flujo; las calles locales quedan en verde.</figcaption></figure>
+      <div>
+        <div class="mono" style="color:var(--acc2)">03.1 · Flujo de carros</div>
+        <h3 style="margin-top:10px">Verde fluido, rojo congestionado.</h3>
+        <p>Cada carro suma al tramo de vía más cercano; el color muestra los carros por kilómetro y por carril de los últimos segundos. Al mover el reloj, las avenidas pasan de rojo en la hora pico a casi vacías en la madrugada.</p>
+      </div>
+    </div>
+    <div class="par inv rev">
+      <figure><img src="presentacion/img/ruido.jpg" alt="Mapa de ruido de los carros" loading="lazy" /><figcaption>Mapa de ruido en vivo: amarillo bajo, rojo alto. Se mueve con los vehículos.</figcaption></figure>
+      <div>
+        <div class="mono" style="color:var(--acc2)">03.2 · Ruido y cierre de vías</div>
+        <h3 style="margin-top:10px">Dónde suena la ciudad, y qué pasa si se cierra una vía.</h3>
+        <p>Cada vehículo aporta una mancha de 55 m que se suma con las vecinas: donde se juntan muchos carros, más ruido.</p>
+        <p>Al cerrar una de las seis vías críticas, los vehículos que la usaban toman la ruta más corta por las calles vecinas, y el flujo y el ruido se redistribuyen.</p>
+        <p class="nota"><b>Ilustrativo:</b> se desvían los mismos vehículos grabados; no se vuelve a simular SUMO.</p>
+      </div>
+    </div>
+    <div class="par rev">
+      <div>
+        <div class="mono" style="color:var(--acc2)">03.3 · Sintaxis espacial</div>
+        <h3 style="margin-top:10px">Qué tan accesible es cada calle.</h3>
+        <p>Con el método angular de depthmapX, cada vía se divide en tramos y se calcula su <b>integración</b> (qué tan cerca, en giros, queda de todos los demás) y su <b>elección</b> (cuántos de los recorridos más directos pasan por él).</p>
+        <p>La sintaxis muestra el potencial de la red; la simulación SUMO muestra su uso. Leerlas juntas indica dónde conviene poner tiendas, huertas y plazas.</p>
+      </div>
+      <figure><img src="presentacion/img/flujo_dia.jpg" alt="Kennedy con la capa de flujo de carros" loading="lazy" /><figcaption>Vista de la localidad con la capa de flujo encendida en la mañana.</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- 04 PROPUESTA -->
+<section class="cap" id="c4" data-n="04" data-t="Propuesta">
+  <div class="wrap">
+    <div class="cab rev">
+      <div class="mono">04 · La propuesta</div>
+      <h2>Repartir el centro: conocimiento en Bavaria, alimento en cada barrio.</h2>
+      <p>Bavaria Común se vuelve un hub de conocimiento que enseña y produce bioinsumos, sin acopiar alimentos. La producción se reparte en cubiertas, balcones, lotes y viviendas, y llega a las tiendas de barrio.</p>
+    </div>
+    <div class="obj rev">
+      <div style="--c:var(--lila)"><i>01</i><b>Instituto Biotecnológico como hub de conocimiento</b><span>Formación e investigación en compostaje acelerado e inoculación de hongos, sin centralizar el acopio.</span></div>
+      <div style="--c:var(--verde)"><i>02</i><b>Producción descentralizada y comercio barrial</b><span>Cultivo en viviendas y cubiertas; excedentes hacia las tiendas para depender menos de Corabastos y de los fletes.</span></div>
+      <div style="--c:var(--agua)"><i>03</i><b>Conectividad ecosistémica en los bordes de humedal</b><span>Vegetación nativa en La Vaca y El Burro para reducir las trampas ecológicas y el parasitismo del Chamón sobre el Cucarachero.</span></div>
+      <div style="--c:var(--oro)"><i>04</i><b>Incentivos sociales</b><span>Incentivos no monetarios para la participación y la adopción de las acciones de mayor impacto.</span></div>
+    </div>
+    <div class="par rev">
+      <figure><img src="presentacion/img/bavaria.jpg" alt="Huertas en hileras en el predio de Bavaria" loading="lazy" /><figcaption>Bavaria Común: parcelas de cultivo en los claros del predio, fuera de los edificios y del bosque.</figcaption></figure>
+      <div>
+        <div class="mono" style="color:var(--acc2)">04.1 · Bavaria Común</div>
+        <h3 style="margin-top:10px">Un instituto que enseña a sembrar la ciudad.</h3>
+        <p>En los claros del predio el modelo ubica <b>1.317 parcelas</b> de huerta en hileras; las naves se vuelven laboratorio de compostaje, hongos e inoculantes que salen hacia los barrios.</p>
+        <p>El Colectivo Salvemos el Bosque Bavaria articula: convoca asambleas y custodia la memoria de la lucha por las 48,76 ha del bosque.</p>
+      </div>
+    </div>
+    <div class="cifras rev">
+      <div><b data-n="13717">0</b><span>cubiertas de vivienda en altura para huerta hidropónica</span><small>E8 · lotes del shapefile</small></div>
+      <div><b data-n="460">0</b><span>tiendas de barrio, fruterías y panaderías como nodos de acopio</span><small>E2 · OSM</small></div>
+      <div><b data-n="888">0</b><span>conjuntos en altura y 13 plazas de mercado</span><small>E7 · shapefile y OSM</small></div>
+      <div><b data-n="79">0</b><span>jardines, salones comunales y centros de cuidado</span><small>E9 · OSM</small></div>
+    </div>
+    <div class="par inv rev">
+      <figure><img src="presentacion/img/usos_tintal.jpg" alt="Biblioteca El Tintal con su huerta y las torres alrededor" loading="lazy" /><figcaption>La biblioteca El Tintal (azul, dotacional) con su huerta bajo cubiertas; alrededor, torres con huerta en la terraza.</figcaption></figure>
+      <div>
+        <div class="mono" style="color:var(--acc2)">04.2 · Red de polinización</div>
+        <h3 style="margin-top:10px">Las huertas se conectan por lo que vuela.</h3>
+        <p>Colibríes, abejas, mariposas, abejorros y copetones visitan las huertas de las cubiertas y tejen una red entre edificios.</p>
+        <div class="barras" id="barras">
+          <div style="--c:#7fb59a"><span>Abeja de miel</span><em data-v="220"></em><b>220</b></div>
+          <div style="--c:#e0917a"><span>Mariposas</span><em data-v="110"></em><b>110</b></div>
+          <div style="--c:#6fa8c7"><span>Colibrí chillón</span><em data-v="80"></em><b>80</b></div>
+          <div style="--c:#a493d6"><span>Abejorro</span><em data-v="80"></em><b>80</b></div>
+          <div style="--c:#d9b45b"><span>Copetón</span><em data-v="40"></em><b>40</b></div>
+        </div>
+        <p class="nota"><b>Cantidades de diseño <span class="sup">SUP</span>:</b> individuos simulados para mostrar la red, no un censo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 GOBERNANZA -->
+<section class="cap" id="c5" data-n="05" data-t="Gobernanza">
+  <div class="wrap">
+    <div class="cab rev">
+      <div class="mono">05 · Gobernanza policéntrica</div>
+      <h2>Nadie está arriba: cada barrio decide.</h2>
+      <p>Las asambleas de cada barrio deciden con voz y voto en igualdad y se coordinan entre sí por delegados rotativos. El conocimiento está en el centro, pero no decide: enseña a los líderes, que lo llevan a sus vecinos.</p>
+    </div>
+    <div class="anillo rev">
+      <svg id="anillo" viewBox="0 0 520 440" role="img" aria-label="Red policéntrica de asambleas"></svg>
+      <div>
+        <div class="lista" style="--c:var(--oro)"><div class="mono">Cómo circula</div><ul>
+          <li style="--c:#d9b45b"><b>Deciden</b> · las asambleas comunitarias de cada barrio.</li>
+          <li style="--c:#7fb59a"><b>Articulan</b> · el Colectivo Salvemos el Bosque Bavaria y las juntas de vecinos: convocan y conectan.</li>
+          <li style="--c:#a493d6"><b>Enseñan</b> · el Instituto Biotecnológico Bavaria Común transfiere conocimiento y bioinsumos.</li>
+          <li style="--c:#6fa8c7"><b>Aplican</b> · hogares, conjuntos, tiendas y jardines.</li>
+          <li style="--c:#e0917a"><b>Reciben</b> · incentivos: humus gratis, créditos en la tienda, roles con más vocería.</li>
+        </ul></div>
+      </div>
+    </div>
+    <div class="cab rev" style="margin:80px 0 26px"><div class="mono">05.1 · Las nueve estrategias</div><h3 style="font-size:28px;margin-top:10px">Quién decide, quién articula y quién aplica en cada una.</h3></div>
+    <div class="tabs rev" id="tabs"></div>
+    <div class="est rev" id="est"></div>
+  </div>
+</section>
+
+<!-- 06 LO QUE SIGUE -->
+<section class="cap" id="c6" data-n="06" data-t="Lo que sigue">
+  <div class="wrap">
+    <div class="cab rev">
+      <div class="mono">06 · Lo que sigue</div>
+      <h2>Lo que muestra el modelo, y lo que falta.</h2>
+    </div>
+    <div class="dos rev">
+      <div class="lista" style="--c:var(--verde)"><div class="mono">Resultados calculados</div><ul>
+        <li style="--c:#7fb59a"><b>Usos del suelo:</b> 47,5 % de los edificios es residencial y 16,4 % comercio y servicios, según el shapefile de lotes.</li>
+        <li style="--c:#7fb59a"><b>Flujo por hora:</b> de unos 90 vehículos en la calle a las 3 a. m. a más de 1.800 en hora pico, sobre la misma red.</li>
+        <li style="--c:#7fb59a"><b>Cierre de vía:</b> 135 vehículos cambian de ruta al cerrar la vía crítica 1.</li>
+        <li style="--c:#7fb59a"><b>Red de huertas:</b> 13.717 cubiertas en altura y 1.317 parcelas en Bavaria disponibles para producir.</li>
+      </ul></div>
+      <div class="lista" style="--c:var(--acc)"><div class="mono">Límites de este análisis</div><ul>
+        <li style="--c:#c86d51"><b>Tráfico:</b> 25 minutos grabados que se repiten; el perfil por hora es un supuesto, no un aforo de Kennedy.</li>
+        <li style="--c:#c86d51"><b>Cierre de vías:</b> desvía los mismos vehículos; no re-simula la demanda.</li>
+        <li style="--c:#c86d51"><b>Usos del suelo:</b> un tercio de los edificios no tiene uso en el shapefile.</li>
+        <li style="--c:#c86d51"><b>Fauna y polinizadores:</b> cantidades de diseño para mostrar relaciones, no censos.</li>
+        <li style="--c:#c86d51"><b>Actores de E2 a E9:</b> propuestos por el grupo; falta validarlos con la comunidad.</li>
+      </ul></div>
+    </div>
+  </div>
+</section>
+
+<section class="cierre">
+  <div class="wrap rev">
+    <div class="mono" style="color:var(--acc2);margin-bottom:16px">Federación policéntrica</div>
+    <h2>Del centro único a una red de barrios que se alimentan, aprenden y se cuidan.</h2>
+    <a class="btn" href="./">Recorrer Kennedy en 3D →</a>
+  </div>
+</section>
+
+<footer><div class="wrap"><span>Federación Policéntrica · Kennedy · Modelamiento dinámico y simulación · Corte III · 2026</span><span>Datos: OpenStreetMap · IDECA / SDP · shapefile Usos_kennedy · SUMO</span></div></footer>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const fmt = (n) => n.toLocaleString('es-CO');
+
+/* índice y progreso */
+const caps = $$('section[data-n]');
+$('#idx').innerHTML = caps.map(s => `<a href="#${s.id}" data-id="${s.id}"><span>${s.dataset.n} · ${s.dataset.t}</span><i></i></a>`).join('');
+addEventListener('scroll', () => {
+  const h = document.documentElement; $('#prog').style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+  let act = caps[0].id; for (const s of caps) if (s.getBoundingClientRect().top < innerHeight * 0.4) act = s.id;
+  $$('#idx a').forEach(a => a.classList.toggle('on', a.dataset.id === act));
+}, { passive: true });
+
+/* aparición y contadores */
+const io = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; e.target.classList.add('vis'); io.unobserve(e.target);
+  $$('[data-n]', e.target).forEach(b => { if (b.tagName !== 'B') return; const fin = +b.dataset.n, pre = b.dataset.pre || '', t0 = performance.now(); const paso = (t) => { const k = Math.min(1, (t - t0) / 1400), v = Math.round(fin * (1 - Math.pow(1 - k, 3))); b.textContent = pre + fmt(v); if (k < 1) requestAnimationFrame(paso); }; requestAnimationFrame(paso); });
+  $$('#barras em', e.target).forEach(m => m.style.width = (+m.dataset.v / 220 * 100) + '%');
+}), { threshold: 0.18 });
+$$('.rev').forEach(x => io.observe(x));
+
+/* 01 · sistema de relaciones */
+const REL = [
+  { a: 'Abastecimiento', t: 'Todo el alimento pasa por Corabastos', d: 'La central concentra el acopio de la ciudad: los barrios dependen de ella y de los fletes que traen y llevan los alimentos.' },
+  { a: 'Movilidad', t: 'Camiones, congestión y ruido', d: 'Los viajes hacia y desde la central cargan las avenidas: en hora pico se vuelven rojas en la simulación y concentran el ruido.' },
+  { a: 'Autonomía', t: 'Los barrios casi no producen', d: 'Cubiertas, balcones y lotes baldíos no se usan para cultivar; la comida llega de lejos y la tienda de barrio solo revende.' },
+  { a: 'Humedales', t: 'Bordes construidos, trampas ecológicas', d: 'La Vaca, El Burro y Techo quedan aislados: la fauna se concentra en bordes pobres, donde el Chamón parasita los nidos del Cucarachero.' },
+  { a: 'Bosque Bavaria', t: '48,76 ha en disputa', d: 'Con 0,1 árboles por persona y aire contaminado, el bosque de Bavaria es una de las pocas masas verdes; la comunidad lucha por conservarlo.' },
+  { a: 'Tejido social', t: 'Cuidado y saber sin red', d: 'Jardines, salones comunales y saberes de oficio existen, pero dispersos: no se conectan con el alimento ni con el territorio.' },
+];
+(() => {
+  const svg = $('#relSvg'), C = [300, 230], R = 170; let n = 0;
+  const pos = REL.map((_, i) => { const a = -Math.PI / 2 + i / REL.length * Math.PI * 2; return [C[0] + Math.cos(a) * R, C[1] + Math.sin(a) * R * 0.86]; });
+  const wrap = (s, w) => { const out = []; let l = ''; for (const p of s.split(' ')) { if ((l + ' ' + p).trim().length > w) { out.push(l.trim()); l = p; } else l += ' ' + p; } out.push(l.trim()); return out; };
+  svg.innerHTML = REL.map((r, i) => { const [x, y] = pos[i], lb = wrap(r.a, 11);
+      return `<g class="r" data-i="${i}"><line x1="${C[0]}" y1="${C[1]}" x2="${x}" y2="${y}"/>${REL.map((_, j) => j === (i + 1) % REL.length ? `<line x1="${x}" y1="${y}" x2="${pos[j][0]}" y2="${pos[j][1]}" style="stroke:rgba(200,109,81,.35)"/>` : '').join('')}
+      <circle cx="${x}" cy="${y}" r="42" fill="#17212b" stroke="#e0917a" stroke-width="1.2"/><text x="${x}" y="${y + 4 - (lb.length - 1) * 7}" text-anchor="middle">${lb.map((t, k) => `<tspan x="${x}" dy="${k ? 14 : 0}">${t}</tspan>`).join('')}</text></g>`; }).join('')
+    + `<g class="n0"><circle cx="${C[0]}" cy="${C[1]}" r="58" opacity=".18"/><circle cx="${C[0]}" cy="${C[1]}" r="44"/><text x="${C[0]}" y="${C[1] - 4}" text-anchor="middle" style="font-weight:600">Centro</text><text x="${C[0]}" y="${C[1] + 13}" text-anchor="middle">único</text></g>`;
+  const ficha = $('#relFicha'), btn = $('#relBtn'), cont = $('#relCont');
+  const pintar = () => {
+    $$('g.r', svg).forEach(g => g.classList.toggle('on', +g.dataset.i < n));
+    cont.textContent = String(n).padStart(2, '0') + ' / 0' + REL.length + ' · construyendo relaciones';
+    if (!n) ficha.innerHTML = '<div class="mono">Problema central</div><h3>Concentración y fragmentación</h3><p>La centralización del abastecimiento en Corabastos y la fragmentación de los ecosistemas y del tejido barrial hacen a Kennedy dependiente de un solo centro.</p>';
+    else { const r = REL[n - 1]; ficha.innerHTML = `<div class="mono">Relación ${String(n).padStart(2, '0')} · ${r.a}</div><h3>${r.t}</h3><p>${r.d}</p>`; }
+    btn.textContent = n === 0 ? 'Descubrir primera relación →' : n < REL.length ? 'Siguiente relación →' : 'Sistema completo ✓';
+    btn.disabled = n >= REL.length; btn.style.opacity = n >= REL.length ? .5 : 1;
+  };
+  btn.onclick = () => { if (n < REL.length) { n++; pintar(); } };
+  $('#relReset').onclick = () => { n = 0; pintar(); };
+  pintar();
+})();
+
+/* 02 · dona de usos */
+(() => {
+  const U = [['Residencial', '#f4d35e', 62361], ['Sin uso asignado', '#7a7f86', 44769], ['Comercio y servicios', '#e63946', 21579], ['Dotacional', '#457b9d', 1878], ['Industrial', '#7b2d8e', 607], ['Recreacional, parqueadero y otros', '#8ac926', 45]];
+  const tot = U.reduce((a, u) => a + u[2], 0), cx = 100, cy = 100, R = 92, r = 60; let a0 = -Math.PI / 2;
+  const p = (a, rr) => `${(cx + rr * Math.cos(a)).toFixed(2)} ${(cy + rr * Math.sin(a)).toFixed(2)}`;
+  $('#dona').innerHTML = U.map((u, i) => { const f = u[2] / tot, a1 = a0 + Math.max(f, 0.004) * Math.PI * 2, big = a1 - a0 > Math.PI ? 1 : 0, d = `M${p(a0, R)} A${R} ${R} 0 ${big} 1 ${p(a1, R)} L${p(a1, r)} A${r} ${r} 0 ${big} 0 ${p(a0, r)}Z`; a0 = a1; return `<path d="${d}" fill="${u[1]}" data-i="${i}"/>`; }).join('')
+    + `<text x="100" y="94" text-anchor="middle" fill="#a3adb3" font-size="10" font-family="JetBrains Mono">EDIFICIOS</text><text id="donaN" x="100" y="116" text-anchor="middle" fill="#e6e9ea" font-size="22" font-family="Space Grotesk">${fmt(tot)}</text>`;
+  $('#ley').innerHTML = U.map((u, i) => `<div data-i="${i}"><i style="background:${u[1]}"></i><span>${u[0]}</span><em>${fmt(u[2])}</em><b>${(u[2] / tot * 100).toFixed(1).replace('.', ',')} %</b></div>`).join('');
+  const hl = (i) => { $$('#dona path').forEach(x => x.style.opacity = i == null || +x.dataset.i === i ? 1 : .25); $$('#ley div').forEach(x => x.classList.toggle('hl', +x.dataset.i === i)); $('#donaN').textContent = i == null ? fmt(tot) : fmt(U[i][2]); };
+  $$('#dona path, #ley div').forEach(x => { x.onmouseenter = () => hl(+x.dataset.i); x.onmouseleave = () => hl(null); x.onclick = () => hl(+x.dataset.i); });
+})();
+
+/* 03 · demanda por hora (mismo perfil que usa el simulador) */
+(() => {
+  const D = [0.08, 0.05, 0.04, 0.04, 0.09, 0.34, 0.82, 1.0, 0.86, 0.66, 0.6, 0.64, 0.74, 0.72, 0.64, 0.68, 0.84, 1.0, 0.96, 0.76, 0.52, 0.36, 0.23, 0.13];
+  const val = (h) => { const a = Math.floor(h) % 24, f = h - Math.floor(h); return D[a] + (D[(a + 1) % 24] - D[a]) * f; };
+  const W = 720, H = 200, x = (h) => 30 + h / 24 * (W - 50), y = (v) => H - 28 - v * (H - 50);
+  const col = (v) => v >= 0.9 ? '#e64a19' : v >= 0.6 ? '#f5a623' : v >= 0.3 ? '#d9c45b' : '#7fb59a';
+  let pts = ''; for (let h = 0; h <= 24; h += 0.25) pts += `${x(h).toFixed(1)},${y(val(h)).toFixed(1)} `;
+  const svg = $('#demSvg');
+  const draw = (hs) => {
+    const v = val(hs);
+    svg.innerHTML = `<defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c86d51" stop-opacity=".45"/><stop offset="1" stop-color="#c86d51" stop-opacity="0"/></linearGradient></defs>`
+      + [0, 0.5, 1].map(g => `<line x1="30" x2="${W - 20}" y1="${y(g)}" y2="${y(g)}" stroke="rgba(160,180,195,.12)"/><text x="0" y="${y(g) + 4}" fill="#6d7a82" font-size="10" font-family="JetBrains Mono">${g * 100}%</text>`).join('')
+      + `<polygon points="${x(0)},${y(0)} ${pts} ${x(24)},${y(0)}" fill="url(#dg)"/><polyline points="${pts}" fill="none" stroke="#e0917a" stroke-width="2"/>`
+      + [0, 6, 12, 18, 24].map(h => `<text x="${x(h)}" y="${H - 8}" fill="#6d7a82" font-size="10" text-anchor="middle" font-family="JetBrains Mono">${String(h).padStart(2, '0')}:00</text>`).join('')
+      + `<line x1="${x(hs)}" x2="${x(hs)}" y1="${y(0)}" y2="${y(1.05)}" stroke="#e6e9ea" stroke-dasharray="3 3" opacity=".5"/><circle cx="${x(hs)}" cy="${y(v)}" r="6" fill="${col(v)}" stroke="#0b1015" stroke-width="2"/>`;
+    const hh = Math.floor(hs), mm = Math.round((hs - hh) * 60);
+    $('#demHora').textContent = String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+    $('#demPct').textContent = Math.round(v * 100) + ' %'; $('#demPct').style.color = col(v);
+    $('#demEst').textContent = v >= 0.9 ? 'hora pico' : v >= 0.6 ? 'tráfico medio' : v >= 0.3 ? 'tráfico bajo' : 'casi vacío';
+  };
+  const r = $('#demRange'); r.oninput = () => draw(+r.value); draw(+r.value);
+})();
+
+/* 05 · anillo policéntrico */
+(() => {
+  const svg = $('#anillo'), C = [260, 220], N = 5, R = 150; let s = '';
+  const P = [...Array(N)].map((_, i) => { const a = -Math.PI / 2 + i / N * Math.PI * 2; return [C[0] + Math.cos(a) * R, C[1] + Math.sin(a) * R]; });
+  P.forEach((p, i) => { const q = P[(i + 1) % N]; s += `<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="#d9b45b" stroke-width="1.6" stroke-dasharray="5 4" opacity=".7"/>`; s += `<line x1="${C[0]}" y1="${C[1]}" x2="${p[0]}" y2="${p[1]}" stroke="#a493d6" stroke-width="1" opacity=".45"/>`;
+    const m = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], o = [m[0] + (m[0] - C[0]) * 0.18, m[1] + (m[1] - C[1]) * 0.18]; s += `<circle cx="${o[0]}" cy="${o[1]}" r="7" fill="#7fb59a"/>`; });
+  P.forEach((p, i) => { for (let k = 0; k < 3; k++) { const a = Math.atan2(p[1] - C[1], p[0] - C[0]) + (k - 1) * 0.5, q = [p[0] + Math.cos(a) * 44, p[1] + Math.sin(a) * 44]; s += `<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="#6fa8c7" opacity=".5"/><circle cx="${q[0]}" cy="${q[1]}" r="4.5" fill="#6fa8c7"/>`; }
+    s += `<circle cx="${p[0]}" cy="${p[1]}" r="22" fill="#d9b45b" opacity=".18"/><circle cx="${p[0]}" cy="${p[1]}" r="14" fill="#d9b45b"/><text x="${p[0]}" y="${p[1] + (p[1] < C[1] ? -24 : 34)}" text-anchor="middle">Asamblea ${i + 1}</text>`; });
+  s += `<circle cx="${C[0]}" cy="${C[1]}" r="40" fill="#a493d6" opacity=".18"/><circle cx="${C[0]}" cy="${C[1]}" r="24" fill="#a493d6"/><text x="${C[0]}" y="${C[1] + 44}" text-anchor="middle" fill="#cfc4f2">Instituto · enseña, no decide</text>`;
+  svg.innerHTML = s;
+})();
+
+/* 05.1 · estrategias (datos del simulador: data3d/red_gobernanza.js) */
+const GOB = {"E1":{"t":"Bavaria Común · Instituto Biotecnológico","s":"Hub de conocimiento e innovación agroecológica: emite saberes y bioinsumos, no acopia alimentos.","n":[["Asambleas Comunitarias Territoriales","decide","Órgano soberano: voz y voto en igualdad; deciden prioridades con el diagnóstico de la comunidad (0,1 árboles por persona, aire contaminado)"],["Colectivo Salvemos el Bosque Bavaria","articula","Articulador político y pedagógico: convoca asambleas y custodia la memoria de lucha por las 48,76 ha del bosque. No es dueño del espacio"],["Juntas de vecinos","articula","Llevan las decisiones de la asamblea a cada barrio"],["Instituto Biotecnológico Bavaria Común","saber","Escuela agroecológica comunitaria: laboratorios de inoculación de hongos y celdas de compostaje acelerado"],["Equipo técnico y facilitadores","saber","Especialistas y académicos: soporte técnico inicial en bioprocesos"],["Cuidadores y promotores ambientales","saber","Miembros de los colectivos que coordinan laboratorios y talleres"],["Líderes y delegados de barrio","aplica","Formación de formadores: aprenden en el Instituto y enseñan en sus cuadras"],["Familias en viviendas","aplica","Huertas hidropónicas y modulares en fachadas y patios"],["Conjuntos residenciales","aplica","Huertas colectivas en cubiertas y azoteas"],["Tenderos de barrio","aplica","Reciben excedentes en muebles de acopio y conservación"],["Humus e inoculantes gratis","incentivo","Para las huertas que mantienen su producción activa"],["Roles: Cultivador → Bio-agricultor → Gestor de Red","incentivo","Más estatus = más vocería en las asambleas"],["Créditos en la tienda","incentivo","Los excedentes se cambian por productos de primera necesidad"],["48,76 ha de bosque preservadas","efecto","Pulmón ambiental de Kennedy"],["Menos presión sobre Corabastos","efecto","Menos camiones, fletes y basura"]]},"E2":{"t":"Tiendas Barriales","s":"La tienda de esquina como nodo de acopio e intercambio micro-local.","n":[["Asamblea de barrio","decide","Acuerda precios justos y qué tiendas se vinculan"],["Red de tenderos","articula","Coordinan el acopio entre tiendas cercanas"],["Instituto Bavaria Común","saber","Enseña conservación, inocuidad y registro de excedentes"],["Tiendas de esquina","aplica","Muebles de acopio y conservación"],["Huertas de las casas y cubiertas","aplica","Entregan excedentes a 1–3 cuadras"],["Vecinos compradores","aplica","Compran fresco sin ir a Corabastos"],["Créditos por excedentes","incentivo","Cambio por productos de primera necesidad"],["Muebles de conservación","incentivo","Dotación para las tiendas vinculadas"],["Menos fletes y congestión","efecto","El alimento circula a escala de cuadra"]]},"E3":{"t":"Corabastos reducido","s":"La central se reduce y libera su borde con el humedal La Vaca.","n":[["Asambleas y mesa con comerciantes","decide","Concertan el desmonte de bodegas junto al humedal"],["Juntas de vecinos del borde","articula","Vigilan el cumplimiento del plan"],["Equipo técnico de transformación","saber","Diseño de la franja de restauración y patios de transferencia"],["Comerciantes mayoristas","aplica","Reorganizan la operación en menos bodegas"],["Banco de alimentos","aplica","Recupera excedentes y pérdidas"],["Orgánicos a compostaje","aplica","Los residuos van al Instituto Bavaria Común"],["Ventanilla para productores pequeños","incentivo","Acceso directo sin intermediarios"],["Borde de humedal restaurado","efecto","Franja verde junto a La Vaca"],["Menos camiones pesados","efecto","Tren y vehículos pequeños"]]},"E4":{"t":"Orgánicos y hongos","s":"Los residuos leñosos y orgánicos se vuelven humus y biofertilizantes.","n":[["Asamblea territorial","decide","Define rutas de recolección y puntos de compostaje"],["Recicladores y gestores de residuos","articula","Separan y transportan los orgánicos"],["Laboratorio de hongos (Bavaria Común)","saber","Inoculación de hongos que degradan madera y aceleran el compostaje"],["Técnicos en bioprocesos","saber","Control de calidad del humus"],["Hogares que separan","aplica","Entregan residuos de cocina y poda"],["Huertas barriales","aplica","Usan el humus y los inoculantes"],["Bioinsumos gratis","incentivo","A cambio de residuos separados"],["Menos basura a relleno","efecto","Residuos que vuelven al suelo"]]},"E5":{"t":"Corredor biótico","s":"Conectividad ecosistémica entre los humedales La Vaca, El Burro y Techo.","n":[["Asambleas y mesas de humedal","decide","Priorizan siembras y control de bordes"],["Colectivos ambientales","articula","Seguimiento y cuidado del humedal"],["Ecólogos y biólogos","saber","Matriz vegetal nativa; mitigar el parasitismo del Chamón sobre el Cucarachero"],["Vigías del humedal","aplica","Monitoreo de aves y especies"],["Habitantes del borde","aplica","Siembra nativa en jardines y antejardines"],["Reconocimiento como guardianes","incentivo","Rol visible en la red"],["Corredor de fauna conectado","efecto","Menos trampas ecológicas urbanas"],["Polinizadores para las huertas","efecto","Abejas, colibríes y mariposas"]]},"E6":{"t":"Vivienda y actividad","s":"Negocios y oficios en la vivienda: producción y servicios en cada cuadra.","n":[["Asamblea de barrio","decide","Acuerda usos mixtos en la cuadra"],["Junta de vecinos","articula","Directorio de oficios"],["Saberes de oficio (vecinos)","saber","Talleres entre pares"],["Instituto Bavaria Común","saber","Cultivo hidropónico en fachadas y patios"],["Negocios en vivienda","aplica","Peluquerías, talleres, cocinas"],["Familias productoras","aplica","Huertas en fachadas y patios"],["Clientes del barrio","incentivo","Ingreso sin desplazarse"],["Menos viajes largos","efecto","Economía de proximidad"]]},"E7":{"t":"Plazas y conjuntos","s":"Plazas de mercado y conjuntos en altura como nodos colectivos.","n":[["Asamblea de copropietarios","decide","Aprueba la huerta en la cubierta"],["Administración y comités","articula","Turnos de cuidado y riego"],["Instituto Bavaria Común","saber","Diseño y mantenimiento hidropónico"],["Residentes","aplica","Cultivan en azoteas y balcones"],["Plazas de mercado","aplica","Venden lo que sobra"],["Cosecha compartida","incentivo","Alimento para cada apartamento"],["Cubiertas productivas","efecto","Menos calor y más biodiversidad"]]},"E8":{"t":"Red distribuida de producción alimentaria","s":"Huertas en lotes baldíos, cubiertas y viviendas conectadas entre sí.","n":[["Asambleas Comunitarias Territoriales","decide","Asignan lotes y priorizan barrios"],["Colectivos y juntas","articula","Coordinan la red de huertas"],["Instituto Bavaria Común","saber","Forma formadores y emite bioinsumos"],["Líderes de barrio formados","saber","Enseñan par a par en sus cuadras"],["Huertas en lotes baldíos","aplica","Producción comunitaria"],["Huertas en cubiertas","aplica","Hidroponía en conjuntos"],["Huertas en viviendas","aplica","Fachadas y patios"],["Tiendas de barrio","aplica","Reciben excedentes"],["Bioinsumos gratis","incentivo",""],["Roles y vocería","incentivo","Cultivador → Bio-agricultor → Gestor de Red"],["Ahorro en el mercado","incentivo","Alimento limpio y créditos"],["Autonomía alimentaria","efecto","Menos dependencia de Corabastos"]]},"E9":{"t":"Manzanas del Cuidado","s":"Jardines, salones comunales y centros de cuidado como nodos de la red.","n":[["Asamblea de manzana","decide","Organiza horarios y espacios de cuidado"],["Madres comunitarias","articula","Sostienen el cuidado cotidiano"],["Instituto Bavaria Común","saber","Nutrición y huertas pedagógicas"],["Jardines infantiles","aplica","Huerta escolar"],["Salones comunales","aplica","Cocina y degustación barrial"],["Tiempo liberado para las cuidadoras","incentivo","Redes de apoyo"],["Alimento para niños y mayores","incentivo",""],["Tejido social","efecto","Comunidad que se cuida"]]}};
+const CIFRA = { E1: [['1.317', 'parcelas de huerta en el predio'], ['48,76 ha', 'de bosque que custodia el colectivo']], E2: [['460', 'tiendas, fruterías, panaderías y carnicerías']], E3: [['1', 'central de abastos que se reduce junto a La Vaca']], E4: [['3', 'lotes del distrito biotecnológico']],
+  E5: [['3', 'humedales conectados: El Burro, La Vaca y Techo']], E6: [['379', 'negocios en vivienda: peluquerías, talleres y oficios']], E7: [['888', 'conjuntos en altura'], ['13', 'plazas de mercado']], E8: [['13.717', 'cubiertas en altura'], ['5', 'lotes baldíos']], E9: [['79', 'jardines, salones comunales y centros de cuidado']] };
+(() => {
+  const ROL = [['decide', 'Deciden', '#d9b45b'], ['articula', 'Articulan', '#7fb59a'], ['saber', 'Conocimiento', '#a493d6'], ['aplica', 'Aplican', '#6fa8c7'], ['incentivo', 'Incentivos', '#e0917a'], ['efecto', 'Efecto en el territorio', '#9ad1a8']];
+  const ks = Object.keys(GOB);
+  $('#tabs').innerHTML = ks.map((k, i) => `<button data-k="${k}"${i ? '' : ' class="on"'}>${k}</button>`).join('');
+  const ver = (k) => { const E = GOB[k]; if (!E) return;
+    $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+    $('#est').innerHTML = `<div class="info"><div class="mono" style="color:var(--acc2)">Estrategia ${k}</div><h3 style="margin-top:8px">${E.t}</h3><p>${E.s}</p><div class="cifra">${(CIFRA[k] || []).map(c => `<b>${c[0]}</b><span>${c[1]}</span>`).join('')}</div></div>`
+      + `<div class="roles">${ROL.map(([r, n, c]) => { const L = E.n.filter(x => x[1] === r); return L.length ? `<div class="rol"><div class="mono"><i style="background:${c}"></i>${n}</div><ul>${L.map(x => `<li><b>${x[0]}</b>${x[2] ? `<span>${x[2]}</span>` : ''}</li>`).join('')}</ul></div>` : ''; }).join('')}</div>`; };
+  $$('#tabs button').forEach(b => b.onclick = () => ver(b.dataset.k));
+  if (ks.length) ver(ks[0]);
+})();
+</script>
+</body>
+</html>
