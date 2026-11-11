@@ -223,8 +223,10 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
     const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js'); const cargador = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
     const carga = await Promise.all(MOD.map(n => cargador.loadAsync('data3d/models/' + n + '.glb').catch(e => { console.warn('planta', n, e); return null; })));
     const puntos = []; // [x, z, cama]
+    const PESADAS = []; /* mallas de plantas: se prenden solo con la cámara a menos de 320 m (eran ~80 millones de triángulos por cuadro) */
+    setInterval(() => { const cam = T3.camera; if (!cam) return; const cerca = Math.hypot(cam.position.x - HC[0], cam.position.z - HC[1]) < 320 + cam.position.y * 0.5; for (const m of PESADAS) m.visible = cerca; }, 400);
     camas.forEach((W, ci) => { let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9; for (const q of W) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); z0 = Math.min(z0, q[1]); z1 = Math.max(z1, q[1]); }
-      for (let x = x0 + 0.5; x < x1; x += 0.6) for (let z = z0 + 0.5; z < z1; z += 0.6) { const px = x + (rnd() - 0.5) * 0.5, pz = z + (rnd() - 0.5) * 0.5; if (dentroP(W, px, pz)) puntos.push([px, pz, ci]); } });
+      for (let x = x0 + 0.5; x < x1; x += 1.1) for (let z = z0 + 0.5; z < z1; z += 1.1) { const px = x + (rnd() - 0.5) * 0.8, pz = z + (rnd() - 0.5) * 0.8; /* rendimiento: plantas cada 1,1 m (antes 0,6) */ if (dentroP(W, px, pz)) puntos.push([px, pz, ci]); } });
     T3.huertaPlantas = puntos.length;
     carga.forEach((gl, mi) => {
       if (!gl) return; gl.scene.updateMatrixWorld(true);
@@ -235,8 +237,8 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
         const geo = o.geometry.clone().applyMatrix4(o.matrixWorld).translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2);
         const mat = o.material; if (mat.map) mat.map.anisotropy = ANIS; mat.side = THREE.DoubleSide; if (mat.map && mat.emissive) { mat.emissiveMap = mat.map; mat.emissive.setRGB(1, 1, 1); mat.emissiveIntensity = 0.25; } if (mat.transparent) { mat.transparent = false; mat.alphaTest = 0.4; }
         const im = new THREE.InstancedMesh(geo, mat, mis.length);
-        mis.forEach(([x, z], k) => { const e = esc0 * (0.75 + rnd() * 0.6); o3.position.set(x, Y0 + 0.55, z); o3.rotation.set(0, rnd() * 6.28, 0); o3.scale.set(e, e, e); o3.updateMatrix(); im.setMatrixAt(k, o3.matrix); });
-        im.castShadow = !movil; im.receiveShadow = !movil; grupo.add(im);
+        mis.forEach(([x, z], k) => { const e = esc0 * (1.0 + rnd() * 0.6); o3.position.set(x, Y0 + 0.55, z); o3.rotation.set(0, rnd() * 6.28, 0); o3.scale.set(e, e, e); o3.updateMatrix(); im.setMatrixAt(k, o3.matrix); });
+        im.castShadow = false; im.receiveShadow = !movil; grupo.add(im); PESADAS.push(im); /* plantas de alta resolución: sin sombra y solo de cerca */
       });
     });
     // cubiertas: 6 lóbulos alargados que se cruzan, a 6-9 m, con membrana traslúcida, costillas blancas y borde tubular
@@ -256,7 +258,7 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
       }
       const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2)); g.setIndex(I); g.computeVertexNormals();
       const m1 = new THREE.Mesh(g, matMemb), m2 = new THREE.Mesh(g, matCost); m2.castShadow = !movil; grupo.add(m1, m2);
-      for (let s = 0; s < 70; s++) { const t = rnd() * Math.PI * 2, f = 0.15 + 0.75 * Math.sqrt(rnd()), e = borde(t), x = e[0] * f, z = e[1] * f, y = L.H + 1.8 * (1 - f * f) - 0.6 * Math.cos(t * 2) * f; TECHOV.push([L.cx + x * cs - z * sn, Y0 + y + 0.05, L.cz + x * sn + z * cs]); }
+      for (let s = 0; s < 30; s++) { const t = rnd() * Math.PI * 2, f = 0.15 + 0.75 * Math.sqrt(rnd()), e = borde(t), x = e[0] * f, z = e[1] * f, y = L.H + 1.8 * (1 - f * f) - 0.6 * Math.cos(t * 2) * f; TECHOV.push([L.cx + x * cs - z * sn, Y0 + y + 0.05, L.cz + x * sn + z * cs]); }
       const borP = []; for (let i = 0; i < 80; i++) { const t = i / 80 * Math.PI * 2, e = borde(t); borP.push(new THREE.Vector3(L.cx + e[0] * cs - e[1] * sn, Y0 + L.H - 0.6 * Math.cos(t * 2), L.cz + e[0] * sn + e[1] * cs)); }
       const tubo = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(borP, true), 160, 0.09, 6, true), matCol); tubo.castShadow = !movil; grupo.add(tubo);
       // columnas-árbol: fuste de 3,5 m que se abre en 4 ramas hasta la cubierta
@@ -272,7 +274,7 @@ export async function iniciarTintal({ THREE, T3, OX, OZ, Y0 = 0, movil = false }
     // jardineras colgadas de las cubiertas: matas con flor (vinca, celidonia, helecho) sobre la membrana; puntos de flor para los polinizadores
     { const mods = carga.filter(Boolean); if (mods.length) mods.forEach((gl, mi) => { gl.scene.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(gl.scene), al = Math.max(b.max.y - b.min.y, b.max.x - b.min.x, b.max.z - b.min.z) || 1, mis = TECHOV.filter((_, i) => i % mods.length === mi);
         gl.scene.traverse(o => { if (!o.isMesh) return; const geo = o.geometry.clone().applyMatrix4(o.matrixWorld).translate(-(b.min.x + b.max.x) / 2, -b.min.y, -(b.min.z + b.max.z) / 2); const im = new THREE.InstancedMesh(geo, o.material, mis.length);
-          mis.forEach(([x, y, z], k) => { const e = 1.3 / al * (0.7 + rnd() * 0.6); o3.position.set(x, y, z); o3.rotation.set(0, rnd() * 6.28, 0); o3.scale.set(e, e, e); o3.updateMatrix(); im.setMatrixAt(k, o3.matrix); }); im.castShadow = !movil; grupo.add(im); }); });
+          mis.forEach(([x, y, z], k) => { const e = 1.3 / al * (0.7 + rnd() * 0.6); o3.position.set(x, y, z); o3.rotation.set(0, rnd() * 6.28, 0); o3.scale.set(e, e, e); o3.updateMatrix(); im.setMatrixAt(k, o3.matrix); }); im.castShadow = false; grupo.add(im); PESADAS.push(im); }); });
       const flor = new THREE.InstancedMesh(new THREE.SphereGeometry(0.12, 6, 4), new THREE.MeshStandardMaterial({ roughness: 0.6 }), TECHOV.length), cf = ['#f2d14a', '#e9e4f5', '#d7609b', '#f08a24', '#b07ad9'].map(h => new THREE.Color(h));
       TECHOV.forEach(([x, y, z], k) => { o3.position.set(x + (rnd() - 0.5) * 0.6, y + 0.55 + rnd() * 0.4, z + (rnd() - 0.5) * 0.6); o3.rotation.set(0, 0, 0); o3.scale.setScalar(1); o3.updateMatrix(); flor.setMatrixAt(k, o3.matrix); flor.setColorAt(k, cf[k % cf.length]); }); grupo.add(flor);
       T3.floresExtra = (T3.floresExtra || []).concat(TECHOV.map(p => [p[0], p[1] + 0.8, p[2], 0, -1]), puntos.filter((_, i) => i % 4 === 0).map(p => [p[0], Y0 + 1.6, p[1], 0, -2])); }

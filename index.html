@@ -806,7 +806,12 @@ function flight(ms) {
     T3.sun.target.position.copy(o.target);
     actualizarMalla(T3, dt);
     if (SIM) SIM.update(dt); // HUD, detección y seguimiento tipo God's Eye
+    if (T3.rc) T3.rc.update(); /* mapa de ruido de los carros */
     if (PROP) PROP.update(dt); // propuesta: mercados de barrio, huertas y abastecimiento (data3d/propuesta.js)
+    { /* rendimiento: las sombras se recalculan cuando la cámara se mueve y, quieta, cada 8 cuadros (antes: todos los cuadros) */
+      const R = T3.renderer, e = cam.matrixWorld.elements, firma = e[12] + e[13] * 3.1 + e[14] * 7.3 + e[8] * 101 + e[9] * 203 + e[10] * 307;
+      if (R.shadowMap.enabled) { R.shadowMap.autoUpdate = false; T3._sombraN = (T3._sombraN || 0) + 1; if (Math.abs(firma - (T3._sombraF || 0)) > 0.02 || T3._sombraN % 8 === 0) R.shadowMap.needsUpdate = true; T3._sombraF = firma; }
+    }
     if (!compilandoGPU(cam)) if (!(SIM && SIM.render(cam))) { if (T3.composer) T3.composer.render(); else T3.renderer.render(T3.scene, cam); } // con un sensor (CRT, NVG, FLIR) dibuja el simulador; si no, render con oclusión ambiental
     requestAnimationFrame(flight); return;
   }
@@ -2391,7 +2396,7 @@ async function buildTraffic(THREE) {
   // arranca a las 16:40 (ya hay unos 2.000 carros en la calle) y en marcha; la barra de abajo permite pausar y mover el tiempo
   TRAF = { steps, NS, NV, dur, maxi, t: tIni, playing: true, vel: 1, pedirTrozo, chunk: I.chunk, bodies, cabins, wheels, dummy: new THREE.Object3D(), head: new Float32Array(maxi),
     vis: { n: 0, x: new Float32Array(maxi), z: new Float32Array(maxi), dx: new Float32Array(maxi), dz: new Float32Array(maxi), v: new Float32Array(maxi), id: new Int32Array(maxi) } }; // vis: posición y velocidad de cada carro en este cuadro (detección y seguimiento del simulador)
-  T3.counts.cars = NV;
+  T3.counts.cars = NV; T3.TRAF = TRAF; /* ruido y cierre de vía (data3d/ruido_cierre.js) leen la simulación */
   if (window.trafficPaint) window.trafficPaint();
   updateTraffic(0);
 }
@@ -2417,10 +2422,11 @@ function updateTraffic(dt) {
     const j = m.get(A.ids[i]);
     let x1 = x0, y1 = y0;
     if (j !== undefined) { x1 = B.xs[j] - LC.x; y1 = LC.y - B.ys[j]; }
-    const dx = x1 - x0, dy = y1 - y0;
+    let dx = x1 - x0, dy = y1 - y0; const dvq = T3.desvio ? T3.desvio(A.ids[i], TRAF.t) : null; /* vía cerrada: va por el desvío */
+    if (dvq) { const L = Math.hypot(dvq[2], dvq[3]) || 1; dx = dvq[2] / L * 8; dy = dvq[3] / L * 8; }
     if (dx * dx + dy * dy > 1e-6) TRAF.head[n] = Math.atan2(-dy, dx);
     const hd = TRAF.head[n];
-    const px = x0 + dx * f, pz = y0 + dy * f;
+    const px = dvq ? dvq[0] : x0 + dx * f, pz = dvq ? dvq[1] : y0 + dy * f;
     const V = TRAF.vis; V.x[n] = px; V.z[n] = pz; V.dx[n] = dx; V.dz[n] = dy; V.v[n] = Math.hypot(dx, dy); V.id[n] = A.ids[i]; // un paso = 1 s: dx, dy en m/s
     if (VS) { // vehículo realista: tipo y color fijos por id (70 % carros, 22 % motos, 8 % camiones), apoyado en el asfalto
       const id = A.ids[i]; if (dx * dx + dy * dy > 1e-6) TRAF.headF[id] = Math.atan2(dx, dy);
@@ -3435,8 +3441,8 @@ $('b-hd').onclick = async () => {
 if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   const listoK = () => T3 && T3.ready && T3.net ? Promise.resolve() : new Promise(r => setTimeout(() => r(listoK()), 400));
   // Biblioteca El Tintal (modelo propio) y canchas reales de OpenStreetMap: no dependen de la simulación, se cargan en paralelo
-  listoK().then(() => import('./data3d/tintal.js?v=12')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0.85, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
-  listoK().then(() => new Promise(r => setTimeout(r, 4000))).then(() => import('./data3d/inem.js?v=2')).then(m => m.iniciarInem({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0.3 })).catch(e => console.warn('INEM Kennedy:', e)); // modelo oficial del sector INEM (IDECA)
+  listoK().then(() => import('./data3d/tintal.js?v=13')).then(m => m.iniciarTintal({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0.85, movil: MOVIL })).catch(e => console.warn('Biblioteca El Tintal:', e));
+  listoK().then(() => new Promise(r => setTimeout(r, 4000))).then(() => import('./data3d/inem.js?v=3')).then(m => m.iniciarInem({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0.3 })).catch(e => console.warn('INEM Kennedy:', e)); // modelo oficial del sector INEM (IDECA)
   listoK().then(() => import('./data3d/conjuntos.js?v=5')).then(m => m.iniciarConjuntos({ THREE: T3.THREE, T3, lw, Y0: 0.3, movil: MOVIL })).catch(e => console.warn('conjuntos:', e));
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
@@ -3473,6 +3479,14 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
           const pn = document.getElementById('usos-panel'); if (!on) { if (pn) pn.remove(); return; }
           try { (await import('./data3d/usos_suelo.js?v=5')).panelUsos({ T3 }); } catch (e) { console.warn('usos del suelo:', e); } };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
+      }
+      if (KEN && !document.getElementById('rc-btn')) { /* ruido de los carros y cierre de vía (data3d/ruido_cierre.js, como en el módulo 08) */
+        const rcApi = async () => { if (!T3.rc) { const m = await import('./data3d/ruido_cierre.js?v=3'); T3.rcMod = m; T3.rc = m.crearRuidoCierre({ THREE: T3.THREE, T3, LC }); } return T3.rc; };
+        const b1 = document.createElement('button'); b1.id = 'rc-btn'; b1.textContent = 'Ruido de carros'; b1.title = 'Mapa de ruido en vivo según dónde van los carros'; b1.style.cssText = 'width:100%;margin-top:6px';
+        b1.onclick = async () => { const on = !b1.classList.contains('on'); b1.classList.toggle('on', on); try { const a = await rcApi(); a.ruido.ver(on); T3.rcMod.panelRuido(on); } catch (e) { console.warn('ruido:', e); } };
+        const b2 = document.createElement('button'); b2.id = 'ci-open'; b2.textContent = 'Cerrar una vía'; b2.title = 'Cierra una vía crítica y desvía los carros por las calles vecinas'; b2.style.cssText = 'width:100%;margin-top:6px';
+        b2.onclick = async () => { const on = !b2.classList.contains('on'); b2.classList.toggle('on', on); try { const a = await rcApi(); T3.rcMod.panelCierre(a, on); } catch (e) { console.warn('cierre:', e); } };
+        const ref = document.getElementById('us-btn') || document.getElementById('ar-btn'); (ref || ag.parentElement).insertAdjacentElement('afterend', b2); (ref || ag.parentElement).insertAdjacentElement('afterend', b1);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'vi-btn'; b.textContent = '✦ Visión'; b.title = 'Ver la propuesta: Bavaria Común, Corabastos, red de huertas y humedales'; b.style.cssText = 'width:100%;margin-top:6px;background:linear-gradient(100deg,#2a1d6b,#5b3fd6);color:#fff;border:1px solid #8b74ff;letter-spacing:.2em';
