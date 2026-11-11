@@ -3,11 +3,11 @@
    no hojas modeladas. Copa llena e irregular (varios lóbulos), arriba iluminada por el sol (verde claro, oliva, amarillo),
    abajo y adentro en sombra (verde oscuro azulado), cada árbol con su tono. Tronco como mancha oscura delgada.
    Se arma con las mismas posiciones y alturas de los árboles (real3d.js: T3.trees.pos) y solo cerca de la cámara (se rehace al moverse). */
-export function crearArbolesSplat({ THREE, T3, movil = false }) {
+export function crearArbolesSplat({ THREE, T3, movil = false, cerca = 0 }) { /* cerca: dentro de ese radio de la cámara van los árboles reales (real3d.js) */
   const pos = T3.trees && T3.trees.pos; if (!pos) return null;
   const { X, Z, Hh } = pos, N = X.length;
-  const MAXA = movil ? 6000 : 22000, POR = movil ? 70 : 110, R = movil ? 450 : 900;
-  const cap = MAXA * POR;
+  const MAXA = movil ? 6000 : 32000, POR = movil ? 70 : 90, R = movil ? 450 : 2600;
+  const cap = movil ? MAXA * POR : 1300000;
   const P = new Float32Array(cap * 3), C = new Float32Array(cap * 3), S = new Float32Array(cap);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('color', new THREE.BufferAttribute(C, 3)); g.setAttribute('tam', new THREE.BufferAttribute(S, 1));
@@ -38,7 +38,7 @@ export function crearArbolesSplat({ THREE, T3, movil = false }) {
   let n = 0, ult = { x: 1e9, z: 1e9 };
   function rehacer(cx, cz) {
     const cand = [];
-    for (let i = 0; i < N; i++) { const dx = X[i] - cx, dz = Z[i] - cz, d2 = dx * dx + dz * dz; if (d2 < R * R) cand.push([d2, i]); }
+    const C2 = cerca * cerca; for (let i = 0; i < N; i++) { const dx = X[i] - cx, dz = Z[i] - cz, d2 = dx * dx + dz * dz; if (d2 < R * R && d2 >= C2) cand.push([d2, i]); }
     cand.sort((a, b) => a[0] - b[0]);
     n = 0;
     for (let k = 0; k < cand.length && k < MAXA; k++) {
@@ -47,7 +47,7 @@ export function crearArbolesSplat({ THREE, T3, movil = false }) {
       // 2-4 lóbulos por copa
       const lob = 2 + Math.floor(h(i * 17) * 3), cen = [];
       for (let l = 0; l < lob; l++) { const a = h(i * 19 + l) * 6.28, r = Rc * 0.35 * h(i * 23 + l); cen.push([Math.cos(a) * r, base + alto * (0.45 + 0.35 * h(i * 29 + l)), Math.sin(a) * r, Rc * (0.6 + 0.4 * h(i * 31 + l))]); }
-      const m = (k < 2500 ? POR : k < 9000 ? Math.floor(POR * 0.55) : Math.floor(POR * 0.3)); // menos manchas lejos
+      const m = (k < 3000 ? POR : k < 10000 ? Math.floor(POR * 0.5) : Math.floor(POR * 0.2)); // menos manchas lejos
       for (let j = 0; j < m; j++) {
         const lo = cen[j % lob], u = h(i * 37 + j * 1.3), v = h(i * 41 + j * 2.1), w = h(i * 43 + j * 0.7);
         const th = u * 6.283, ph = Math.acos(2 * v - 1), rr = lo[3] * Math.cbrt(0.25 + 0.75 * w);
@@ -72,8 +72,8 @@ export function crearArbolesSplat({ THREE, T3, movil = false }) {
     ver: (on) => { api.visible = on; pts.visible = on; },
     update: (cam) => {
       mat.uniforms.uEsc.value = T3.renderer.domElement.height / (2 * Math.tan(cam.fov * Math.PI / 360));
-      const c = T3.orbit ? T3.orbit.target : cam.position;
-      if (Math.hypot(c.x - ult.x, c.z - ult.z) > R * 0.18) { ult = { x: c.x, z: c.z }; rehacer(c.x, c.z); }
+      const c = cerca ? cam.position : (T3.orbit ? T3.orbit.target : cam.position); /* con árboles reales cerca: centrado en la cámara, como real3d.js */
+      if (Math.hypot(c.x - ult.x, c.z - ult.z) > (cerca ? 60 : R * 0.18)) { ult = { x: c.x, z: c.z }; rehacer(c.x, c.z); }
     }
   };
   return api;

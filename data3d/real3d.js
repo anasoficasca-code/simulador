@@ -410,7 +410,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   }
   // L0 modelo real completo (cerca) · L1 modelo real reducido (medio) · L2 arbol 3D de bajos poligonos (lejos) · siluetas sólo más allá de R2 o si se llena el cupo
   // la versión ligera (gafas VR, celulares: T3.liviano) usa menos árboles detallados y copas más simples; la completa muestra más modelos reales
-  const KA = !!T3.kenArboles, LV = !!T3.liviano, CAP2 = LV ? 5000 : 10000, R0 = MV ? 0 : LV ? 40 : KA ? 150 : 100, R1 = MV ? (KA ? 380 : 260) : LV ? 400 : KA ? 1400 : 1000, R2 = LV ? 1200 : 2200, d = new THREE.Object3D(), col = new THREE.Color();
+  const KA = !!T3.kenArboles, LV = !!T3.liviano, CAP2 = LV ? 5000 : 10000, R0 = MV ? 0 : LV ? 40 : KA ? 150 : 100, R1 = MV ? (KA ? 380 : 260) : LV ? 400 : KA ? (T3.splatLejos ? 420 : 1400) : 1000, OSC = T3.splatLejos ? 0.7 : 1, /* Kennedy: reales hasta 420 m (más oscuros); más lejos, copas tipo splat (arboles_splat.js) */ R2 = LV ? 1200 : 2200, d = new THREE.Object3D(), col = new THREE.Color();
   const CAP0S = especies.map(e => MV ? 1 : e.base === 'arbolpeq' ? (LV ? 4 : 10) : (LV ? 10 : KA ? 48 : 32)); // el arbolpeq tiene 83.000 triángulos en el nivel 0
   const CAP1S = especies.map(e => MV ? (e.base === 'arbolpeq' ? 25 : 90) : e.base === 'arbolpeq' ? (LV ? 40 : KA ? 320 : 200) : (LV ? 240 : KA ? 1700 : 1100)); // el arbolpeq tiene 14.000 triángulos en el nivel 1: menos copias
   const TIPO_BAJO = especies.map(e => (e.base === 'arbolpeq' || e.base === 'island_tree_02') ? 1 : 0);
@@ -432,7 +432,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   const FM = new Float32Array(N * 16), FC = new Float32Array(N * 3);
   const porte = (i) => { const v = VARIEDADES[VAR[i]], s = esc(i) * (KEN_A ? 0.82 + hash(i * 23 + 7) * 0.36 : 1), w = KEN_A ? 0.88 + hash(i * 29 + 3) * 0.26 : 1; d.scale.set(s * v.sx * w, s * v.sy, s * v.sx * (2 - w)); if (KEN_A) { d.rotation.x = (hash(i * 31 + 1) - 0.5) * 0.09; d.rotation.z = (hash(i * 37 + 5) - 0.5) * 0.09; } };
   for (let i = 0; i < N; i++) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); FM.set(d.matrix.elements, i * 16); const tv = 0.88 + hash(i * 19) * 0.24, h = VARIEDADES[VAR[i]].h, g = (h[0] + h[1] + h[2]) / 3; FC[i * 3] = tv * 0.6 * (0.25 * h[0] + 0.75 * g); FC[i * 3 + 1] = tv * 0.56 * (0.25 * h[1] + 0.75 * g); FC[i * 3 + 2] = tv * 0.6 * (0.25 * h[2] + 0.75 * g); } // lejos: las siluetas no reciben luz (material básico), se oscurecen y apagan para igualar a los cercanos
-  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) { const g = (h[0] + h[1] + h[2]) / 3; col.setRGB(tv * 1.14 * (0.3 * h[0] + 0.7 * g) + 0.07, tv * 1.04 * j * (0.3 * h[1] + 0.7 * g) + 0.06, tv * 1.1 * (0.3 * h[2] + 0.7 * g) + 0.07); } else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
+  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) { const g = (h[0] + h[1] + h[2]) / 3; col.setRGB(tv * 1.14 * (0.3 * h[0] + 0.7 * g) + 0.07, tv * 1.04 * j * (0.3 * h[1] + 0.7 * g) + 0.06, tv * 1.1 * (0.3 * h[2] + 0.7 * g) + 0.07); } else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); if (OSC !== 1) col.multiplyScalar(OSC); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
   const ult = { x: 1e9, z: 1e9, t: 0 }, cand = [];
   const api = { ...api0, N, ribera, enParques, deCalle, especies: especies.map(e => e.base + ':' + e.niveles.L0.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0) + '/' + e.niveles.L1.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0)) };
   api.pos = { X, Z, Hh }; // posiciones y alturas de los árboles (el modo pájaro pone los nidos en las copas)
@@ -459,7 +459,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
     lod.forEach((l, s) => { l.L0.forEach(m => { m.count = n0[s]; m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true; }); l.L1.forEach(m => { m.count = n1[s]; m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true; }); });
     const nf = lejos.map(() => 0);
     for (let i = 0; i < N; i++) {
-      if (asignado[i]) continue;
+      if (asignado[i] || T3.splatLejos) continue; /* con copas splat lejanas no se dibujan las siluetas planas */
       const s = SP[i], k = nf[s]++, ca = lejos[s].instanceColor.array;
       lejos[s].instanceMatrix.array.set(FM.subarray(i * 16, i * 16 + 16), k * 16); ca[k * 3] = FC[i * 3]; ca[k * 3 + 1] = FC[i * 3 + 1]; ca[k * 3 + 2] = FC[i * 3 + 2];
     }

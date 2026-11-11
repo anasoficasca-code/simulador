@@ -1304,7 +1304,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    try { T3.R = await import('./data3d/real3d.js?v=64'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
+    if (KEN && !LIVIANO) T3.splatLejos = true; /* árboles: reales de cerca, splat de lejos */ try { T3.R = await import('./data3d/real3d.js?v=65'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
     if (QUEST) marcarPaso('trafico');
@@ -1419,7 +1419,7 @@ async function initTodoReal() {
         const TIN = await pTin; if (TIN && TIN.zona_modelo) TT = { ...TT, t: TT.t.filter(t => !enPoli(TIN.zona_modelo, t[0], t[1])) }; // sin árboles bajo las palmas de la plaza ni en la huerta de la Biblioteca El Tintal
         T3.trees = await T3.R.buildTrees(T3, ZON ? { ...TT, t: TT.t.filter(t => enZona(t[0], t[1], 100)) } : TT, W, lw, T3.env);
         if (T3.fotoReal && T3.trees && T3.trees.ver) T3.trees.ver(false); // Foto real: los árboles son los de la foto
-        if (KEN && T3.trees && T3.trees.pos) { try { T3.arbolesSplat = (await import('./data3d/arboles_splat.js?v=6')).crearArbolesSplat({ THREE, T3, movil: MOVIL }); if (T3.arbolesSplat) T3.trees.ver(false); } catch (e) { console.warn('árboles splat:', e); } } // copas tipo gaussian splat (como las capturas de Luma)
+        if (T3.splatLejos && T3.trees && T3.trees.pos) { try { T3.arbolesSplat = (await import('./data3d/arboles_splat.js?v=7')).crearArbolesSplat({ THREE, T3, movil: MOVIL, cerca: 390 }); } catch (e) { console.warn('árboles splat:', e); } } // de cerca árboles reales modelados (tronco y follaje); de lejos copas tipo gaussian splat
         T3.counts.t = T.t.length;
         say('🌳 Árboles reales 3D cargados', 3000);
       } catch (e) { console.warn('arboles reales:', e); T3.trees = null; try { await buildTreesReal(THREE, T); } catch (e2) { console.warn('trees:', e2); } }
@@ -3475,7 +3475,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       }
       if (!document.getElementById('ar-btn')) { // árboles: por defecto los reales de la foto 3D de Google (como God's Eye); el botón trae los modelos 3D
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'ar-btn'; b.className = 'on'; b.textContent = 'Árboles 3D'; b.title = 'Por defecto se ven los árboles reales de la foto 3D; esto prende los árboles modelados'; b.style.cssText = 'width:100%;margin-top:6px';
-        b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.arbolesSplat) T3.arbolesSplat.ver(on); else if (T3.trees && T3.trees.ver) T3.trees.ver(on); };
+        b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); if (T3.arbolesSplat) T3.arbolesSplat.ver(on); if (T3.trees && T3.trees.ver) T3.trees.ver(on); };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
       if (KEN && !document.getElementById('us-btn')) { /* usos del suelo: edificios pintados por su uso real + panel (data3d/usos_suelo.js) */
