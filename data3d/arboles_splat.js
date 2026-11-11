@@ -6,8 +6,8 @@
 export function crearArbolesSplat({ THREE, T3, movil = false, cerca = 0 }) { /* cerca: dentro de ese radio de la cámara van los árboles reales (real3d.js) */
   const pos = T3.trees && T3.trees.pos; if (!pos) return null;
   const { X, Z, Hh } = pos, N = X.length;
-  const MAXA = movil ? 6000 : 32000, POR = movil ? 70 : 90, R = movil ? 450 : 2600;
-  const cap = movil ? MAXA * POR : 1300000;
+  const MAXA = movil ? 6000 : 16000, POR = movil ? 70 : 55, R = movil ? 450 : 2000; /* rendimiento: ~400 mil manchas (antes 1,3 millones) */
+  const cap = movil ? MAXA * POR : 420000;
   const P = new Float32Array(cap * 3), C = new Float32Array(cap * 3), S = new Float32Array(cap);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('color', new THREE.BufferAttribute(C, 3)); g.setAttribute('tam', new THREE.BufferAttribute(S, 1));
@@ -17,7 +17,7 @@ export function crearArbolesSplat({ THREE, T3, movil = false, cerca = 0 }) { /* 
     vertexShader: `attribute float tam; varying vec3 vC; uniform float uEsc;
       #include <fog_pars_vertex>
       void main(){ vC = color; vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mvPosition;
-        gl_PointSize = clamp(tam * uEsc / -mvPosition.z, 1.5, 55.0);
+        gl_PointSize = clamp(tam * uEsc / -mvPosition.z, 1.5, 34.0);
         #include <fog_vertex>
       }`,
     fragmentShader: `varying vec3 vC;
@@ -47,7 +47,7 @@ export function crearArbolesSplat({ THREE, T3, movil = false, cerca = 0 }) { /* 
       // 2-4 lóbulos por copa
       const lob = 2 + Math.floor(h(i * 17) * 3), cen = [];
       for (let l = 0; l < lob; l++) { const a = h(i * 19 + l) * 6.28, r = Rc * 0.35 * h(i * 23 + l); cen.push([Math.cos(a) * r, base + alto * (0.45 + 0.35 * h(i * 29 + l)), Math.sin(a) * r, Rc * (0.6 + 0.4 * h(i * 31 + l))]); }
-      const m = (k < 3000 ? POR : k < 10000 ? Math.floor(POR * 0.5) : Math.floor(POR * 0.2)); // menos manchas lejos
+      const m = (k < 3000 ? POR : k < 8000 ? Math.floor(POR * 0.4) : 8); // menos manchas lejos
       for (let j = 0; j < m; j++) {
         const lo = cen[j % lob], u = h(i * 37 + j * 1.3), v = h(i * 41 + j * 2.1), w = h(i * 43 + j * 0.7);
         const th = u * 6.283, ph = Math.acos(2 * v - 1), rr = lo[3] * Math.cbrt(0.25 + 0.75 * w);
@@ -57,7 +57,7 @@ export function crearArbolesSplat({ THREE, T3, movil = false, cerca = 0 }) { /* 
         const arriba = Math.max(0, Math.min(1, (y / (lo[3] * 0.75) + 1) / 2)), fuera = rr / lo[3], k2 = Math.max(0, Math.min(1, 0.15 + 0.7 * arriba * (0.4 + 0.6 * fuera) + 0.15 * (x * 0.6 - z * 0.4) / lo[3]));
         const jit = 0.9 + h(i * 47 + j) * 0.2;
         C[o] = (Sm[0] + (L[0] - Sm[0]) * k2) * tv * jit; C[o + 1] = (Sm[1] + (L[1] - Sm[1]) * k2) * tv * jit; C[o + 2] = (Sm[2] + (L[2] - Sm[2]) * k2) * tv * jit;
-        S[n] = (0.9 + h(i * 53 + j) * 1.1) * (H / 10) * 1.9; // tamaño de la mancha en metros (se escala por distancia)
+        S[n] = (0.9 + h(i * 53 + j) * 1.1) * (H / 10) * 1.9 * (m < 20 ? 1.9 : m < POR ? 1.3 : 1); /* con menos manchas, más grandes: la copa queda llena */ // tamaño de la mancha en metros (se escala por distancia)
         n++; if (n >= cap) break;
       }
       // tronco: dos manchas oscuras pequeñas
