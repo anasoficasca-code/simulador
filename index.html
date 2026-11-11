@@ -602,6 +602,7 @@ function marcarPaso(k) {
 function abrirPortada() {
   if ($('loader').classList.contains('hidden')) return;
   $('loader').classList.add('hidden');
+  if (T3 && T3.llegada) { const L = T3.llegada; T3.llegada = null; T3.anim = { t: 0, dur: 7.5, p0: L.p0, c0: L.c0, p1: L.p1, c1: L.c1 }; } /* vuelo de llegada al humedal El Burro */
   if (document.querySelectorAll('.cv-steps li.ok').length < PASOS.length) $('cvMini').classList.add('on');
   $('cvMarca').classList.add('on');
   if (MOVIL) $('cvAyudaT').textContent = 'Arrastra para girar · pellizca para acercar';
@@ -1383,7 +1384,7 @@ async function initTodoReal() {
       AVES = { grp: api.grp, nuevo: api };
       if (!$('b-aves').classList.contains('on')) api.grp.visible = false;
     }).catch(e => { console.warn('aves 3D:', e); buildAves(THREE); });
-    if (KEN) { const t0 = performance.now(); const listo = () => { if ((window.KEN3D && document.getElementById('gs-izq')) || performance.now() - t0 > 30000) setTimeout(abrirPortada, 700); else setTimeout(listo, 400); }; listo(); } /* Kennedy: la portada con fotos se queda hasta que el modelo y el panel están listos (máx. 30 s), sin mostrar el suelo vacío */
+    if (KEN) { const t0 = performance.now(); const listo = () => { const todo = window.KEN3D && document.getElementById('gs-izq') && document.querySelectorAll('.cv-steps li.ok').length >= PASOS.length && T3.roofU && T3.roofU.uTechoOn.value > 0; if (todo || performance.now() - t0 > 60000) { $('lmsg').textContent = 'Listo'; setTimeout(abrirPortada, 2500); } else setTimeout(listo, 400); }; listo(); } /* Kennedy: se entra con TODO cargado (edificios, vías, árboles, tráfico, foto real, cubiertas y panel; máx. 60 s) */ /* Kennedy: la portada con fotos se queda hasta que el modelo y el panel están listos (máx. 30 s), sin mostrar el suelo vacío */
     else abrirPortada(); // se abre en cuanto están los edificios y las capas; lo demás termina de bajar con la píldora de arriba
     say(REALISTA ? 'Kennedy fotorrealista · cargando la malla 3D de Google y el tráfico…' : '🧱 TODO 3D listo · ' + B.length.toLocaleString('es-CO') + ' edificios · cargando árboles 3D y tráfico…', 5000);
     // 2) lo pesado se carga después, en segundo plano y sin bloquear (si algo falla queda lo liviano)
@@ -1670,7 +1671,8 @@ function materialEdificios(THREE) {
   if (T3.matEdif) return T3.matEdif;
   const mat = LIVIANO ? new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true }) // celular/gafas: material barato
     : new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, flatShading: true, roughness: 0.86, metalness: 0, envMap: T3.env || null, envMapIntensity: 0.55 });
-  T3.roofU = { uOrto: { value: null }, uOrtoVP: { value: new THREE.Matrix4() }, uOrtoOn: { value: 0 }, uNoche: { value: 0 }, uLuces: { value: 0.5 }, uSoloAltos: { value: 0 }, uUsos: { value: 0 } };
+  T3.roofU = { uOrto: { value: null }, uOrtoVP: { value: new THREE.Matrix4() }, uOrtoOn: { value: 0 }, uNoche: { value: 0 }, uLuces: { value: 0.5 }, uSoloAltos: { value: 0 }, uUsos: { value: 0 }, tTecho: { value: null }, uTechoOn: { value: 0 } };
+  if (KEN) new THREE.TextureLoader().load('data3d/textures/techos_kennedy.jpg', t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; T3.roofU.tTecho.value = t; T3.roofU.uTechoOn.value = 1; }); /* cubiertas reales de Kennedy (modelo oficial del INEM) */
   if (KEN && !LIVIANO) { const tl = new THREE.TextureLoader(), cargaT = (n, srgb) => { const t = tl.load('data3d/textures/' + n); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.anisotropy = 8; return t; };
     Object.assign(T3.roofU, { tLosaC: { value: cargaT('losa_color.jpg', true) }, tLosaN: { value: cargaT('losa_normal.jpg') }, tLosaR: { value: cargaT('losa_rugosidad.jpg') } }); } // cubiertas de concreto PBR (Poly Haven, CC0) // uNoche/uLuces: ventanas encendidas (data3d/cielo.js)
   if (REALISTA) {
@@ -1716,7 +1718,7 @@ function materialEdificios(THREE) {
       .replace('#include <common>', '#include <common>\nattribute vec4 wall;\nattribute float bord;\nattribute float bid;\nvarying float vBid;\nvarying float vBd;\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvec4 wpv = modelMatrix * vec4(position, 1.0); vWP = wpv.xyz; vWs = wpv.xz; vWl = wall; vBd = bord; vBid = bid;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos, uUsos;' + (KEN && !LIVIANO ? '\nuniform sampler2D tLosaC, tLosaN, tLosaR;' : '') + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
+      .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos, uUsos, uTechoOn;\nuniform sampler2D tTecho;' + (KEN && !LIVIANO ? '\nuniform sampler2D tLosaC, tLosaN, tLosaR;' : '') + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
       .replace('#include <color_fragment>', `#include <color_fragment>
       if (uSoloAltos > 0.5 && abs(vWl.w) < 16.5) discard; // Foto real: las casas y bloques bajos son los de la foto de Google
       float gOrto = 0.0; float gTecho = 0.0; vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
@@ -1782,6 +1784,12 @@ function materialEdificios(THREE) {
             float pie = 1.0 - smoothstep(0.3, 2.4, vWP.y);                                                // sombra de contacto con el piso
             float mancha = fract(sin(dot(floor(vec2(s * 0.45, vWP.y * 0.35)), vec2(12.9898, 78.233)) + hb * 31.0) * 43758.545);
             diffuseColor.rgb *= (1.0 - 0.2 * chorreo) * (1.0 - 0.22 * pie) * (0.95 + 0.07 * mancha);
+          } else if (vWl.z < -0.5 && uTechoOn > 0.5) { /* techo a dos aguas: teja de barro o lámina, fotos reales (biblioteca de cubiertas) */
+            vec2 dd = length(vWl.xy) > 0.5 ? normalize(vWl.xy) : vec2(1.0, 0.0), pp = vec2(-dd.y, dd.x);
+            vec2 uvt = vec2(dot(vWP.xz, dd), dot(vWP.xz, pp)) / 4.5;
+            float r3 = fract(hb * 5.17); float k = r3 < 0.42 ? 32.0 : r3 < 0.72 ? 35.0 : r3 < 0.88 ? 1.0 : 0.0; vec2 cel = vec2(mod(k, 6.0), floor(k / 6.0));
+            vec3 ft = texture2D(tTecho, (cel + 0.04 + fract(uvt) * 0.92) / 6.0).rgb;
+            diffuseColor.rgb = ft * (0.9 + 0.2 * fract(hb * 9.1));
           } else if (vWl.z > -0.5 && vWP.y > 1.5) { // cubierta
             float r1 = fract(hb * 7.31), r2 = fract(hb * 13.7);
             vec2 q = vWP.xz / 3.0; float m2 = fract(sin(dot(floor(q), vec2(12.9898, 78.233))) * 43758.545);
@@ -1789,6 +1797,19 @@ function materialEdificios(THREE) {
             ${KEN && !LIVIANO ? 'losa *= mix(vec3(1.0), texture2D(tLosaC, vWP.xz / 6.0).rgb * 1.9, 0.75); gTecho = 1.0;' : ''}
             vec3 zinc = mix(vec3(0.60, 0.64, 0.68), vec3(0.62, 0.42, 0.30), step(0.55, r2)) * (0.86 + 0.14 * sin(vWP.x * 11.0 + vWP.z * 3.0));
             diffuseColor.rgb = mix(diffuseColor.rgb, Hb < 8.0 && r1 > 0.55 ? zinc : losa, 0.7 * (1.0 - 0.9 * gOrto)); /* con foto aérea, la cubierta real de Kennedy manda */
+            if (uTechoOn > 0.5 && Hb < 16.5) { /* casas: foto real de cubierta (36 cubiertas del modelo oficial del sector INEM), orientada con la casa */
+              vec3 fn2 = normalize(cross(dFdx(vWP), dFdy(vWP))); float incl = 1.0 - step(0.985, abs(fn2.y)); /* faldón inclinado: teja */
+              vec2 dd = length(vWl.xy) > 0.5 ? normalize(vWl.xy) : vec2(1.0, 0.0), pp = vec2(-dd.y, dd.x);
+              if (incl > 0.5 && length(fn2.xz) > 0.01) { pp = normalize(fn2.xz); dd = vec2(-pp.y, pp.x); }
+              vec2 uvt = vec2(dot(vWP.xz, dd), dot(vWP.xz, pp)) / mix(10.5, 4.5, incl) + hb * 17.0;
+              float r3 = fract(hb * 5.17);
+              float k = incl > 0.5 ? (r3 < 0.45 ? 32.0 : r3 < 0.78 ? 35.0 : r3 < 0.9 ? 1.0 : 0.0) : floor(fract(hb * 7.31) * 32.0); /* planas: losas (0-31); inclinadas: teja de barro o ladrillo */
+              if (incl < 0.5 && (k == 0.0 || k == 1.0)) k = 3.0;
+              vec2 cel = vec2(mod(k, 6.0), floor(k / 6.0));
+              vec2 uvA = (cel + 0.04 + fract(uvt) * 0.92) / 6.0;
+              vec3 ft = texture2D(tTecho, uvA).rgb;
+              diffuseColor.rgb = mix(diffuseColor.rgb, ft * (0.92 + 0.16 * fract(hb * 3.7)), 0.88);
+            }
           }
         }` : ''}
         if (uUsos > 0.5) { /* usos del suelo: el edificio entero (muros y techo) con el color de su uso */
@@ -1857,7 +1878,7 @@ function techoDosAguas(W, h, bi, col, P, C, I, WL, vc) {
   const pt = (u, v) => [u * ux + v * vx, u * uz + v * vz];
   const A = pt(u0 - o, v0 - o), B = pt(u1 + o, v0 - o), Cc = pt(u1 + o, v1 + o), D = pt(u0 - o, v1 + o), R0 = pt(u0 - o, vm), R1 = pt(u1 + o, vm);
   const lam = LAMINAS[(bi * 7 + 3) % LAMINAS.length], k = 0.9 + ((bi * 37) % 20) / 100;
-  const add = (q, y, c) => { P.push(q[0], y, q[1]); C.push(c[0] * k, c[1] * k, c[2] * k); WL.push(0, 0, c === lam ? -1 : 0, h); return vc++; }; // -1: lámina (no toma la foto aérea)
+  const add = (q, y, c) => { P.push(q[0], y, q[1]); C.push(c[0] * k, c[1] * k, c[2] * k); WL.push(c === lam ? ux : 0, c === lam ? uz : 0, c === lam ? -1 : 0, h); return vc++; }; /* lámina: guarda el eje del caballete para orientar la teja */ // -1: lámina (no toma la foto aérea)
   const he = h - 0.15;
   // dos faldones (cada uno con sus vértices: sombreado plano por faldón)
   let a = add(A, he, lam), b = add(B, he, lam), c = add(R1, h + hr, lam), d = add(R0, h + hr, lam); I.push(a, c, b, a, d, c);
@@ -1922,9 +1943,10 @@ function buildChunks(THREE, B) {
       const hT = Wi ? h - 0.9 : REALISTA && !LIVIANO && h >= 4.5 ? h - 0.45 : h, WT = Wi || W;
       if (KEN && h >= HUERTA_H) techosHuerta.push({ W: WT, y: hT });
       if (KEN && h >= HUERTA_H) (T3.techosAltos = T3.techosAltos || []).push({ W: WT, h: hT + 0.88 }); // todas las torres modeladas: huerta hidropónica en la terraza
-      P.push(cx, hT, cz); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++;
+      let dLargo = muro[0]; for (const m of muro) if (m[2] > dLargo[2]) dLargo = m; /* orientación de la cubierta: muro más largo */
+      P.push(cx, hT, cz); C.push(col.r[0], col.r[1], col.r[2]); WL.push(dLargo[0], dLargo[1], 0, h); vc++;
       // techo con vértices propios: color liso, sin ventanas
-      for (let i = 0; i < n; i++) { P.push(WT[i][0], hT, WT[i][1]); C.push(col.r[0], col.r[1], col.r[2]); WL.push(0, 0, 0, h); vc++; }
+      for (let i = 0; i < n; i++) { P.push(WT[i][0], hT, WT[i][1]); C.push(col.r[0], col.r[1], col.r[2]); WL.push(dLargo[0], dLargo[1], 0, h); vc++; }
       for (let i = 0; i < n; i++) {
         const j = (i + 1) % n;
         // los dos triángulos del muro terminan en la esquina superior i: así ambos leen el mismo muro (vértice "provocador")
@@ -2964,6 +2986,10 @@ function vueloLlegada() {
   const p1 = T3.camera.position.clone(), c1 = T3.orbit.target.clone();
   const p0 = p1.clone().sub(c1).multiplyScalar(4.2).add(c1); p0.y = Math.max(p0.y, 420);
   T3.camera.position.copy(p0);
+  if (KEN) { /* Kennedy: la cámara espera en lo alto mientras carga; el vuelo hasta el humedal empieza al abrir la portada (abrirPortada) */
+    const alto = p1.clone().sub(c1).multiplyScalar(6.5).add(c1); alto.y = Math.max(alto.y, 1500);
+    T3.camera.position.copy(alto); T3.camera.lookAt(c1); T3.llegada = { p0: alto, c0: c1.clone().add(new T3.THREE.Vector3(-350, 0, -250)), p1, c1 }; return;
+  }
   T3.anim = { t: 0, dur: 3.4, p0, c0: c1.clone(), p1, c1 };
 }
 function flyTodoHome() {
