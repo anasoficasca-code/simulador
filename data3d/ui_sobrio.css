@@ -1,0 +1,107 @@
+/* ============ INTERFAZ SOBRIA · sistema visual único para todos los paneles del simulador ============
+   Grafito translúcido, tipografía Inter + JetBrains Mono para cifras, acento ámbar (como las luces de la ciudad al atardecer).
+   Se carga al final y manda sobre los estilos de cada módulo (por eso usa body y !important en lo esencial). */
+:root{
+  --ui-bg:rgba(13,15,18,.74); --ui-bg2:rgba(255,255,255,.035); --ui-bd:rgba(255,255,255,.075); --ui-bd2:rgba(255,255,255,.13);
+  --ui-tx:#e9ebec; --ui-tx2:#9aa2a7; --ui-tx3:#646c71; --ui-acc:#e2a55b; --ui-acc-bg:rgba(226,165,91,.13); --ui-acc-tx:#f2c995;
+  --ui-sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif; --ui-mono:'JetBrains Mono',ui-monospace,monospace;
+}
+body .gs-pan, body #bt-pan, body #hid-red, body #cvMarca, body #cvMini, body #dock, body #usos-panel, body #ruido-panel, body #cierre-panel, body #toast, body #cvAyuda{
+  font-family:var(--ui-sans)!important; color:var(--ui-tx)!important; background:var(--ui-bg)!important;
+  border:1px solid var(--ui-bd)!important; border-radius:12px!important; box-shadow:0 12px 32px rgba(0,0,0,.28)!important;
+  -webkit-backdrop-filter:blur(16px) saturate(1.1)!important; backdrop-filter:blur(16px) saturate(1.1)!important;
+}
+/* ---------- encabezados de sección ---------- */
+body .gs-pan h3, body .gs-sub, body #bt-pan h3, body #bt-pan .bt-h, body #usos-panel > div:first-child > div:first-child{
+  font-family:var(--ui-mono)!important; font-weight:500!important; font-size:9.5px!important; letter-spacing:.16em!important;
+  color:var(--ui-tx3)!important; text-transform:uppercase;
+}
+body .gs-sub{border-top:1px solid var(--ui-bd); padding-top:12px; margin:14px 0 6px!important; align-items:baseline}
+body .gs-sub span, body .gs-pan h3 em{color:var(--ui-tx3)!important; letter-spacing:.06em!important; font-weight:400!important; text-transform:none}
+body .gs-pan h3 em{color:var(--ui-acc-tx)!important}
+/* ---------- botones y controles segmentados ---------- */
+body .gs-pan button{
+  height:28px!important; border-radius:7px!important; background:var(--ui-bg2)!important; border:1px solid var(--ui-bd)!important;
+  color:var(--ui-tx2)!important; font:500 11px var(--ui-sans)!important; letter-spacing:.01em!important; text-transform:none!important;
+  transition:background .15s,color .15s,border-color .15s;
+}
+body .gs-pan button:hover{color:var(--ui-tx)!important; border-color:var(--ui-bd2)!important}
+body .gs-pan button.on{background:var(--ui-acc-bg)!important; color:var(--ui-acc-tx)!important; border-color:rgba(226,165,91,.42)!important}
+body .gs-fila{gap:3px!important}
+/* reloj */
+body .gs-reloj b{font:300 30px var(--ui-sans)!important; letter-spacing:-.01em!important}
+body .gs-reloj small{color:var(--ui-acc-tx)!important; font-weight:500!important}
+body .gs-reloj em{color:var(--ui-tx3)!important}
+/* leyendas: barra fina con extremos en mono */
+body .gs-ley{font:400 9.5px var(--ui-mono)!important; color:var(--ui-tx3)!important; letter-spacing:.04em}
+body .gs-ley i{height:4px!important; border-radius:2px!important; opacity:.9}
+body .gs-nota{color:var(--ui-tx3)!important; font-size:10px!important}
+body #gs-dem{color:var(--ui-tx2)!important; font-size:10.5px!important}
+body #gs-dem b{color:var(--ui-acc-tx)!important; font-weight:500}
+/* tablas e indicadores */
+body .gs-t td{font-size:11.5px!important}
+body .gs-t td:nth-child(4){color:var(--ui-acc-tx)!important}
+body .gs-t .p, body .gs-ind span{color:var(--ui-tx3)!important}
+body .gs-ind b{font-family:var(--ui-mono); font-weight:400!important; font-size:11px}
+/* ---------- capas: lista de interruptores en lugar de botones grandes de color ---------- */
+body #gs-izq .ui-capas-h{font:500 9.5px var(--ui-mono); letter-spacing:.16em; color:var(--ui-tx3); text-transform:uppercase; border-top:1px solid var(--ui-bd); padding-top:12px; margin:14px 0 4px}
+body #fb-btn, body #vi-btn, body #ar-btn, body #us-btn, body #rc-btn, body #ci-open, body #fr-btn{
+  width:100%!important; height:34px!important; margin:0!important; display:flex!important; align-items:center; justify-content:space-between;
+  padding:0 2px 0 4px!important; background:transparent!important; border:0!important; border-bottom:1px solid var(--ui-bd)!important; border-radius:0!important;
+  color:var(--ui-tx)!important; font:400 12px var(--ui-sans)!important; letter-spacing:0!important; text-align:left; box-shadow:none!important;
+}
+body #fb-btn::after, body #vi-btn::after, body #ar-btn::after, body #us-btn::after, body #rc-btn::after, body #ci-open::after, body #fr-btn::after{
+  content:""; flex:none; width:26px; height:14px; border-radius:7px; margin-left:10px;
+  background:radial-gradient(circle at 7px 50%, #b9bfc3 4.4px, transparent 5px), rgba(255,255,255,.11); transition:background .2s;
+}
+body #fb-btn.on::after, body #vi-btn.on::after, body #ar-btn.on::after, body #us-btn.on::after, body #rc-btn.on::after, body #ci-open.on::after, body #fr-btn.on::after{
+  background:radial-gradient(circle at 19px 50%, #1b1207 4.4px, transparent 5px), var(--ui-acc);
+}
+body #fb-btn:hover, body #vi-btn:hover, body #ar-btn:hover, body #us-btn:hover, body #rc-btn:hover, body #ci-open:hover, body #fr-btn:hover{color:var(--ui-acc-tx)!important}
+/* ---------- marca y estado de carga ---------- */
+body #cvMarca{padding:8px 12px!important; gap:9px!important}
+body #cvMarca .ic{color:var(--ui-acc)!important; width:16px!important; height:16px!important}
+body #cvMarca b{font:600 12px var(--ui-sans)!important; letter-spacing:.01em!important}
+body #cvMarca small{font:400 10px var(--ui-mono)!important; color:var(--ui-tx3)!important; letter-spacing:.06em}
+body #cvMini{border-radius:999px!important; font:400 10.5px var(--ui-sans)!important}
+body #cvMini span.ok{color:#8fc7a3!important}
+body #cvMini span:not(.ok) .ic{color:var(--ui-acc)!important}
+/* ---------- botones inferiores: control segmentado sobrio ---------- */
+body #hud-c{gap:0!important; background:var(--ui-bg)!important; border:1px solid var(--ui-bd)!important; border-radius:12px!important; padding:4px!important; -webkit-backdrop-filter:blur(16px)!important; backdrop-filter:blur(16px)!important; box-shadow:0 12px 32px rgba(0,0,0,.28)!important}
+body #hud-c button{clip-path:none!important; background:transparent!important; border-radius:9px!important; padding:10px 18px!important; font:500 11px var(--ui-sans)!important; letter-spacing:.14em!important; color:var(--ui-tx2)!important; box-shadow:none!important; transform:none!important; filter:none!important}
+body #hud-c button:hover{color:var(--ui-tx)!important; background:rgba(255,255,255,.05)!important}
+body #hud-c button.on{color:var(--ui-acc-tx)!important; background:var(--ui-acc-bg)!important}
+body #hud-c #b-pajaro{color:#1b1207!important; background:var(--ui-acc)!important; margin-left:4px; padding:10px 22px!important; letter-spacing:.2em!important; font-weight:600!important}
+body #hud-c #b-pajaro:hover{background:#ecb571!important}
+body #hud-c svg{opacity:.8}
+/* ---------- panel derecho único con pestañas ---------- */
+#dock{position:fixed; z-index:12; right:14px; top:14px; width:304px; max-height:calc(100vh - 110px); display:flex; flex-direction:column; overflow:hidden}
+#dock .dk-tabs{display:flex; gap:2px; padding:5px; border-bottom:1px solid var(--ui-bd); flex:none}
+#dock .dk-tabs button{flex:1; height:28px; border:0; border-radius:7px; background:transparent; color:var(--ui-tx2); font:500 11px var(--ui-sans); cursor:pointer; white-space:nowrap}
+#dock .dk-tabs button.on{background:var(--ui-acc-bg); color:var(--ui-acc-tx)}
+#dock .dk-tabs .dk-min{flex:none; width:28px; color:var(--ui-tx3); font-size:14px}
+#dock .dk-body{overflow:auto; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.12) transparent; padding:4px 0}
+#dock.min .dk-body{display:none}
+#dock .dk-body > *{position:static!important; inset:auto!important; transform:none!important; width:auto!important; max-height:none!important; margin:0!important;
+  border:0!important; background:transparent!important; box-shadow:none!important; -webkit-backdrop-filter:none!important; backdrop-filter:none!important; border-radius:0!important}
+#dock .dk-body > .dk-oculto{display:none!important}
+#dock #hid-red:not(.dk-oculto){display:flex!important; flex-direction:column; align-items:stretch!important; gap:7px!important; padding:12px 14px!important; font:400 12px var(--ui-sans)!important}
+#dock #hid-red b{font:500 9.5px var(--ui-mono)!important; letter-spacing:.16em!important; color:var(--ui-tx3)!important}
+#dock #hid-red span{justify-content:flex-start}
+#dock #hid-red em{color:var(--ui-tx3)!important; font-size:11px; white-space:normal}
+#dock #bt-pan:not(.dk-oculto){display:block!important}
+#dock #bt-pan .bt-cuerpo{display:block!important}
+@media(max-width:760px){#dock{display:none}}
+
+/* títulos con espacio entre nombre y nota */
+body .gs-pan h3{gap:10px}
+/* red biótica: interruptor, títulos y fichas de especies en el mismo lenguaje */
+body #bt-pan .bt-sub, body #bt-pan .bt-cat{font-family:var(--ui-mono)!important; font-weight:500!important; letter-spacing:.14em!important; color:var(--ui-tx3)!important}
+body #bt-pan .bt-sw{background:var(--ui-bg2)!important; color:var(--ui-tx2)!important; border:1px solid var(--ui-bd)!important; font:500 10.5px var(--ui-sans)!important; letter-spacing:.04em!important}
+body #bt-pan .bt-sw.on, body #bt-pan .bt-sw[aria-pressed=true]{background:var(--ui-acc-bg)!important; color:var(--ui-acc-tx)!important; border-color:rgba(226,165,91,.42)!important}
+body #bt-pan .bt-min{background:var(--ui-bg2)!important; color:var(--ui-tx3)!important}
+body #bt-pan .bt-tipo{font:400 12px var(--ui-sans)!important; color:var(--ui-tx)!important; border-radius:6px!important}
+body #bt-pan .bt-tipo:hover{background:rgba(255,255,255,.04)!important}
+body #bt-pan .bt-e{background:var(--ui-bg2)!important; border:1px solid var(--ui-bd)!important; border-radius:8px!important; color:var(--ui-tx2)!important; font-size:10.5px!important}
+body #bt-pan .bt-e svg, body #bt-pan .bt-e img{filter:grayscale(1) brightness(1.15) opacity(.75)}
+body #bt-pan .bt-nota{color:var(--ui-tx3)!important}

@@ -1304,6 +1304,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
+    if (KEN) import('./data3d/ui_sobrio.js?v=2').then(m => m.iniciarUI()).catch(e => console.warn('interfaz:', e)); /* interfaz sobria: un sistema visual para todos los paneles */
     if (KEN && !LIVIANO) T3.splatLejos = true; /* árboles: reales de cerca, splat de lejos */ try { T3.R = await import('./data3d/real3d.js?v=66'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
@@ -1454,19 +1455,25 @@ async function crearPostproceso(T) {
   // gradación final tipo render de maqueta: contraste en S, algo más de color, medios tonos cálidos y viñeta suave
   const { ShaderPass } = await import('three/addons/postprocessing/ShaderPass.js');
   comp.addPass(new ShaderPass({
-    uniforms: { tDiffuse: { value: null } },
+    uniforms: { tDiffuse: { value: null }, uNoche: { value: 0 } },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    fragmentShader: `uniform sampler2D tDiffuse; uniform float uNoche; varying vec2 vUv;
+      /* gradación cinematográfica (como las tomas aéreas fotorrealistas): color contenido, sombras frías, luces cálidas;
+         al atardecer y de noche la ciudad se vuelve azul de hora azul y solo las luces conservan su calidez */
       void main(){
         vec3 c = texture2D(tDiffuse, vUv).rgb;
-        c = mix(c, c * c * (3.0 - 2.0 * c), 0.35);                       // contraste en S (sombras más firmes, luces limpias)
+        c = mix(c, c * c * (3.0 - 2.0 * c), 0.3);                          // contraste en S suave
         float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-        c = mix(vec3(l), c, 1.18);                                       // saturación
-        c *= mix(vec3(1.0), vec3(1.04, 1.0, 0.95), smoothstep(0.15, 0.7, l)); // medios y luces algo cálidos
-        vec2 q = vUv - 0.5; c *= 1.0 - 0.22 * dot(q, q);                  // viñeta suave
+        c = mix(vec3(l), c, 0.86 - 0.14 * uNoche);                          // color contenido (no saturado)
+        c *= mix(vec3(0.9, 0.96, 1.06), vec3(1.05, 1.0, 0.91), smoothstep(0.06, 0.62, l)); // sombras frías, luces cálidas
+        float luz = smoothstep(0.42, 0.85, l);                               // ventanas y faroles
+        c = mix(c, c * mix(vec3(0.70, 0.80, 1.12), vec3(1.25, 1.02, 0.72), luz), uNoche); // de noche: azul, con las luces cálidas
+        c = c / (1.0 + 0.12 * c);                                           // hombro: las luces no se queman
+        vec2 q = vUv - 0.5; c *= 1.0 - (0.3 + 0.18 * uNoche) * dot(q, q) * 1.6; // viñeta
         gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
       }`
   }));
+  { const pase = comp.passes[comp.passes.length - 1]; if (T3.roofU && T3.roofU.uNoche) pase.uniforms.uNoche = T3.roofU.uNoche; /* sigue la hora del reloj (cielo de 24 h) */ }
   T.composer = comp; T.ao = ao;
   addEventListener('resize', () => { const s = r.getDrawingBufferSize(new THREE.Vector2()); comp.setSize(innerWidth, innerHeight); ao.setSize(s.x, s.y); });
 }
@@ -3454,7 +3461,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=22'), import('./data3d/estrategias.js?v=14'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=24'), import('./data3d/estrategias.js?v=14'), listoK()])
     .then(async ([m, me]) => {
       try { EST = await me.iniciarEstrategias({ THREE: T3.THREE, T3, lw, Y0: 2.0, movil: MOVIL, dentro: (x, z) => enZona(x + LC.x, LC.y - z) /* huertas hidropónicas solo donde está el modelo de edificios */ }); } catch (e) { console.warn('estrategias:', e); }
       if (EST && EST.hidroponia) setTimeout(() => EST.hidroponia(), 1500); // techos y balcones con huerta y sus animales desde el inicio

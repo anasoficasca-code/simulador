@@ -197,13 +197,13 @@ export async function iniciarSimulacion(cfg = {}) {
   if (SINP) { for (let i = A.length - 1; i >= 0; i--) if (ACT[A[i].tipo] && ACT[A[i].tipo].p) A.splice(i, 1); for (const k of Object.keys(ACT)) if (ACT[k].p) delete CNT[k]; }
 
   /* ---------- interfaz ---------- */
-  const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: 'i', agentes: true, conv: !SINP }; // con estrategias, arrancan apagadas
+  const st0 = { t: H(6, 30), dia: 1, vel: 60, play: true, capa: '', agentes: true, conv: !SINP }; // con estrategias, arrancan apagadas
   const izq = document.createElement('div'); izq.className = 'gs-pan gs-act'; izq.id = 'gs-izq';
   izq.innerHTML = `<h3>SIMULACIÓN <em id="gs-dia">DÍA 1</em></h3>
     <div class="gs-reloj"><svg id="gs-dial" viewBox="0 0 120 120" role="slider" tabindex="0" aria-label="Hora del día (24 horas): arrastra alrededor" aria-valuemin="0" aria-valuemax="1439"></svg><div><b id="gs-hora">06:30</b><small id="gs-jor">Antes de la jornada</small><em>Arrastra la bola alrededor: después de las 23:59 sigue la 00:00</em></div></div>
     <div class="gs-fila"><button id="gs-play">❚❚</button><button data-v="20">x20</button><button data-v="60" class="on">x60</button><button data-v="240">x240</button></div>
     <div class="gs-sub">SINTAXIS ESPACIAL <span>DepthmapX</span></div>
-    <div class="gs-fila gs-fila3" id="gs-capa"><button data-c="i" class="on">Integración</button><button data-c="c">Elección</button><button data-c="">Apagar</button></div>
+    <div class="gs-fila gs-fila3" id="gs-capa"><button data-c="i">Integración</button><button data-c="c">Elección</button><button data-c="" class="on">Apagar</button></div>
     <div class="gs-ley"><span>baja</span><i></i><span>alta</span></div>
     <div class="gs-fila" style="grid-template-columns:1fr 1fr"><button id="gs-ag" class="on">Agentes</button><button id="gs-cv-b" class="${SINP ? '' : 'on'}">${SINP ? 'Estrategias' : 'Convenciones'}</button></div>
     ${SINP ? `<div class="gs-sub">ESTRATEGIAS <span>toca para ver u ocultar</span></div>
@@ -457,7 +457,7 @@ export async function iniciarSimulacion(cfg = {}) {
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); COLS = { i: new Float32Array(cI), c: new Float32Array(cC) };
     geo.setAttribute('color', new THREE.BufferAttribute(COLS.i.slice(), 3)); geo.setIndex(idx);
     CINTAS = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -16 }));
-    CINTAS.renderOrder = 2; CINTAS.frustumCulled = false; T3.scene.add(CINTAS);
+    CINTAS.renderOrder = 2; CINTAS.frustumCulled = false; T3.scene.add(CINTAS); CINTAS.visible = !!st0.capa; /* abre apagada: vista limpia */
     capa3D = () => { if (!st0.capa) { CINTAS.visible = false; return; } CINTAS.visible = true; geo.attributes.color.array.set(COLS[st0.capa]); geo.attributes.color.needsUpdate = true; };
     // convenciones: borde de cuidado de los humedales, biofábrica, cocinas y huertas pintados en el suelo
     ZONAS3D = new THREE.Group(); T3.scene.add(ZONAS3D); ZONAS3D.visible = !SINP; // con estrategias no se pintan las zonas de las P
@@ -557,10 +557,10 @@ export async function iniciarSimulacion(cfg = {}) {
     if (T3.flujoCarros) {
       const FC = T3.flujoCarros, grad = FC.escala.map(([d, c]) => `rgb(${c.map(x => Math.round(x * 255)).join(',')}) ${Math.round(d / 75 * 100)}%`).join(',');
       izq.querySelector('#gs-flujo').insertAdjacentHTML('afterend', `<div class="gs-sub">FLUJO DE CARROS <span>simulación SUMO · carros/km</span></div>
-        <div class="gs-fila" style="grid-template-columns:1fr 1fr" id="gs-fc"><button data-v="1" class="on">Ver</button><button data-v="">Apagar</button></div>
+        <div class="gs-fila" style="grid-template-columns:1fr 1fr" id="gs-fc"><button data-v="1">Ver</button><button data-v="" class="on">Apagar</button></div>
         <div class="gs-ley"><span>pocos</span><i style="background:linear-gradient(90deg,${grad})"></i><span>muchos</span></div>`);
       izq.querySelectorAll('#gs-fc button').forEach(b => b.onclick = () => { FC.visible = !!b.dataset.v; izq.querySelectorAll('#gs-fc button').forEach(x => x.classList.toggle('on', x === b)); });
-      FC.visible = true; // prendida al abrir
+      FC.visible = false; /* vista limpia al abrir: se prende con Ver */
       { /* cuántos carros hay en la calle a esta hora (demanda según el reloj: index.html, demandaHora) */
         izq.querySelector('#gs-fc').insertAdjacentHTML('beforebegin', '<div id="gs-dem" style="font-size:10.5px;color:#94a3b8;margin:2px 0 6px"></div>');
         const dem = izq.querySelector('#gs-dem');
