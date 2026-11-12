@@ -26,7 +26,7 @@ export async function crearResiduos({ THREE, T3 }) {
   const lp = new Float32Array(D.e.length * 6), lc = new Float32Array(D.e.length * 6);
   D.e.forEach(([a, b], k) => { const A = D.p[a], B = D.p[b], c = COL[A[2]]; lp.set([A[0], Y(A[0], A[1]) + 4, A[1], B[0], Y(B[0], B[1]) + 4, B[1]], k * 6); lc.set([c.r, c.g, c.b, c.r, c.g, c.b], k * 6); });
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3)); lg.setAttribute('color', new THREE.BufferAttribute(lc, 3));
-  g.add(await (await import('./red_resaltada.js?v=1')).redResaltada({ THREE, T3, pos: lp, colores: lc, ancho: 2.4 })); /* red resaltada: grosor real, halo y pulsos */
+  /* sin líneas: no hay un dato oficial que relacione un contenedor con otro (ruta, operador o destino); solo los puntos reales */
   const n1 = D.p.filter(p => p[2]).length;
   return { grupo: g, total: D.p.length, aprov: n1, noAprov: D.p.length - n1, ver(on) { g.visible = on; } };
 }
@@ -41,6 +41,6 @@ export function panelResiduos(api, on) {
       <i style="width:10px;height:10px;border-radius:50%;background:#7fd1b9"></i><span>Aprovechables · contenedor blanco (1.100 L)</span><b style="font:400 12px 'JetBrains Mono',monospace;color:#f2c995">${api.aprov.toLocaleString('es-CO')}</b>
       <i style="width:10px;height:10px;border-radius:50%;background:#a78bfa"></i><span>No aprovechables · contenedor negro (2.400 L)</span><b style="font:400 12px 'JetBrains Mono',monospace;color:#f2c995">${api.noAprov.toLocaleString('es-CO')}</b>
     </div>
-    <div style="margin-top:8px;color:#9aa2a7;font-size:11px">Las líneas unen cada contenedor con el más cercano de su tipo: muestran la red, no la ruta de los camiones.</div>
+    <div style="margin-top:8px;color:#9aa2a7;font-size:11px">Ubicación real de cada contenedor de la UAESP.</div>
     <div style="margin-top:6px;color:#646c71;font:400 10px 'JetBrains Mono',monospace">Fuente: UAESP / IDECA · Contenerización, Kennedy</div>`;
 }
