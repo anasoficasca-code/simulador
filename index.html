@@ -1735,7 +1735,7 @@ function materialEdificios(THREE) {
       .replace('#include <common>', '#include <common>\nflat varying vec4 vWl;\nflat varying vec2 vWs;\nvarying vec3 vWP;\nvarying float vBd;\nvarying float vBid;\nuniform sampler2D uOrto;\nuniform mat4 uOrtoVP;\nuniform float uOrtoOn, uNoche, uLuces, uSoloAltos, uUsos, uTechoOn;\nuniform sampler2D tTecho;' + (KEN && !LIVIANO ? '\nuniform sampler2D tLosaC, tLosaN, tLosaR;' : '') + (FACHADA ? '\nuniform sampler2D tFachB, tFachP, tFachBN, tFachPN, tFachBR, tFachPR, tLadC, tLadN, tLadR;\nuniform float uLadOn;' : ''))
       .replace('#include <color_fragment>', `#include <color_fragment>
       if (uSoloAltos > 0.5 && abs(vWl.w) < 16.5) discard; // Foto real: las casas y bloques bajos son los de la foto de Google
-      float gOrto = 0.0; float gTecho = 0.0; vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
+      float gVidrio = 0.0; float gOrto = 0.0; float gTecho = 0.0; vec2 gTuv = vec2(0.0), gUvM = vec2(0.0); float gLad = 0.0, gF = 0.0, gMuro = 0.0, gWin = 0.0; vec3 gWinC = vec3(0.0); // coordenadas de la fachada, para la rugosidad y las normales PBR
       {
         ${FACHADA || ''}
         float L = vWl.z, H = vWl.w;
@@ -1764,6 +1764,15 @@ function materialEdificios(THREE) {
           vec3 base = diffuseColor.rgb, c = base;
           c = mix(c, marco, frame * 0.92);
           c = mix(c, base * 1.15 + 0.04, sill * 0.9);
+          { /* vidrio más real: reflejo del cielo según el ángulo (Fresnel), sombra del dintel dentro del hueco e interiores distintos */
+            vec2 nW = vec2(vWl.y, -vWl.x); vec3 Vv = normalize(cameraPosition - vWP); float cosV = abs(dot(Vv.xz, nW)) / max(length(Vv.xz), 1e-3);
+            float fres = 0.04 + 0.96 * pow(1.0 - clamp(cosV, 0.0, 1.0), 4.0);
+            vec3 cieloR = mix(vec3(0.42, 0.52, 0.62), vec3(0.78, 0.84, 0.9), clamp(Vv.y * 1.6 + 0.3, 0.0, 1.0));
+            vec3 interior = mix(vec3(0.05, 0.05, 0.055), vec3(0.32, 0.27, 0.2) * (0.6 + 0.6 * rnd), step(0.62, rnd)) + vec3(0.12, 0.1, 0.08) * step(0.86, fract(rnd * 7.3)); /* oscuro, cortina clara o luz */
+            float dintel = smoothstep(wt - 0.16, wt, fv) * 0.55;
+            vidrio = mix(interior, cieloR, clamp(fres + 0.18, 0.0, 0.85)) * (1.0 - dintel);
+            gWin = max(gWin, 0.0); gVidrio = win;
+          }
           c = mix(c, vidrio, win);
           c = mix(c, marco, max(mull, trav) * 0.9);
           c *= 1.0 - 0.08 * (1.0 - smoothstep(0.0, 0.025 + e, fv));     // línea de losa entre pisos
@@ -1837,6 +1846,7 @@ function materialEdificios(THREE) {
     sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n        totalEmissiveRadiance += gWinC * gWin * 2.6; // ventana encendida');
     if (PBR) sh.fragmentShader = sh.fragmentShader
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = mix(roughnessFactor, 0.06, gVidrio); /* vidrio liso: brilla con el sol */
         ${KEN ? 'if (gTecho > 0.5) roughnessFactor = 0.82 + 0.18 * texture2D(tLosaR, vWP.xz / 6.0).r;' : ''}
         if (gF > 0.5) roughnessFactor = mix(mix(texture2D(tFachPR, gTuv).r, texture2D(tFachBR, gTuv).r, gLad), texture2D(tLadR, gUvM).r, gMuro);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
