@@ -37,7 +37,7 @@
   #loader{position:fixed;inset:0;z-index:60;display:block;background:#0b1015;overflow:hidden;transition:opacity .9s ease,visibility .9s}
   #loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
   .cv-fotos{position:absolute;inset:0;overflow:hidden;background:#0b1015}
-  .cv-fotos img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.95);animation:cvAp 1.6s ease both}
+  .cv-fotos img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:-webkit-optimize-contrast;animation:cvAp 1.6s ease both}
   .cv-velo{position:absolute;inset:0;background:linear-gradient(90deg,rgba(11,16,21,.82) 0%,rgba(11,16,21,.45) 38%,rgba(11,16,21,0) 62%),linear-gradient(0deg,rgba(11,16,21,.8) 0%,transparent 38%)}
   .cv-city{display:none}
   .cv-card{position:absolute;left:clamp(20px,6vw,96px);right:clamp(20px,6vw,96px);bottom:clamp(28px,8vh,90px);max-width:880px;font-family:'Inter',system-ui,sans-serif;color:#e9ebec;animation:cvIn 1s cubic-bezier(.2,.7,.2,1) both}
@@ -160,7 +160,7 @@
 
 <div id="loader">
   <div class="cv-fotos" id="cvFotos">
-    <img class="on" src="presentacion/img/portada_render.jpg?v=3" alt="Kennedy en 3D: humedal El Burro, torres y barrios" />
+    <img class="on" src="presentacion/img/portada_render.jpg?v=4" alt="Kennedy en 3D: humedal El Burro, torres y barrios" />
   </div>
   <div class="cv-velo"></div>
   <div class="cv-city" id="cvCity"></div>
