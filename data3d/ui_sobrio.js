@@ -29,7 +29,7 @@ export function iniciarUI() {
   // capas del panel izquierdo: título y orden
   const ordenarCapas = () => {
     const izq = document.getElementById('gs-izq'); if (!izq) return;
-    const ids = ['fb-btn', 'ar-btn', 'us-btn', 'rs-btn', 'as-btn', 'ag-btn', 'rc-btn', 'ci-open', 'vi-btn', 'fr-btn'], bs = ids.map(i => document.getElementById(i)).filter(b => b && izq.contains(b));
+    const ids = ['fb-btn', 'ar-btn', 'us-btn', 'rs-btn', 'as-btn', 'ag-btn', 'in-btn', 'rc-btn', 'ci-open', 'vi-btn', 'fr-btn'], bs = ids.map(i => document.getElementById(i)).filter(b => b && izq.contains(b));
     if (!bs.length) return;
     let h = izq.querySelector('.ui-capas-h'); if (!h) { h = document.createElement('div'); h.className = 'ui-capas-h'; h.textContent = 'Capas'; }
     const primero = bs[0]; primero.parentElement.insertBefore(h, primero);
