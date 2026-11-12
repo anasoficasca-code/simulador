@@ -3593,10 +3593,11 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       if (KEN && !document.getElementById('us-btn')) { /* usos del suelo: edificios pintados por su uso real + panel (data3d/usos_suelo.js) */
         const fb = document.getElementById('ar-btn'), b = document.createElement('button'); b.id = 'us-btn'; b.textContent = 'Usos del suelo'; b.title = 'Pinta cada edificio con su uso real (shapefile Usos_kennedy)'; b.style.cssText = 'width:100%;margin-top:6px';
         b.onclick = async () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); T3.roofU.uUsos.value = on ? 1 : 0;
-          const pintar = () => import('./data3d/usos_suelo.js?v=5').then(m => m.pintarModelos({ THREE: T3.THREE, T3, on: b.classList.contains('on') })).catch(e => console.warn('usos modelos:', e)); /* biblioteca, conjuntos, torres, Bavaria, Corabastos */
+          import('./data3d/usos_suelo.js?v=6').then(m => m.verPlazas({ THREE: T3.THREE, T3, on })).catch(e => console.warn('plazas:', e)); /* plazas de mercado existentes en color fuerte */
+          const pintar = () => import('./data3d/usos_suelo.js?v=6').then(m => m.pintarModelos({ THREE: T3.THREE, T3, on: b.classList.contains('on') })).catch(e => console.warn('usos modelos:', e)); /* biblioteca, conjuntos, torres, Bavaria, Corabastos */
           pintar(); if (on) for (const t of [4000, 12000, 30000, 60000]) setTimeout(pintar, t); /* los modelos que terminan de cargar después */
           const pn = document.getElementById('usos-panel'); if (!on) { if (pn) pn.remove(); return; }
-          try { (await import('./data3d/usos_suelo.js?v=5')).panelUsos({ T3 }); } catch (e) { console.warn('usos del suelo:', e); } };
+          try { (await import('./data3d/usos_suelo.js?v=6')).panelUsos({ T3 }); } catch (e) { console.warn('usos del suelo:', e); } };
         (fb || ag.parentElement).insertAdjacentElement('afterend', b);
       }
       if (KEN && !document.getElementById('rc-btn')) { /* ruido de los carros y cierre de vía (data3d/ruido_cierre.js, como en el módulo 08) */

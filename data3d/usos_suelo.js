@@ -52,6 +52,7 @@ export function panelUsos({ T3 }) {
     </div>
     <div style="letter-spacing:.14em;font-size:10px;font-weight:700;color:#94a3b8;margin:12px 0 4px">ALTURA DE LOS EDIFICIOS</div>
     <svg viewBox="0 0 ${W} ${HH}" width="100%" style="display:block">${barras}${ejes}</svg>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08)"><span style="width:10px;height:10px;border-radius:2px;background:#ff2e93;flex:none"></span><span style="flex:1">Plazas de mercado existentes</span><span style="opacity:.75">IPES · OSM</span></div>
     <div style="margin-top:8px;font-size:10.5px;color:#94a3b8">Fuente: shapefile Usos_kennedy (50.878 lotes reales), unión espacial por centroide. Gris: lote sin uso asignado.</div>`;
   el.querySelector('#usos-cerrar').onclick = () => { const b = document.getElementById('us-btn'); if (b) b.click(); else el.remove(); };
   return el;
@@ -76,4 +77,29 @@ export function pintarModelos({ THREE, T3, on }) {
       }
     });
   }
+}
+
+/* PLAZAS DE MERCADO EXISTENTES (IPES 2024 + OpenStreetMap; tools/plazas_build.py): su edificio en color fuerte encima del modelo
+   y una columna de luz con anillo en el suelo, para ubicarlas de lejos. Se ven con "Usos del suelo". */
+let PLZ = null;
+export async function verPlazas({ THREE, T3, on }) {
+  if (!PLZ) {
+    const D = await (await fetch('data3d/plazas.json?v=1')).json(), LC = { x: 5341.33, y: 3161.9 }, lw = (x, y) => [x - LC.x, LC.y - y];
+    const g = new THREE.Group(); g.name = 'plazas-mercado'; T3.scene.add(g);
+    const COL = new THREE.Color('#ff2e93'), mat = new THREE.MeshStandardMaterial({ color: COL, emissive: COL, emissiveIntensity: 0.45, roughness: 0.6 });
+    const halo = new THREE.MeshBasicMaterial({ color: COL, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+    for (const p of D.plazas) {
+      for (const h of p.h) {
+        const W = h.pts.slice(0, -1).map(q => lw(q[0], q[1]));
+        const sh = new THREE.Shape(W.map(q => new THREE.Vector2(q[0], -q[1])));
+        const geo = new THREE.ExtrudeGeometry(sh, { depth: Math.max(4, h.h) + 0.4, bevelEnabled: false }).rotateX(-Math.PI / 2);
+        const m = new THREE.Mesh(geo, mat); m.scale.set(1.004, 1, 1.004); m.position.y = 0.2; m.castShadow = true; g.add(m);
+      }
+      const [x, z] = lw(p.p[0], p.p[1]);
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 70, 12, 1, true).translate(0, 35, 0), halo); col.position.set(x, 0, z); g.add(col);
+      const ani = new THREE.Mesh(new THREE.RingGeometry(26, 30, 48).rotateX(-Math.PI / 2), halo); ani.position.set(x, 1.2, z); g.add(ani);
+    }
+    PLZ = { g, n: D.plazas.length, nIPES: D.plazas.filter(p => p.f === 'IPES').length };
+  }
+  PLZ.g.visible = on; return PLZ;
 }
