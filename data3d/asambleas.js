@@ -17,14 +17,13 @@ export async function crearAsambleas({ THREE, T3 }) {
   const pos = new Float32Array(D.p.length * 3); D.p.forEach((p, i) => pos.set([p[0], Y(p[0], p[1]) + 12, p[1]], i * 3));
   const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   const pm = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, depthTest: false, toneMapped: false, uniforms: { c: { value: COL } },
-    vertexShader: 'void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = clamp(4800.0 / -mv.z, 7.0, 20.0); }',
+    vertexShader: 'void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = clamp(7200.0 / -mv.z, 11.0, 28.0); }',
     fragmentShader: 'uniform vec3 c; void main(){ vec2 d = gl_PointCoord - 0.5; float r = length(d); if (r > 0.5) discard; float a = smoothstep(0.5, 0.38, r); float borde = smoothstep(0.28, 0.36, r) * (1.0 - smoothstep(0.42, 0.5, r)); gl_FragColor = vec4(mix(c, vec3(0.08), borde * 0.7), a); }' });
   const pts = new THREE.Points(pg, pm); pts.renderOrder = 6; pts.frustumCulled = false; g.add(pts);
   // red de vecindad
   const lp = new Float32Array(D.e.length * 6); D.e.forEach(([a, b], k) => { const A = D.p[a], B = D.p[b]; lp.set([A[0], Y(A[0], A[1]) + 12, A[1], B[0], Y(B[0], B[1]) + 12, B[1]], k * 6); });
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3));
-  const red = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: COL, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false, toneMapped: false }));
-  red.renderOrder = 5; red.frustumCulled = false; g.add(red);
+  g.add(await (await import('./red_resaltada.js?v=1')).redResaltada({ THREE, T3, pos: lp, color: COL, ancho: 3 })); /* red resaltada: grosor real, halo y pulsos */
   // ficha al pasar el cursor
   const tip = document.createElement('div'); tip.style.cssText = 'position:fixed;z-index:45;display:none;pointer-events:none;max-width:260px;background:rgba(13,15,18,.9);border:1px solid rgba(233,196,106,.4);border-radius:8px;padding:8px 10px;color:#e9ebec;font:12px/1.4 Inter,system-ui,sans-serif'; document.body.appendChild(tip);
   const v = new THREE.Vector3(), cv = T3.renderer.domElement;

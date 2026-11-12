@@ -3609,11 +3609,11 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
         const ref = document.getElementById('us-btn') || document.getElementById('ar-btn'); (ref || ag.parentElement).insertAdjacentElement('afterend', b2); (ref || ag.parentElement).insertAdjacentElement('afterend', b1);
         /* puntos actuales de recolección de residuos (UAESP): empieza apagado */
         const b3 = document.createElement('button'); b3.id = 'rs-btn'; b3.textContent = 'Puntos de residuos'; b3.title = 'Contenedores de recolección de la UAESP en Kennedy y su red'; b3.style.cssText = 'width:100%;margin-top:6px';
-        let pRes = null; b3.onclick = async () => { const on = !b3.classList.contains('on'); b3.classList.toggle('on', on); try { const m = await import('./data3d/residuos.js?v=3'); if (!pRes) pRes = m.crearResiduos({ THREE: T3.THREE, T3 }); const a = await pRes; a.ver(on); m.panelResiduos(a, on); } catch (e) { console.warn('residuos:', e); } };
+        let pRes = null; b3.onclick = async () => { const on = !b3.classList.contains('on'); b3.classList.toggle('on', on); try { const m = await import('./data3d/residuos.js?v=5'); if (!pRes) pRes = m.crearResiduos({ THREE: T3.THREE, T3 }); const a = await pRes; a.ver(on); m.panelResiduos(a, on); } catch (e) { console.warn('residuos:', e); } };
         b2.insertAdjacentElement('afterend', b3);
         /* asambleas existentes: Juntas de Acción Comunal (IDPAC); empieza apagado */
         const b4 = document.createElement('button'); b4.id = 'as-btn'; b4.textContent = 'Asambleas (JAC)'; b4.title = 'Juntas de Acción Comunal de Kennedy: sede, horario y red de vecindad'; b4.style.cssText = 'width:100%;margin-top:6px';
-        let pAs = null; b4.onclick = async () => { const on = !b4.classList.contains('on'); b4.classList.toggle('on', on); try { const m = await import('./data3d/asambleas.js?v=1'); if (!pAs) pAs = m.crearAsambleas({ THREE: T3.THREE, T3 }); const a = await pAs; a.ver(on); m.panelAsambleas(a, on); } catch (e) { console.warn('asambleas:', e); } };
+        let pAs = null; b4.onclick = async () => { const on = !b4.classList.contains('on'); b4.classList.toggle('on', on); try { const m = await import('./data3d/asambleas.js?v=2'); if (!pAs) pAs = m.crearAsambleas({ THREE: T3.THREE, T3 }); const a = await pAs; a.ver(on); m.panelAsambleas(a, on); } catch (e) { console.warn('asambleas:', e); } };
         b3.insertAdjacentElement('afterend', b4);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
