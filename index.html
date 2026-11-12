@@ -3621,7 +3621,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
         b4.insertAdjacentElement('afterend', b5);
         /* indicadores en 3D (picos de las láminas: anasoficasca-code.github.io/picos); empieza apagado */
         const b6 = document.createElement('button'); b6.id = 'in-btn'; b6.textContent = 'Indicadores'; b6.title = 'Indicadores del diagnóstico como picos 3D sobre Kennedy'; b6.style.cssText = 'width:100%;margin-top:6px';
-        let pIn = null; b6.onclick = async () => { const on = !b6.classList.contains('on'); b6.classList.toggle('on', on); try { const m = await import('./data3d/indicadores.js?v=1'); if (!pIn) pIn = m.crearIndicadores({ THREE: T3.THREE, T3 }); const a = await pIn; a.ver(on); if (on && !a.sel) a.mostrar('SE'); m.panelIndicadores(a, on); } catch (e) { console.warn('indicadores:', e); } };
+        let pIn = null; b6.onclick = async () => { const on = !b6.classList.contains('on'); b6.classList.toggle('on', on); try { const m = await import('./data3d/indicadores.js?v=2'); if (!pIn) pIn = m.crearIndicadores({ THREE: T3.THREE, T3 }); const a = await pIn; a.ver(on); if (on && !a.sel) a.mostrar('SE'); m.panelIndicadores(a, on); } catch (e) { console.warn('indicadores:', e); } };
         b5.insertAdjacentElement('afterend', b6);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)

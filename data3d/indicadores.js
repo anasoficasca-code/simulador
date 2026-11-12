@@ -1,9 +1,9 @@
 /* ============ INDICADORES EN 3D (los picos de https://anasoficasca-code.github.io/picos/) ============
    Cada indicador es una superficie de picos sobre Kennedy: más alto y más intenso = valor más alto (0 a 1), con la rampa de color
    de las láminas. Datos: data3d/indicadores/*.json (tools/indicadores_extraer.js). Marco de picos (x este, y norte, m) ->
-   mundo del simulador: X = x + ox, Z = -y + oz (alineado con los edificios). Botón "Indicadores": empieza apagado. */
+   mundo del simulador: giro de -28,1° y desplazamiento (1692, -588), alineado con 409 de 446 edificios altos. Botón "Indicadores": empieza apagado. */
 export async function crearIndicadores({ THREE, T3 }) {
-  const I = await (await fetch('data3d/indicadores/index.json?v=1')).json();
+  const I = await (await fetch('data3d/indicadores/index.json?v=2')).json();
   const g = new THREE.Group(); g.name = 'indicadores'; g.visible = false; T3.scene.add(g);
   const dec = (b) => { const s = atob(b), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
   const mallas = new Map(); let alto = 0.3, sel = null, anio = false;
@@ -12,7 +12,8 @@ export async function crearIndicadores({ THREE, T3 }) {
     const d = await (await fetch('data3d/indicadores/' + f + '?v=1')).json();
     const q = new Uint16Array(dec(d.pos).buffer), n = d.nV, [x0, x1, y0, y1, zlo, zhi] = d.b, zs = zhi - zlo;
     const pos = new Float32Array(n * 3), z = new Float32Array(n);
-    for (let k = 0; k < n; k++) { pos[k * 3] = x0 + q[k * 3] / 65535 * (x1 - x0) + I.ox; pos[k * 3 + 2] = -(y0 + q[k * 3 + 1] / 65535 * (y1 - y0)) + I.oz; z[k] = q[k * 3 + 2] / 65535 * zs; }
+    const ra = (I.rot || 0) * Math.PI / 180, cs = Math.cos(ra), sn = Math.sin(ra); /* la lámina está girada respecto al norte */
+    for (let k = 0; k < n; k++) { const x = x0 + q[k * 3] / 65535 * (x1 - x0), zz = -(y0 + q[k * 3 + 1] / 65535 * (y1 - y0)); pos[k * 3] = x * cs - zz * sn + I.ox; pos[k * 3 + 2] = x * sn + zz * cs + I.oz; z[k] = q[k * 3 + 2] / 65535 * zs; }
     const cu = dec(d.col), qi = new Uint16Array(dec(d.idx).buffer), idx = new Uint32Array(d.nF * 6);
     for (let f2 = 0; f2 < d.nF; f2++) { const a = qi[f2 * 4], b = qi[f2 * 4 + 1], c = qi[f2 * 4 + 2], e = qi[f2 * 4 + 3]; idx.set([a, c, b, a, e, c], f2 * 6); }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setIndex(new THREE.BufferAttribute(idx, 1));
