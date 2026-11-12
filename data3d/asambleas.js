@@ -37,15 +37,15 @@ export function panelAsambleas(api, on) {
   let el = document.getElementById('asam-panel');
   if (!on) { if (el) el.remove(); return; }
   if (!el) { el = document.createElement('div'); el.id = 'asam-panel'; document.body.appendChild(el); }
-  el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:96px;z-index:40;width:min(380px,calc(100vw - 32px));background:rgba(13,15,18,.78);border:1px solid rgba(255,255,255,.075);border-radius:12px;padding:12px 14px;color:#e9ebec;font:12px/1.45 Inter,system-ui,sans-serif;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)';
+  el.style.cssText = 'position:fixed;left:' + (innerWidth > 760 ? 290 : 8) + 'px;bottom:96px;z-index:40;width:min(250px,calc(100vw - 32px));max-height:46vh;overflow:auto;scrollbar-width:none;background:rgba(13,15,18,.8);border:1px solid rgba(255,255,255,.075);border-radius:10px;padding:9px 11px;color:#e9ebec;font:10.5px/1.35 Inter,system-ui,sans-serif;-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)';
   el.innerHTML = `<div style="font:500 9.5px 'JetBrains Mono',monospace;letter-spacing:.16em;color:#646c71;text-transform:uppercase;margin-bottom:8px">Asambleas existentes · Juntas de Acción Comunal</div>
     <div style="display:grid;grid-template-columns:22px 1fr;gap:6px 10px;align-items:start">
       <svg viewBox="0 0 128 160" width="18" height="22"><path d="M64 152 L24 92 A50 50 0 1 1 104 92 Z" fill="#e9c46a" stroke="#1b1407" stroke-width="6"/><circle cx="64" cy="48" r="10" fill="#1b1407"/><circle cx="44" cy="52" r="7" fill="#1b1407"/><circle cx="84" cy="52" r="7" fill="#1b1407"/></svg>
-      <div><b style="font-weight:500">Pin · Junta de Acción Comunal (${api.total})</b><div style="color:#9aa2a7;font-size:11px">Asamblea barrial que ya existe: los vecinos afiliados se reúnen en asamblea, eligen su junta directiva y deciden sobre el barrio. Está en la sede de la junta.</div></div>
+      <div><b style="font-weight:500">Pin · Junta de Acción Comunal (${api.total})</b><div style="color:#9aa2a7;font-size:10px">Asamblea barrial existente: los vecinos deciden sobre el barrio. En su sede.</div></div>
       <svg viewBox="0 0 22 12" width="22" height="12"><path d="M1 11 Q11 -5 21 11" fill="none" stroke="#cfd4d7" stroke-width="2"/></svg>
-      <div><b style="font-weight:500">Arco · trabajan el mismo tema</b><div style="color:#9aa2a7;font-size:11px">Une dos juntas que tienen la misma comisión de trabajo (con la más cercana que la tiene): pueden coordinarse y decidir juntas sobre ese tema. El color dice el tema:</div></div>
+      <div><b style="font-weight:500">Arco · trabajan el mismo tema</b><div style="color:#9aa2a7;font-size:10px">Juntas con la misma comisión de trabajo. Color = tema:</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;margin-top:8px;font-size:11px">${api.temas.map((t, k) => `<div style="display:flex;align-items:center;gap:6px"><i style="width:14px;height:3px;border-radius:2px;background:${TEMAS_COL[k]};flex:none"></i><span style="flex:1">${t}</span><span style="color:#9aa2a7">${api.cuenta[k]}</span></div>`).join('')}</div>
-    <div style="margin-top:8px;color:#9aa2a7;font-size:11px">Pasa el cursor por un pin para ver la junta, su horario y sus comisiones.</div>
+    <div style="display:grid;grid-template-columns:1fr;gap:2px;margin-top:6px;font-size:10px">${api.temas.map((t, k) => `<div style="display:flex;align-items:center;gap:6px"><i style="width:14px;height:3px;border-radius:2px;background:${TEMAS_COL[k]};flex:none"></i><span style="flex:1">${t}</span><span style="color:#9aa2a7">${api.cuenta[k]}</span></div>`).join('')}</div>
+    
     <div style="margin-top:6px;color:#646c71;font:400 10px 'JetBrains Mono',monospace">Fuente: IDPAC · Organizaciones comunales (2021) y Dignatarios activos (2022)</div>`;
 }
