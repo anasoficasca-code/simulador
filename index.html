@@ -2438,20 +2438,20 @@ async function buildTraffic(THREE) {
   if (KEN) { // Kennedy: la simulación SUMO se dibuja con los vehículos realistas (data3d/vehiculos.js): carros, taxis, camionetas, motos y camiones
     try {
       const mv = await import('./data3d/vehiculos.js?v=2');
-      T3.vehSUMO = mv.crearVehiculos({ T3, movil: LIVIANO, maxDist: LIVIANO ? 1200 : 3200, cuantos: { carro: maxi, moto: Math.ceil(maxi * 0.32), camion: Math.ceil(maxi * 0.14) } });
+      T3.vehSUMO = mv.crearVehiculos({ T3, movil: LIVIANO, maxDist: LIVIANO ? 1200 : 3200, cuantos: { carro: maxi * 3, moto: Math.ceil(maxi * 3 * 0.32), camion: Math.ceil(maxi * 3 * 0.14) } /* hasta 3 copias de la grabación en hora pico */ });
       T3.sumoActivo = true; // la simulación del giro deja de dibujar sus carros, motos y camiones (sigue contando para los indicadores)
     } catch (e) { console.warn('vehículos SUMO:', e); T3.vehSUMO = null; }
   }
   // arranca a las 16:40 (ya hay unos 2.000 carros en la calle) y en marcha; la barra de abajo permite pausar y mover el tiempo
-  TRAF = { steps, NS, NV, dur, maxi, t: tIni, playing: true, vel: 1, pedirTrozo, chunk: I.chunk, bodies, cabins, wheels, dummy: new THREE.Object3D(), head: new Float32Array(maxi),
-    vis: { n: 0, x: new Float32Array(maxi), z: new Float32Array(maxi), dx: new Float32Array(maxi), dz: new Float32Array(maxi), v: new Float32Array(maxi), id: new Int32Array(maxi) } }; // vis: posición y velocidad de cada carro en este cuadro (detección y seguimiento del simulador)
+  TRAF = { steps, NS, NV, dur, maxi, t: tIni, playing: true, vel: 1, pedirTrozo, chunk: I.chunk, bodies, cabins, wheels, dummy: new THREE.Object3D(), head: new Float32Array(maxi * 3),
+    vis: { n: 0, x: new Float32Array(maxi * 3), z: new Float32Array(maxi * 3), dx: new Float32Array(maxi * 3), dz: new Float32Array(maxi * 3), v: new Float32Array(maxi * 3), id: new Int32Array(maxi * 3) } }; // vis: posición y velocidad de cada carro en este cuadro (detección y seguimiento del simulador)
   T3.counts.cars = NV; T3.TRAF = TRAF; /* ruido y cierre de vía (data3d/ruido_cierre.js) leen la simulación */
   if (window.trafficPaint) window.trafficPaint();
   updateTraffic(0);
 }
 /* demanda de tráfico según la hora del reloj de la simulación (perfil típico de Bogotá: picos 6-8 y 17-19, madrugada casi vacía).
    La grabación SUMO es de hora pico (100 %); a cada hora sale solo esa fracción de los vehículos (siempre los mismos por id). */
-const DEMANDA_H = [0.08, 0.05, 0.04, 0.04, 0.09, 0.34, 0.82, 1.0, 0.86, 0.66, 0.6, 0.64, 0.74, 0.72, 0.64, 0.68, 0.84, 1.0, 0.96, 0.76, 0.52, 0.36, 0.23, 0.13];
+const DEMANDA_H = [0.06, 0.04, 0.03, 0.03, 0.08, 0.32, 0.78, 0.95, 0.82, 0.62, 0.58, 0.62, 0.72, 0.7, 0.62, 0.66, 0.82, 1.0, 0.97, 0.78, 0.52, 0.36, 0.22, 0.12]; /* pico más pesado 5-6 p. m. (SDM: NQS > 17.000 veh/h), pico de la mañana 6-8 a. m. */
 function demandaHora() { const r = T3.reloj; if (!r || !(r.t >= 0)) return 1; const h = (r.t / 60) % 24, a = Math.floor(h), f = h - a; return DEMANDA_H[a] + (DEMANDA_H[(a + 1) % 24] - DEMANDA_H[a]) * f; }
 /* RUMBO DE LOS CARROS: alineado con el tramo de vía más cercano (sentido según hacia dónde avanza), no con el salto entre
    posiciones grabadas cada segundo (redondeadas a 20 cm: de ahí los carros en diagonal, sobre todo quietos o en la rotonda).
@@ -2487,30 +2487,36 @@ function updateTraffic(dt) {
   const k0 = Math.floor(TRAF.t) % TRAF.NS, k1 = (k0 + 1) % TRAF.NS;
   if (TRAF.pedirTrozo && !TRAF.steps[(k0 + 25) % TRAF.NS]) TRAF.pedirTrozo(Math.floor(((k0 + 25) % TRAF.NS) / TRAF.chunk)); /* pide con 25 s de anticipación */
   const f = TRAF.t - Math.floor(TRAF.t);
-  const A = TRAF.steps[k0], B = TRAF.steps[k1] || A;
-  if (!A) { if (TRAF.pedirTrozo) TRAF.pedirTrozo(Math.floor(k0 / TRAF.chunk)); return; } // ese trozo aún no ha bajado: se pide ya y los carros esperan un instante
-  const m = new Map();
-  for (let i = 0; i < B.ids.length; i++) m.set(B.ids[i], i);
+  const A0 = TRAF.steps[k0];
+  if (!A0) { if (TRAF.pedirTrozo) TRAF.pedirTrozo(Math.floor(k0 / TRAF.chunk)); return; } // ese trozo aún no ha bajado: se pide ya y los carros esperan un instante
+  /* MÁS VEHÍCULOS: la grabación SUMO (máx. ~2.600 a la vez en toda la localidad) se superpone desfasada en el tiempo: mismos recorridos
+     reales, hasta 3 veces más vehículos en hora pico (1 en la madrugada, 2 al mediodía, 3 en los picos) */
+  const NCOP = KEN && T3.vehSUMO ? Math.max(1, Math.min(3, Math.round(1 + 2.2 * Math.max(0, pDem - 0.25) / 0.72))) : 1, MAXV = TRAF.maxi * (KEN && T3.vehSUMO ? 3 : 1); TRAF.copias = NCOP;
   const d = TRAF.dummy;
   const WO = [[1.45, 0.95], [1.45, -0.95], [-1.45, 0.95], [-1.45, -0.95]];
   let n = 0;
   const VS = T3.vehSUMO, F = VS ? null : T3.fleet; // flota de carros reales (data3d/real3d.js): recibe las trayectorias de la simulación
   if (F) F.begin();
-  if (VS) { VS.inicio(); if (!TRAF.obj) { TRAF.obj = new Array(TRAF.NV + 1); TRAF.tipo = new Int8Array(TRAF.NV + 1).fill(-1); TRAF.headF = new Float32Array(TRAF.NV + 1).fill(NaN); } }
-  for (let i = 0; i < A.ids.length && n < TRAF.maxi; i++) {
-    if (pDem < 0.999 && ((A.ids[i] * 2654435761) >>> 0) / 4294967296 > pDem) continue; /* a esta hora ese vehículo no está en la calle */
+  if (VS) { VS.inicio(); if (!TRAF.obj) { TRAF.obj = new Array((TRAF.NV + 1) * 3); TRAF.tipo = new Int8Array((TRAF.NV + 1) * 3).fill(-1); TRAF.headF = new Float32Array((TRAF.NV + 1) * 3).fill(NaN); } }
+  for (let cl = 0; cl < NCOP; cl++) {
+  const ka = (k0 + cl * 487) % TRAF.NS, A = TRAF.steps[ka] || A0, B = TRAF.steps[(ka + 1) % TRAF.NS] || A;
+  const m = new Map();
+  for (let i = 0; i < B.ids.length; i++) m.set(B.ids[i], i);
+  for (let i = 0; i < A.ids.length && n < MAXV; i++) {
+    const idc = A.ids[i] + cl * (TRAF.NV + 1); /* id propio de cada copia */
+    if (pDem < 0.999 && ((idc * 2654435761) >>> 0) / 4294967296 > pDem) continue; /* a esta hora ese vehículo no está en la calle */
     const x0 = A.xs[i] - LC.x, y0 = LC.y - A.ys[i];
     const j = m.get(A.ids[i]);
     let x1 = x0, y1 = y0;
     if (j !== undefined) { x1 = B.xs[j] - LC.x; y1 = LC.y - B.ys[j]; }
-    let dx = x1 - x0, dy = y1 - y0; const dvq = T3.desvio ? T3.desvio(A.ids[i], TRAF.t) : null; /* vía cerrada: va por el desvío */
+    let dx = x1 - x0, dy = y1 - y0; const dvq = cl === 0 && T3.desvio ? T3.desvio(A.ids[i], TRAF.t) : null; /* vía cerrada: va por el desvío */
     if (dvq) { const L = Math.hypot(dvq[2], dvq[3]) || 1; dx = dvq[2] / L * 8; dy = dvq[3] / L * 8; }
     if (dx * dx + dy * dy > 1e-6) TRAF.head[n] = Math.atan2(-dy, dx);
     const hd = TRAF.head[n];
     const px = dvq ? dvq[0] : x0 + dx * f, pz = dvq ? dvq[1] : y0 + dy * f;
     const V = TRAF.vis; V.x[n] = px; V.z[n] = pz; V.dx[n] = dx; V.dz[n] = dy; V.v[n] = Math.hypot(dx, dy); V.id[n] = A.ids[i]; // un paso = 1 s: dx, dy en m/s
     if (VS) { // vehículo realista: tipo y color fijos por id (70 % carros, 22 % motos, 8 % camiones), apoyado en el asfalto
-      const id = A.ids[i]; TRAF.headF[id] = rumboCarro(id, px, pz, dx, dy, TRAF.headF[id], dt); /* recto sobre su vía (no en diagonal), girando suave en las curvas */
+      const id = idc; TRAF.headF[id] = rumboCarro(id, px, pz, dx, dy, TRAF.headF[id], dt); /* recto sobre su vía (no en diagonal), girando suave en las curvas */
       if (TRAF.tipo[id] < 0) { const r = ((id * 2654435761) >>> 0) / 4294967296; TRAF.tipo[id] = r < 0.70 ? 0 : r < 0.92 ? 1 : 2; TRAF.obj[id] = {}; }
       VS.poner(TRAF.obj[id], ['carro', 'moto', 'camion'][TRAF.tipo[id]], px, (T3.viaY != null ? T3.viaY : 0.62) + 0.02 + (T3.alzaVia ? T3.alzaVia(px, pz) : 0), pz, TRAF.headF[id]); n++; continue;
     }
@@ -2535,6 +2541,7 @@ function updateTraffic(dt) {
     }
     n++;
   }
+  } /* fin de las copias */
   TRAF.vis.n = n;
   if (F && T3.extraCars) T3.extraCars(F); // carros extra de la avenida del humedal (modo pájaro)
   if (F) { F.end((T3.vpos || T3.camera.position).x, (T3.vpos || T3.camera.position).z); n = 0; } // las cajas del tráfico antiguo quedan ocultas
@@ -3533,7 +3540,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=24'), import('./data3d/estrategias.js?v=14'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=25'), import('./data3d/estrategias.js?v=14'), listoK()])
     .then(async ([m, me]) => {
       /* rendimiento: estrategias, plan de Bavaria y plan de Corabastos se arman a la vez (antes uno tras otro) */
       let PLAN = null, CPLAN = null; // E1 Bavaria Común (data3d/bavaria_plan.js) · E3 Corabastos reducido (data3d/corabastos_plan.js)

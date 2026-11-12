@@ -564,7 +564,7 @@ export async function iniciarSimulacion(cfg = {}) {
       { /* cuántos carros hay en la calle a esta hora (demanda según el reloj: index.html, demandaHora) */
         izq.querySelector('#gs-fc').insertAdjacentHTML('beforebegin', '<div id="gs-dem" style="font-size:10.5px;color:#94a3b8;margin:2px 0 6px"></div>');
         const dem = izq.querySelector('#gs-dem');
-        setInterval(() => { const TR = T3.TRAF; if (!TR || TR.demanda == null) { dem.textContent = ''; return; } const p = TR.demanda, est = p >= 0.9 ? 'hora pico' : p >= 0.6 ? 'tráfico medio' : p >= 0.3 ? 'tráfico bajo' : 'casi vacío'; dem.innerHTML = `Vehículos en la calle: <b style="color:#e5e7eb">${Math.round(p * 100)} %</b> · ${est}`; }, 1000);
+        setInterval(() => { const TR = T3.TRAF; if (!TR || TR.demanda == null) { dem.textContent = ''; return; } const p = TR.demanda, est = p >= 0.9 ? 'hora pico' : p >= 0.6 ? 'tráfico alto' : p >= 0.3 ? 'tráfico medio' : 'casi vacío'; dem.innerHTML = `Vehículos en la calle: <b style="color:#e5e7eb">${(TR.vis ? TR.vis.n : 0).toLocaleString('es-CO')}</b> · ${est}`; }, 1000);
       }
     }
 
