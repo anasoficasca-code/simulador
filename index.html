@@ -888,6 +888,8 @@ const enZona = (x, y, margen = 0) => !ZON || (x - ZONA.x) ** 2 + (y - ZONA.y) **
 const MOVIL = QUEST || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (matchMedia('(pointer:coarse)').matches && Math.min(screen.width, screen.height) < 900);
 // ?modo=kennedy (giro.html): simulación de agentes de Kennedy sobre la maqueta (calles pintadas con sintaxis espacial, árboles semitransparentes, sin el tráfico ni el HUD de God's Eye)
 const KEN = true; // repositorio "simulador": siempre el simulador de Kennedy
+/* carga más rápida: lo pesado que se usa al final (modelo INEM, plantas del Tintal) empieza a bajar desde el inicio, solo descarga (sin procesar), así ya está en caché cuando se arma */
+setTimeout(() => ['data3d/inem/inem.glb', 'data3d/models/fern_02.glb', 'data3d/models/calathea_orbifolia_01.glb', 'data3d/models/nettle_plant.glb', 'data3d/models/periwinkle_plant.glb', 'data3d/models/celandine_01.glb', 'data3d/residuos.json?v=1'].forEach(u => fetch(u, { priority: 'low' }).then(r => r.arrayBuffer()).catch(() => {})), 2500);
 if (KEN) ZONA.r = MOVIL ? 1500 : 2600; // modo Kennedy: edificios y árboles propios en un radio mayor alrededor de El Burro
 if (MOVIL) { LIVIANO = true; MEDIO = true; } // celular: sin sombras ni tráfico pesado, árboles más livianos y sin los modelos pesados, pero CON los edificios del entorno del humedal (archivo recortado de ~3 MB) desde que abre
 const DIA = { // ambiente de día soleado (se usa al crear la escena y al volver de la noche)
