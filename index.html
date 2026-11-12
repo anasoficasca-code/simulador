@@ -796,7 +796,7 @@ function flight(ms) {
     o.update();
     updateAves();
     updatePeatones(dt);
-    if (KEN && !T3.anim) { const tg = T3.orbit.target, cx = Math.max(-1800, Math.min(5200, tg.x)), cz = Math.max(-4000, Math.min(2900, tg.z)), ddx = cx - tg.x, ddz = cz - tg.z; if (ddx || ddz) { tg.x += ddx; tg.z += ddz; T3.camera.position.x += ddx; T3.camera.position.z += ddz; } } /* no salir de Kennedy al desplazarse */
+    if (KEN && !T3.anim) { const tg = T3.orbit.target, cx = Math.max(-2600, Math.min(6000, tg.x)), cz = Math.max(-4800, Math.min(3700, tg.z)), ddx = cx - tg.x, ddz = cz - tg.z; if (ddx || ddz) { tg.x += ddx; tg.z += ddz; T3.camera.position.x += ddx; T3.camera.position.z += ddz; } } /* no salir de Kennedy al desplazarse */
     if (T3.trees && T3.trees.visible !== false) { if (KEN) { if (!T3.trees._cfg) { T3.trees.umbral = 40; T3.trees.minMs = 400; T3.trees._cfg = 1; } T3.trees.update({ position: T3.orbit.target }); } else T3.trees.update(cam); } /* Kennedy: alrededor del punto que se mira: girar no recalcula los árboles */
     if (T3.arbolesSplat && T3.arbolesSplat.visible) T3.arbolesSplat.update(cam); // con Foto real los árboles son los de la foto: no se recalculan
     if (T3.huertas) T3.huertas.actualizar(cam); // plantas 3D de las terrazas cercanas
@@ -1266,7 +1266,7 @@ async function initTodoReal() {
     const orbit = new OrbitControls(camera, renderer.domElement);
     orbit.target.set(tw[0], 0, tw[1]);
     orbit.enableDamping = true; orbit.dampingFactor = 0.06;
-    orbit.maxPolarAngle = Math.PI * 0.495; orbit.minDistance = 4; orbit.maxDistance = KEN ? 3600 : 9000; /* Kennedy: no alejarse tanto con la rueda */
+    orbit.maxPolarAngle = Math.PI * 0.495; orbit.minDistance = 4; orbit.maxDistance = KEN ? 5000 : 9000; /* Kennedy: no alejarse tanto con la rueda */
     const hemi = new THREE.HemisphereLight(DIA.hemiCielo, DIA.hemiSuelo, DIA.hemi);
     const sun = new THREE.DirectionalLight(DIA.solColor, DIA.sol);
     sun.position.set(4000, 5000, 2000);
