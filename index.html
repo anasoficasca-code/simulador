@@ -1321,7 +1321,7 @@ async function initTodoReal() {
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
     if (KEN) { T3.kenFill = 0.62; setTimeout(function capaSombra() { if (!T3.scene || !T3.THREE) return setTimeout(capaSombra, 500); const TH = T3.THREE, m = new TH.Mesh(new TH.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), new TH.ShadowMaterial({ opacity: 0.42, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); m.position.set(1700, 0.42, -200); m.receiveShadow = true; m.renderOrder = 1; m.name = 'capa-sombras'; T3.scene.add(m); }, 500); } /* sombras de edificios y árboles sobre la foto del suelo */
-    if (KEN) import('./data3d/ui_sobrio.js?v=3').then(m => m.iniciarUI()).catch(e => console.warn('interfaz:', e)); /* interfaz sobria: un sistema visual para todos los paneles */
+    if (KEN) import('./data3d/ui_sobrio.js?v=4').then(m => m.iniciarUI()).catch(e => console.warn('interfaz:', e)); /* interfaz sobria: un sistema visual para todos los paneles */
     /* árboles: reales con sombra hasta ~900 m y siluetas del mismo árbol más lejos (sin copas difusas) */ try { T3.R = await import('./data3d/real3d.js?v=73'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
@@ -3611,6 +3611,10 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
         const b3 = document.createElement('button'); b3.id = 'rs-btn'; b3.textContent = 'Puntos de residuos'; b3.title = 'Contenedores de recolección de la UAESP en Kennedy y su red'; b3.style.cssText = 'width:100%;margin-top:6px';
         let pRes = null; b3.onclick = async () => { const on = !b3.classList.contains('on'); b3.classList.toggle('on', on); try { const m = await import('./data3d/residuos.js?v=3'); if (!pRes) pRes = m.crearResiduos({ THREE: T3.THREE, T3 }); const a = await pRes; a.ver(on); m.panelResiduos(a, on); } catch (e) { console.warn('residuos:', e); } };
         b2.insertAdjacentElement('afterend', b3);
+        /* asambleas existentes: Juntas de Acción Comunal (IDPAC); empieza apagado */
+        const b4 = document.createElement('button'); b4.id = 'as-btn'; b4.textContent = 'Asambleas (JAC)'; b4.title = 'Juntas de Acción Comunal de Kennedy: sede, horario y red de vecindad'; b4.style.cssText = 'width:100%;margin-top:6px';
+        let pAs = null; b4.onclick = async () => { const on = !b4.classList.contains('on'); b4.classList.toggle('on', on); try { const m = await import('./data3d/asambleas.js?v=1'); if (!pAs) pAs = m.crearAsambleas({ THREE: T3.THREE, T3 }); const a = await pAs; a.ver(on); m.panelAsambleas(a, on); } catch (e) { console.warn('asambleas:', e); } };
+        b3.insertAdjacentElement('afterend', b4);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'vi-btn'; b.textContent = '✦ Visión'; b.title = 'Ver la propuesta: Bavaria Común, Corabastos, red de huertas y humedales'; b.style.cssText = 'width:100%;margin-top:6px;background:linear-gradient(100deg,#2a1d6b,#5b3fd6);color:#fff;border:1px solid #8b74ff;letter-spacing:.2em';
