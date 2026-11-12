@@ -1312,7 +1312,7 @@ async function initTodoReal() {
     // modelos reales (Poly Haven CC0): árboles 3D con LOD, pasto/plantas 3D y agua con mapa de normales
     T3.realista = REALISTA; // real3d.js: carros a tamaño real, apoyados en el asfalto y con sombra de contacto
     if (REALISTA && !LIVIANO && new URLSearchParams(location.search).get('ao') !== '0') crearPostproceso(T3).catch(e => console.warn('postproceso:', e)); // luz tipo render (oclusión ambiental)
-    if (KEN) import('./data3d/ui_sobrio.js?v=2').then(m => m.iniciarUI()).catch(e => console.warn('interfaz:', e)); /* interfaz sobria: un sistema visual para todos los paneles */
+    if (KEN) import('./data3d/ui_sobrio.js?v=3').then(m => m.iniciarUI()).catch(e => console.warn('interfaz:', e)); /* interfaz sobria: un sistema visual para todos los paneles */
     /* árboles: reales con sombra hasta ~900 m y siluetas del mismo árbol más lejos (sin copas difusas) */ try { T3.R = await import('./data3d/real3d.js?v=67'); T3.env = T3.R.makeEnv(renderer); T3.fleet = T3.R.createFleet(T3, T3.env); } catch (e) { console.warn('real3d:', e); T3.R = null; T3.env = null; T3.fleet = null; }
     // el tráfico empieza a bajar YA (antes esperaba a edificios, vías y árboles): son pocos KB por trozo
     const pTraf = QUEST ? Promise.resolve(null) : buildTraffic(THREE).then(() => { marcarPaso('trafico'); return null; }, e => e); // Kennedy: también, con la simulación SUMO (miles de carros)
@@ -3563,6 +3563,10 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
         const b2 = document.createElement('button'); b2.id = 'ci-open'; b2.textContent = 'Cerrar una vía'; b2.title = 'Cierra una vía crítica y desvía los carros por las calles vecinas'; b2.style.cssText = 'width:100%;margin-top:6px';
         b2.onclick = async () => { const on = !b2.classList.contains('on'); b2.classList.toggle('on', on); try { const a = await rcApi(); T3.rcMod.panelCierre(a, on); } catch (e) { console.warn('cierre:', e); } };
         const ref = document.getElementById('us-btn') || document.getElementById('ar-btn'); (ref || ag.parentElement).insertAdjacentElement('afterend', b2); (ref || ag.parentElement).insertAdjacentElement('afterend', b1);
+        /* puntos actuales de recolección de residuos (UAESP): empieza apagado */
+        const b3 = document.createElement('button'); b3.id = 'rs-btn'; b3.textContent = 'Puntos de residuos'; b3.title = 'Contenedores de recolección de la UAESP en Kennedy y su red'; b3.style.cssText = 'width:100%;margin-top:6px';
+        let pRes = null; b3.onclick = async () => { const on = !b3.classList.contains('on'); b3.classList.toggle('on', on); try { const m = await import('./data3d/residuos.js?v=3'); if (!pRes) pRes = m.crearResiduos({ THREE: T3.THREE, T3 }); const a = await pRes; a.ver(on); m.panelResiduos(a, on); } catch (e) { console.warn('residuos:', e); } };
+        b2.insertAdjacentElement('afterend', b3);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
         const fb = document.getElementById('fb-btn'), b = document.createElement('button'); b.id = 'vi-btn'; b.textContent = '✦ Visión'; b.title = 'Ver la propuesta: Bavaria Común, Corabastos, red de huertas y humedales'; b.style.cssText = 'width:100%;margin-top:6px;background:linear-gradient(100deg,#2a1d6b,#5b3fd6);color:#fff;border:1px solid #8b74ff;letter-spacing:.2em';

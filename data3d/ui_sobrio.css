@@ -45,19 +45,19 @@ body .gs-t .p, body .gs-ind span{color:var(--ui-tx3)!important}
 body .gs-ind b{font-family:var(--ui-mono); font-weight:400!important; font-size:11px}
 /* ---------- capas: lista de interruptores en lugar de botones grandes de color ---------- */
 body #gs-izq .ui-capas-h{font:500 9.5px var(--ui-mono); letter-spacing:.16em; color:var(--ui-tx3); text-transform:uppercase; border-top:1px solid var(--ui-bd); padding-top:12px; margin:14px 0 4px}
-body #fb-btn, body #vi-btn, body #ar-btn, body #us-btn, body #rc-btn, body #ci-open, body #fr-btn{
+body #fb-btn, body #vi-btn, body #ar-btn, body #us-btn, body #rc-btn, body #ci-open, body #rs-btn, body #fr-btn{
   width:100%!important; height:34px!important; margin:0!important; display:flex!important; align-items:center; justify-content:space-between;
   padding:0 2px 0 4px!important; background:transparent!important; border:0!important; border-bottom:1px solid var(--ui-bd)!important; border-radius:0!important;
   color:var(--ui-tx)!important; font:400 12px var(--ui-sans)!important; letter-spacing:0!important; text-align:left; box-shadow:none!important;
 }
-body #fb-btn::after, body #vi-btn::after, body #ar-btn::after, body #us-btn::after, body #rc-btn::after, body #ci-open::after, body #fr-btn::after{
+body #fb-btn::after, body #vi-btn::after, body #ar-btn::after, body #us-btn::after, body #rc-btn::after, body #ci-open::after, body #rs-btn::after, body #fr-btn::after{
   content:""; flex:none; width:26px; height:14px; border-radius:7px; margin-left:10px;
   background:radial-gradient(circle at 7px 50%, #b9bfc3 4.4px, transparent 5px), rgba(255,255,255,.11); transition:background .2s;
 }
-body #fb-btn.on::after, body #vi-btn.on::after, body #ar-btn.on::after, body #us-btn.on::after, body #rc-btn.on::after, body #ci-open.on::after, body #fr-btn.on::after{
+body #fb-btn.on::after, body #vi-btn.on::after, body #ar-btn.on::after, body #us-btn.on::after, body #rc-btn.on::after, body #ci-open.on::after, body #rs-btn.on::after, body #fr-btn.on::after{
   background:radial-gradient(circle at 19px 50%, #1b1207 4.4px, transparent 5px), var(--ui-acc);
 }
-body #fb-btn:hover, body #vi-btn:hover, body #ar-btn:hover, body #us-btn:hover, body #rc-btn:hover, body #ci-open:hover, body #fr-btn:hover{color:var(--ui-acc-tx)!important}
+body #fb-btn:hover, body #vi-btn:hover, body #ar-btn:hover, body #us-btn:hover, body #rc-btn:hover, body #ci-open:hover, body #rs-btn:hover, body #fr-btn:hover{color:var(--ui-acc-tx)!important}
 /* ---------- marca y estado de carga ---------- */
 body #cvMarca{padding:8px 12px!important; gap:9px!important}
 body #cvMarca .ic{color:var(--ui-acc)!important; width:16px!important; height:16px!important}
