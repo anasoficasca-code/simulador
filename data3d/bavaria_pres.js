@@ -54,12 +54,14 @@ C.res = C.pob * C.kgHab / 1000; C.org = C.res * C.organico; C.sep = C.org * C.se
 C.nucleos = Math.round(C.area_cult / 1000);
 const V = {
   area_ha: fmt(D.area_ha, 1), edif_n: fmt(D.edif.length), edif_m2: fmt(S.edif_m2), arboles: fmt(S.arboles), arboles_bosque: fmt(S.arboles_bosque),
-  perimetro: fmt(perim(D.sitio) / 1000, 1), pasajes_km: fmt(D.pasajes_m / 1000, 1), entradas: fmt(D.entradas.length), bancales: fmt(D.bancales.length),
+  perimetro: fmt(perim(D.sitio) / 1000, 1), pasajes_km: fmt(D.pasajes_m / 1000, 1), entradas: fmt(D.entradas.length), bancales: fmt(D.bancales.length), bloques: fmt((D.bloques || []).length),
   bancales_m2: fmt(S.bancales_m2), libre_ha: fmt(S.libre_ha, 1), inv_m2: fmt(C.inv_m2), techos_m2: fmt(S.techos_m2), techos_n: fmt(D.techos.length),
 };
 
 /* ---------------- sintaxis: estadísticas locales ---------------- */
-const SEG = D.seg;
+const SXD = await fetch('data3d/bavaria_sx.json?v=2').then(r => r.json()); // red de TODA Kennedy (+500 m), antes y después
+const SEG = SXD.seg;
+const KEN_C = (() => { const p = SXD.limite; let x = 0, y = 0; p.forEach(q => { x += q[0]; y += q[1]; }); return W(x / p.length, y / p.length); })();
 const distLote = (() => { // distancia de un punto al borde del lote (0 si está adentro)
   const P = D.sitio;
   const dentro = (x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
@@ -96,7 +98,7 @@ host.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#0b1015');
 // cámara de lente larga (casi axonométrica) para que la malla fotorrealista de Google cargue su detalle
-const FOV = 20;
+const FOV = 30;
 const cam = new THREE.PerspectiveCamera(FOV, innerWidth / innerHeight, 10, 60000);
 scene.fog = new THREE.Fog('#0b1015', 20000, 40000);
 scene.add(new THREE.HemisphereLight(0xdfe9f2, 0x1a1f24, 1.1));
@@ -260,16 +262,20 @@ for (const t of D.tanques) { const [X, Z] = W(...t); const g = new THREE.Group()
 const angL = D.angulo; const nx = -Math.sin(angL), ny = Math.cos(angL);
 const rotBancal = Math.atan2(nx, -ny);
 const CULT = ['#7fb85a', '#9ccc65', '#5f9a48', '#b5c95a', '#6fae6b', '#c4a35a', '#8c6bb0', '#d27a5a'];
-const bancalGeo = new THREE.BoxGeometry(1.2, 0.5, 8); bancalGeo.translate(0, 1.2, 0); // levantado: el suelo de la foto tiene escombro y relieve
+const bancalGeo = new THREE.BoxGeometry(1.2, 0.45, 10); bancalGeo.translate(0, 1.2, 0); // levantado: el suelo de la foto tiene escombro y relieve
 const camas = D.bancales.slice();
 const camasInv = [];
 D.edif.forEach((e, i) => { if (!(PROG[i] && PROG[i].inv)) return; const ux = Math.cos(e.ang), uy = Math.sin(e.ang); for (let u = -260; u <= 260; u += 2) for (let v = -260; v <= 260; v += 9.5) { const x = e.cx + ux * u - uy * v, y = e.cy + uy * u + ux * v; const ok = [[-0.6, -4], [0.6, -4], [-0.6, 4], [0.6, 4]].every(([a, b]) => dentroPol(e.p, x + ux * a - uy * b, y + uy * a + ux * b)); if (ok && (Math.round(u / 2) % 6 !== 0)) camasInv.push([x, y, e.ang]); } });
 const bancales = new THREE.InstancedMesh(bancalGeo, new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true }), camas.length + camasInv.length);
 { const M = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), c = new THREE.Color();
-  camas.forEach(([x, y], k) => { const [X, Z] = W(x, y); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotBancal); M.compose(new THREE.Vector3(X, 0, Z), q, s); bancales.setMatrixAt(k, M); const f = Math.floor(((x - CX) * Math.cos(angL) + (y - CY) * Math.sin(angL)) / 14); bancales.setColorAt(k, c.set(CULT[((f % 8) + 8) % 8])); });
+  camas.forEach(([x, y, cu], k) => { const [X, Z] = W(x, y); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rotBancal); M.compose(new THREE.Vector3(X, 0, Z), q, s); bancales.setMatrixAt(k, M); bancales.setColorAt(k, c.set(CULT[(cu || 0) % 8])); });
   camasInv.forEach(([x, y, a], k) => { const [X, Z] = W(x, y); q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(-Math.sin(a), -Math.cos(a))); M.compose(new THREE.Vector3(X, 0, Z), q, s); bancales.setMatrixAt(camas.length + k, M); bancales.setColorAt(camas.length + k, c.set(k % 5 ? '#c86a4a' : '#8fc46a')); });
 }
 capas.suelo.add(bancales);
+// piso de las manzanas de huerta (tierra trabajada) con su borde: se lee la retícula ordenada de bloques y calles
+const bloquesMat = new THREE.MeshBasicMaterial({ color: '#6e5b40', transparent: true, depthTest: false });
+const bloques = new THREE.Mesh(mergeGeometries((D.bloques || []).map(p => { const g = new THREE.ShapeGeometry(forma(p)); g.rotateX(-Math.PI / 2); g.translate(0, 1.0, 0); g.deleteAttribute('uv'); return g; })), bloquesMat); bloques.renderOrder = 1; capas.suelo.add(bloques);
+const bordesBloq = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints((D.bloques || []).flatMap(p => p.flatMap((a, i) => { const b = p[(i + 1) % p.length]; const [ax, az] = W(...a), [bx, bz] = W(...b); return [new THREE.Vector3(ax, 1.3, az), new THREE.Vector3(bx, 1.3, bz)]; }))), new THREE.LineBasicMaterial({ color: '#d9c49a', transparent: true, depthTest: false })); bordesBloq.renderOrder = 2; capas.suelo.add(bordesBloq);
 // zonas: compostaje (antiguo parqueadero) y patio de carga
 const rectZ = (x0, y0, x1, y1, col, y = 0.2) => { const m = new THREE.Mesh(new THREE.ShapeGeometry(forma([[x0, y0], [x1, y0], [x1, y1], [x0, y1]])), new THREE.MeshLambertMaterial({ color: col, transparent: true })); m.rotation.x = -Math.PI / 2; m.position.y = y + 1.2; m.renderOrder = 2; return m; };
 const COMPOST = [9485, 3005, 9555, 3060];
@@ -294,8 +300,13 @@ const mkLineas = (segs, ancho, y) => {
   const l = new LineSegments2(g, mat); l.renderOrder = 6; l.userData = { idx, segs, n: idx.length }; return l;
 };
 const existentes = SEG.filter(s => s.a);
-const red = mkLineas(existentes, MOVIL ? 1.8 : 2.4, 0.9); capas.red.add(red);
-const pasajes = mkLineas(nuevos, MOVIL ? 2.6 : 3.4, 1.2); capas.red.add(pasajes);
+const red = mkLineas(existentes, MOVIL ? 1.2 : 1.6, 0.9); capas.red.add(red);
+// límite de la localidad de Kennedy
+const limMat = new THREE.LineDashedMaterial({ color: '#e3a64a', dashSize: 40, gapSize: 25, transparent: true, opacity: 0, depthTest: false });
+const limite = new THREE.Line(new THREE.BufferGeometry().setFromPoints(SXD.limite.map(([x, y]) => { const [X, Z] = W(x, y); return new THREE.Vector3(X, 3, Z); })), limMat); limite.computeLineDistances(); limite.renderOrder = 7; scene.add(limite);
+// solo para dibujar: los pasajes se suavizan (Chaikin, 2 pasadas) para que no se vean escalonados por la grilla de 3 m
+const chaikin = (p, n = 2) => { for (let r = 0; r < n; r++) { if (p.length < 3) break; const q = [p[0]]; for (let i = 0; i < p.length - 1; i++) { const [ax, ay] = p[i], [bx, by] = p[i + 1]; q.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25], [ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]); } q.push(p[p.length - 1]); p = q; } return p; };
+const pasajes = mkLineas(nuevos.map(s => ({ ...s, p: chaikin(s.p) })), MOVIL ? 2.6 : 3.4, 1.2); capas.red.add(pasajes);
 const RAMPA = ['#2a3fb8', '#2c8fd6', '#38c0b0', '#7fd15a', '#f0d540', '#f08a2e', '#d8262c'];
 const rampa = (t) => { t = Math.max(0, Math.min(1, t)) * (RAMPA.length - 1); const i = Math.min(RAMPA.length - 2, Math.floor(t)); return new THREE.Color(RAMPA[i]).lerp(new THREE.Color(RAMPA[i + 1]), t - i); };
 const colorear = (l, f) => { const { idx, segs } = l.userData; const c = new Float32Array(idx.length * 6); idx.forEach((k, j) => { const col = f(segs[k]); c.set([col.r, col.g, col.b, col.r, col.g, col.b], j * 6); }); l.geometry.setColors(c); };
@@ -379,31 +390,32 @@ addEt('Av. Boyacá', (() => { const p = W(8840, 2700); return [p[0] - 40, 10, p[
 /* ---------------- escenas ---------------- */
 // cam: s = tamaño visible (m), az = rumbo de la cámara (grados), el = elevación, t = objetivo [X, Z]
 const E = {
-  portada: { cam: { s: 2300, az: -38, el: 34 }, ctx: 1, edif: 'hoy', muro: 1, arb: 1, giro: 1, red: 0 },
-  kennedy: { cam: { s: 5200, az: -30, el: 48, t: [-900, 150] }, ctx: 1, edif: 'hoy', muro: 1, arb: 1, borde: 1, corr: 1, et: 'kennedy', ley: 'kennedy' },
-  predio: { cam: { s: 1350, az: -32, el: 36 }, ctx: 1, edif: 'hoy', muro: 1, arb: 1, borde: 1, ley: 'hoy' },
-  bosque: { cam: { s: 1150, az: 18, el: 38 }, ctx: 0.6, edif: 'ghost', muro: 1, arb: 1, ley: 'bosque' },
-  cerrado: { cam: { s: 1500, az: -60, el: 30 }, ctx: 1, edif: 'hoy', muro: 1, arb: 1, borde: 1, ley: 'cerrado' },
-  sx_base: { cam: { s: 3300, az: -18, el: 58 }, ctx: 0.25, edif: 'ghost', muro: 1, red: 'gris', borde: 1, ley: 'sxgris' },
-  sx_nain: { cam: { s: 3300, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', muro: 1, red: 'a0', borde: 1, ley: 'nain', et: 'sx' },
-  sx_r800: { cam: { s: 3300, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', muro: 1, red: 'a1', borde: 1, ley: 'nain8', et: 'sx' },
-  sx_nach: { cam: { s: 3300, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', muro: 1, red: 'a2', borde: 1, ley: 'nach', et: 'sx' },
+  portada: { cam: { s: 1600, az: -38, el: 28 }, ctx: 1, edif: 'hoy', muro: 1, arb: 1, giro: 1, red: 0 },
+  kennedy: { lim: 1, cam: { s: 8000, az: -20, el: 50, t: 'ken' }, ctx: 1, edif: 'hoy', muro: 1, arb: 1, borde: 1, corr: 1, et: 'kennedy', ley: 'kennedy' },
+  predio: { cam: { s: 1100, az: -32, el: 30 }, ctx: 1, edif: 'hoy', muro: 1, arb: 1, borde: 1, ley: 'hoy' },
+  bosque: { cam: { s: 950, az: 18, el: 30 }, ctx: 0.6, edif: 'ghost', muro: 1, arb: 1, ley: 'bosque' },
+  cerrado: { cam: { s: 1100, az: -60, el: 26 }, ctx: 1, edif: 'hoy', muro: 1, arb: 1, borde: 1, ley: 'cerrado' },
+  sx_base: { lim: 1, cam: { s: 8200, az: -10, el: 62, t: 'ken' }, ctx: 0.25, edif: 'ghost', muro: 1, red: 'gris', borde: 1, ley: 'sxgris' },
+  sx_nain: { lim: 1, cam: { s: 8200, az: -10, el: 62, t: 'ken' }, ctx: 0.18, edif: 'ghost', muro: 1, red: 'a0', borde: 1, ley: 'nain', et: 'sx' },
+  sx_r800: { lim: 1, cam: { s: 8200, az: -10, el: 62, t: 'ken' }, ctx: 0.18, edif: 'ghost', muro: 1, red: 'a1', borde: 1, ley: 'nain8', et: 'sx' },
+  sx_nach: { lim: 1, cam: { s: 8200, az: -10, el: 62, t: 'ken' }, ctx: 0.18, edif: 'ghost', muro: 1, red: 'a2', borde: 1, ley: 'nach', et: 'sx' },
   sx_desp: { cam: { s: 1700, az: -24, el: 52 }, ctx: 0.25, edif: 'ghost', red: 'gris', pas: 1, borde: 1, ley: 'pasajes', et: 'puertas' },
-  sx_desp_nain: { cam: { s: 3300, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', red: 'b0', pas: 1, borde: 1, ley: 'nain' },
-  sx_desp_nach: { cam: { s: 3300, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', red: 'b2', pas: 1, borde: 1, ley: 'nach' },
-  sx_delta: { cam: { s: 2600, az: -18, el: 58 }, ctx: 0.18, edif: 'ghost', red: 'd', pas: 1, borde: 1, ley: 'delta' },
+  sx_desp_nain: { lim: 1, cam: { s: 8200, az: -10, el: 62, t: 'ken' }, ctx: 0.18, edif: 'ghost', red: 'b0', pas: 1, borde: 1, ley: 'nain' },
+  sx_desp_nach: { lim: 1, cam: { s: 8200, az: -10, el: 62, t: 'ken' }, ctx: 0.18, edif: 'ghost', red: 'b2', pas: 1, borde: 1, ley: 'nach' },
+  sx_delta: { lim: 1, cam: { s: 3200, az: -18, el: 55 }, ctx: 0.18, edif: 'ghost', red: 'd', pas: 1, borde: 1, ley: 'delta' },
   capas: { luz: 0.5, cam: { s: !SIN_G ? 1350 : 2300, az: -40, el: 30, y: !SIN_G ? 280 : 540 }, ctx: 0, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, expl: 1, flu: 1, et: 'capas', ley: 'capas' },
-  capa_suelo: { cam: { s: 1250, az: -40, el: 40 }, ctx: 0.35, edif: 'ghost', arb: 'g', pas: 1, banc: 1, inv: 1, et: 'suelo', ley: 'suelo' },
+  capa_suelo: { cam: { s: 1000, az: -40, el: 36 }, ctx: 0.35, edif: 'ghost', arb: 'g', pas: 1, banc: 1, inv: 1, et: 'suelo', ley: 'suelo' },
   capa_inv: { cam: { s: 620, az: -70, el: 34, t: 'inv' }, ctx: 0.35, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, ley: 'inv' },
-  capa_techos: { cam: { s: 2300, az: -35, el: 42 }, ctx: 1, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, techos: 1, ley: 'techos' },
-  capa_prog: { cam: { s: 1150, az: -32, el: 38 }, ctx: 0.35, edif: 'prog', arb: 'g', pas: 1, banc: 1, inv: 1, et: 'prog', ley: 'prog' },
-  capa_bosque: { cam: { s: 1200, az: 25, el: 36 }, ctx: 0.35, edif: 'ghost', arb: 1, pas: 1, banc: 'g', inv: 1, ley: 'bosque' },
-  capa_flujos: { cam: { s: 1500, az: -32, el: 46 }, ctx: 0.35, edif: 'prog', arb: 'g', pas: 1, banc: 1, inv: 1, flu: 1, et: 'flujos', ley: 'flujos' },
-  plan: { cam: { s: 1700, az: -38, el: 34 }, ctx: 1, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, techos: 1, flu: 1, giro: 1, et: 'plan', ley: 'prog' },
+  capa_techos: { cam: { s: 1700, az: -35, el: 34 }, ctx: 1, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, techos: 1, ley: 'techos' },
+  capa_prog: { cam: { s: 950, az: -32, el: 32 }, ctx: 0.35, edif: 'prog', arb: 'g', pas: 1, banc: 1, inv: 1, et: 'prog', ley: 'prog' },
+  capa_bosque: { cam: { s: 1000, az: 25, el: 30 }, ctx: 0.35, edif: 'ghost', arb: 1, pas: 1, banc: 'g', inv: 1, ley: 'bosque' },
+  capa_flujos: { cam: { s: 1200, az: -32, el: 36 }, ctx: 0.35, edif: 'prog', arb: 'g', pas: 1, banc: 1, inv: 1, flu: 1, et: 'flujos', ley: 'flujos' },
+  plan: { cam: { s: 1300, az: -38, el: 30 }, ctx: 1, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, techos: 1, flu: 1, giro: 1, et: 'plan', ley: 'prog' },
   sectores: { cam: { s: 3000, az: -20, el: 55 }, ctx: 'sector', edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, et: 'sectores', ley: 'sectores' },
   corredor: { cam: { s: 5200, az: -30, el: 48, t: [-900, 150] }, ctx: 0.6, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, corr: 1, et: 'corredor', ley: 'corredor' },
-  final: { cam: { s: 1900, az: -38, el: 32 }, ctx: 1, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, techos: 1, giro: 1, ley: 'prog' },
+  final: { cam: { s: 1400, az: -38, el: 28 }, ctx: 1, edif: 'prog', arb: 1, pas: 1, banc: 1, inv: 1, techos: 1, giro: 1, ley: 'prog' },
 };
+const KT = 'ken';
 const invT = (() => { const a = centroEdif(2), b = centroEdif(0); return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; })();
 
 /* ---------------- leyendas ---------------- */
@@ -413,14 +425,14 @@ const LEY = {
   hoy: '<div class="t">El predio hoy</div><div class="f"><i style="background:#e3a64a"></i>Límite del predio</div><div class="f">Malla fotorrealista de Google: naves, silos, bosque y muro tal como están</div>',
   bosque: `<div class="t">Arbolado</div><div class="f"><i style="background:#4f7a46"></i>${V.arboles} copas detectadas (Esri, z19)</div><div class="f"><i style="background:#2f5a2a"></i>${fmt(S.bosque_ha, 1)} ha de bosque denso</div>`,
   cerrado: '<div class="t">Acceso</div><div class="f"><i style="background:#8c7d6c"></i>Muro: el predio no se puede cruzar</div>',
-  sxgris: '<div class="t">Red analizada</div><div class="f"><i style="background:#56636e"></i>Vías OSM a 2,3 km del predio</div>',
+  sxgris: `<div class="t">Red analizada</div><div class="f"><i style="background:#56636e"></i>${fmt(SEG.filter(s => s.a).length)} tramos OSM de toda Kennedy (+500 m)</div><div class="f"><i style="background:#e3a64a"></i>Límite de la localidad</div>`,
   nain: `<div class="t">Integración angular (NAIN)</div><div class="rampa" style="background:${rampaCSS}"></div><div class="ext"><span>segregado</span><span>integrado</span></div>`,
   nain8: `<div class="t">Integración R800 (NAIN)</div><div class="rampa" style="background:${rampaCSS}"></div><div class="ext"><span>segregado</span><span>integrado</span></div>`,
   nach: `<div class="t">Elección angular (NACH)</div><div class="rampa" style="background:${rampaCSS}"></div><div class="ext"><span>poco paso</span><span>mucho paso</span></div>`,
   delta: `<div class="t">Cambio de integración R800</div><div class="rampa" style="background:linear-gradient(90deg,#5fb3d9,#2b4a66,#2e3842,#6a5228,#ffb340)"></div><div class="ext"><span>−${fmt(SX.dmax * 100, 1)} %</span><span>sin cambio</span><span>+${fmt(SX.dmax * 100, 1)} %</span></div>`,
   pasajes: `<div class="t">Pasajes nuevos</div><div class="f"><i style="background:#f2efe6"></i>${V.pasajes_km} km peatonales y en bici</div><div class="f"><i style="background:#e3a64a"></i>${V.entradas} puertas en cruces existentes</div>`,
   capas: !SIN_G ? '<div class="t">Axonometría explotada</div><div class="f">01 territorio real · 02 suelo productivo · 03 pasajes · 04 edificios · 05 flujos</div>' : '<div class="t">Axonometría explotada</div><div class="f">01 suelo · 02 pasajes · 03 edificios · 04 bosque · 05 flujos</div>',
-  suelo: `<div class="t">Suelo productivo</div><div class="f"><i style="background:#8fc46a"></i>${V.bancales} bancales de 1,2 × 8 m</div><div class="f"><i style="background:#6b4f33"></i>Compostaje (antiguo parqueadero)</div><div class="f"><i style="background:#3a4a58"></i>Patio de carga</div>`,
+  suelo: `<div class="t">Suelo productivo</div><div class="f"><i style="background:#6e5b40"></i>${V.bloques} manzanas de huerta de 30 × 26 m</div><div class="f"><i style="background:#8fc46a"></i>${V.bancales} bancales de 1,2 × 10 m</div><div class="f"><i style="background:#6b4f33"></i>Compostaje (antiguo parqueadero)</div><div class="f"><i style="background:#3a4a58"></i>Patio de carga</div>`,
   inv: '<div class="t">Invernaderos</div><div class="f"><i style="background:#d8efe9"></i>Cubierta liviana sobre la retícula</div><div class="f"><i style="background:#c86a4a"></i>Camas de tomate y pimentón</div><div class="f"><i style="background:#8fc46a"></i>Vivero de nativas</div>',
   techos: `<div class="t">Red de huertas</div><div class="f"><i style="background:#8fc46a"></i>${V.techos_n} cubiertas productivas</div><div class="f"><i style="background:#7fb85a"></i>Bancales del predio</div>`,
   prog: '<div class="t">Programa</div>' + [...new Map(Object.values(PROG).map(p => [p.n, p.c]))].map(([n, c]) => `<div class="f"><i style="background:${c}"></i>${n}</div>`).join(''),
@@ -431,7 +443,7 @@ const LEY = {
 if (MOVIL) for (const k of ['prog', 'sectores']) LEY[k] = LEY[k].replace(/<div class="f">.*$/s, '<div class="f">Ver etiquetas en el modelo</div>');
 
 /* ---------------- estado animado ---------------- */
-const est = { ctx: 1, edif: 1, prog: 0, muro: 1, arb: 1, red: 0, pas: 0, banc: 0, inv: 0, techos: 0, flu: 0, expl: 0, corr: 0, borde: 0 };
+const est = { lim: 0, ctx: 1, edif: 1, prog: 0, muro: 1, arb: 1, red: 0, pas: 0, banc: 0, inv: 0, techos: 0, flu: 0, expl: 0, corr: 0, borde: 0 };
 const obj = { ...est };
 let escena = 'portada', camObj = null, giroAz = 0;
 const camAct = { s: 2300, az: -38, el: 34, x: 0, z: 0, y: 0 };
@@ -446,7 +458,7 @@ const setEscena = (k) => {
     G.luzObj = e.luz ?? (e.red ? 0.38 : e.ctx === 'sector' ? 0.75 : 1);
   }
   if (e.red) pintarRed(e.red); else pintarRed(e.pas ? 'gris' : modoRed);
-  const t = e.cam.t === 'inv' ? invT : (e.cam.t || [0, 0]);
+  const t = e.cam.t === 'inv' ? invT : e.cam.t === 'ken' ? KEN_C : (e.cam.t || [0, 0]); obj.lim = e.lim ? 1 : 0;
   camObj = { s: e.cam.s * (MOVIL ? 1.15 : 1), az: e.cam.az, el: e.cam.el, x: t[0], z: t[1], y: e.cam.y || 0 };
   giroAz = 0;
   $('#leyenda').innerHTML = LEY[e.ley] || '';
@@ -498,12 +510,13 @@ function cuadro() {
   opac(muroMat, est.muro * est.edif);
   arbMats.forEach(m => opac(m, est.arb)); arboles.visible = est.arb > 0.02;
   red.material.opacity = est.red; red.visible = est.red > 0.02; pasajes.material.opacity = est.pas; pasajes.visible = est.pas > 0.02;
-  opac(bancales.material, est.banc); compost.children.forEach(m => opac(m.material, est.banc)); opac(patio.material, est.banc);
+  opac(bancales.material, est.banc); bloquesMat.opacity = est.banc * 0.85; bloques.visible = est.banc > 0.02; bordesBloq.material.opacity = est.banc * 0.7; bordesBloq.visible = est.banc > 0.02; compost.children.forEach(m => opac(m.material, est.banc)); opac(patio.material, est.banc);
   bordeMat.opacity = 0.35 + 0.65 * est.borde * (0.6 + 0.4 * Math.sin(t * 2.5));
   loteMat.color.set('#1d2a22').lerp(new THREE.Color('#22301f'), est.banc);
   if (REAL()) { techosMat.depthTest = false; techos.renderOrder = 3; bancales.material.depthTest = false; bancales.renderOrder = 2; compost.children.forEach(m => { m.material.depthTest = false; m.renderOrder = 2; }); patio.material.depthTest = false; }
   flujoMat.opacity = est.flu; guiaFlujos.material.opacity = est.flu * 0.18;
   if (est.flu > 0.02) { rutas.forEach((r, i) => { for (let k = 0; k < NP; k++) { const u = ((t * (r.cora ? 0.05 : 0.11) + k / NP + i * 0.37) % 1); fpos.set([lerp(r.a[0], r.b[0], u), 5 + Math.sin(u * Math.PI) * 18, lerp(r.a[1], r.b[1], u)], (i * NP + k) * 3); } }); flujoGeo.attributes.position.needsUpdate = true; }
+  limMat.opacity = est.lim * 0.9; limite.visible = est.lim > 0.02;
   corrMats.forEach(m => { m.opacity = est.corr * 0.75; m.visible = est.corr > 0.02; });
   guiasMat.opacity = est.expl * 0.5; guias.visible = est.expl > 0.02;
   for (const k in capas) capas[k].position.y = OFF[k] * est.expl;
@@ -586,7 +599,7 @@ datos('#kennedy-datos', [
   s.append(sv('rect', { x: 190, y: 258, width: 10, height: 10, fill: '#5a6670' }), mono(206, 267, 'antes'), sv('rect', { x: 260, y: 258, width: 10, height: 10, fill: '#e3a64a' }), mono(276, 267, 'después'));
   const l = lienzo('#g-sx-lee', 520, 270);
   [['Integración', 'Qué tan pocos giros separan un tramo de todos los demás. Alta: lugares centrales, a mano.'], ['Elección', 'Por cuántos recorridos más directos pasa un tramo. Alta: calles de paso.'], ['Radio n / 800 m', 'Toda la red o solo lo que se alcanza en unos diez minutos a pie.'], ['Lectura', `Los pasajes nuevos quedan por encima del ${SX.nuevoNain} % de las calles en integración y en el percentil ${SX.nuevoNach} en elección: el interior entra a la red como lugar central, no como vía de paso.`]].forEach(([a, b], i) => { l.append(txt(0, 18 + i * 64, a, { 'font-weight': 600, fill: '#e3a64a' }), multi(0, 38 + i * 64, b, 70, { 'font-size': 12 }, 15)); });
-  $('#sx-metodo').textContent = `Método: análisis angular de segmentos (como DepthmapX) reimplementado en tools/bavaria_pres_datos.py, con todas las fuentes y sin muestreo, sobre ${fmt(R.antes_todo.n)} tramos (${fmt(R.antes_todo.km, 0)} km) antes y ${fmt(R.despues_todo.n)} después. Antes, las vías internas de la fábrica no cuentan porque el predio está cerrado. El radio 800 m es aproximado: incluye los tramos a menos de 800 m de recorrido y toma la profundidad angular del grafo completo. Con toda la red, la integración media cambia ${fmt(100 * (R.despues_todo.nain - R.antes_todo.nain) / R.antes_todo.nain, 1)} %: el efecto es local.`;
+  $('#sx-metodo').textContent = `Método: análisis angular de segmentos (como DepthmapX) reimplementado en tools/bavaria_pres_datos.py sobre la red de TODA Kennedy más 500 m de borde (OpenStreetMap): ${fmt(R.antes_todo.n)} tramos conectados dentro de la localidad (${fmt(R.antes_todo.km, 0)} km). Radio n: 1.500 fuentes muestreadas al azar, las mismas antes y después. Radio 800 m: todas las fuentes; incluye los tramos a menos de 800 m de recorrido (hasta 12 giros). Antes, el predio está cerrado. En toda Kennedy la integración media cambia ${fmt(100 * (R.despues_todo.nain - R.antes_todo.nain) / R.antes_todo.nain, 1)} %: el efecto es local.`;
   $('#sx-cifras1').innerHTML = `<div><b>${SX.nuevoNain} %</b><span>de las calles queda por debajo de la mediana de los pasajes (NAIN Rn)</span></div><div><b>${SX.c300[0].p >= 0 ? '+' : ''}${fmt(SX.c300[0].p, 1)} %</b><span>integración media de las calles a 300 m del predio</span></div>`;
   $('#sx-cifras2').innerHTML = `<div><b>P${SX.nuevoNach}</b><span>percentil de elección de la mediana de los pasajes</span></div><div><b>P${SX.nuevoNachMax}</b><span>percentil del pasaje con más paso</span></div>`;
 }

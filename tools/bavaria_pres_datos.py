@@ -1,4 +1,4 @@
-﻿"""Datos de la presentación «Distrito Bavaria Común» (bavaria.html) -> data3d/bavaria_pres.json
+"""Datos de la presentación «Distrito Bavaria Común» (bavaria.html) -> data3d/bavaria_pres.json
 
 1. Lote, edificios y árboles reales del predio (data3d/bavaria.json, data3d/bavaria_arboles.json).
 2. Contexto: huellas con altura de data3d/buildings.json a menos de 1,2 km del predio.
@@ -7,7 +7,7 @@
    - ANTES: el predio está cerrado, así que las vías internas de la fábrica no cuentan.
    - DESPUÉS: se abren pasajes peatonales que cruzan el predio y lo conectan con los cruces del borde.
    - medidas: NAIN radio n y radio 800 m (integración angular normalizada, Hillier et al. 2012) y NACH radio n
-     (elección angular normalizada). Todas las fuentes, sin muestreo. Radio 800 m: segmentos a menos de 800 m de
+     (elección angular normalizada). Red de TODA Kennedy (+500 m). Radio n con 1.500 fuentes muestreadas (las mismas antes y después); radio 800 m con todas las fuentes: segmentos a menos de 800 m de
      recorrido métrico (aproximación: la profundidad angular se toma del grafo completo).
 4. Huertas: bancales sobre el suelo libre del predio (sin edificios, sin bosque y sin pasajes) y cubiertas productivas
    en el barrio (techos planos de 150 a 900 m² y menos de 15 m de altura, a menos de 600 m del predio).
@@ -31,38 +31,23 @@ LOTE = Polygon(BV['sitio']).buffer(0)
 C = LOTE.centroid
 print('lote', round(LOTE.area / 1e4, 2), 'ha; centro', round(C.x), round(C.y))
 
-# ---------------- OSM: vías ----------------
-os.makedirs(os.path.join(RAIZ, 'tools', 'cache'), exist_ok=True)
-CACHE = os.path.join(RAIZ, 'tools', 'cache', 'bavaria_vias_osm.json')
-lat0 = (C.y - 2090.06) / MY + 4.63; lon0 = (C.x - 5193.24) / MX - 74.17
-USAR_GIRO = not os.path.exists(CACHE) or os.path.getsize(CACHE) < 10000
-if USAR_GIRO:
-    # sin conexión a Overpass: se usan las vías OSM ya procesadas en data3d/giro_sim.json (marco del giro: x este, y sur,
-    # origen 4.640683, -74.149778). Ahí no están los senderos ni las vías de servicio a más de 1,8 km de El Burro.
-    GS = json.load(open(os.path.join(D, 'giro_sim.json'), encoding='utf-8'))
-    OX = 5193.24 + (74.17 - 74.149778) * MX; OY = 2090.06 + (4.640683 - 4.63) * MY
-    OSM = []
-    for k, s in enumerate(GS['seg']):
-        hw = {5: 'trunk', 4: 'primary', 3: 'secondary', 2: 'tertiary', 1: 'residential', 0: 'footway'}[s['j']]
-        OSM.append({'type': 'way', 'id': k, 'nodes': [('g', s['a'])] + [('m', k, i) for i in range(1, len(s['p']) - 1)] + [('g', s['b'])],
-                    'tags': {'highway': hw}, 'pts': [(x + OX, OY - y) for x, y in s['p']]})
-if False:
-    d = 0.026
-    q = f'[out:json][timeout:120];way["highway"]({lat0 - d},{lon0 - d},{lat0 + d},{lon0 + d});out geom tags;'
-    r = urllib.request.urlopen(urllib.request.Request('https://overpass-api.de/api/interpreter', data=urllib.parse.urlencode({'data': q}).encode(),
-                                                      headers={'User-Agent': 'urban-analysis-script'}), timeout=180)
-    json.dump(json.load(r), open(CACHE, 'w'))
-if not USAR_GIRO: OSM = json.load(open(CACHE))['elements']
+# ---------------- OSM: vías de TODA Kennedy (+500 m) ----------------
+# fuente: tools/cache/kennedy_osm.json (la misma descarga de OpenStreetMap de tools/kennedy_osm.py)
+CACHE_K = os.path.join(RAIZ, 'tools', 'cache', 'kennedy_osm.json')
+OSM = json.load(open(CACHE_K, encoding='utf-8'))['elements']
+KJ = json.load(open(os.path.join(D, 'kennedy.json'), encoding='utf-8'))
+LIM = Polygon([xy(*p) for p in KJ['limite']]).buffer(0)
+ZONA = LIM.buffer(500)
+print('Kennedy', round(LIM.area / 1e6, 1), 'km2')
 NOPEA = {'motorway', 'motorway_link', 'trunk_link', 'construction', 'proposed', 'raceway', 'bus_guideway', 'corridor', 'elevator', 'platform'}
-RADIO = 2300
 vias = []
 for el in OSM:
     t = el.get('tags', {}); hw = t.get('highway')
-    if el['type'] != 'way' or not hw or hw in NOPEA or ('geometry' not in el and 'pts' not in el): continue
+    if el['type'] != 'way' or not hw or hw in NOPEA or 'geometry' not in el: continue
     if t.get('access') in ('private', 'no') and hw == 'service': continue
-    pts = el['pts'] if 'pts' in el else [xy(g['lon'], g['lat']) for g in el['geometry']]
+    pts = [xy(g['lon'], g['lat']) for g in el['geometry']]
     ls = LineString(pts)
-    if ls.distance(C) > RADIO: continue
+    if not ZONA.intersects(ls): continue
     vias.append((list(el['nodes']), pts, hw))
 uso = {}
 for nodos, _, _ in vias:
@@ -95,30 +80,76 @@ entradas = []
 for nid, (p, d, hw) in orden:
     if all(math.dist(p, q) > 140 for _, q in entradas): entradas.append((nid, p))
 print('entradas', len(entradas))
-# trazado: eje mayor del lote (paseo de las huertas) + anillo interior + ramales de cada entrada al punto más cercano del sistema
-mrr = LOTE.minimum_rotated_rectangle
-cs = list(mrr.exterior.coords)[:4]
-lados = [(cs[i], cs[(i + 1) % 4]) for i in range(4)]
-largo = max(lados, key=lambda l: math.dist(*l))
-ang = math.atan2(largo[1][1] - largo[0][1], largo[1][0] - largo[0][0])
+# trazado: los pasajes buscan el camino de menor costo sobre una grilla de 3 m. Los edificios (con 7 m de aire) no se pueden
+# cruzar, el bosque denso cuesta 5 veces más (solo se atraviesa si no hay otra salida) y el suelo libre 1. Todas las puertas
+# se unen con la plaza central por el árbol de caminos más cortos, así los pasajes se juntan en corredores comunes
+# y aprovechan los patios y vías internas abiertas de la fábrica, sin pasar por encima de las naves.
+from scipy.sparse import coo_matrix
+EDIF_POL = unary_union([Polygon(e['p']).buffer(0) for e in BV['edif']])
+TANQ = unary_union([Point(t).buffer(9) for t in BV['tanques']])
+BOSQUE_POL = unary_union([Point(a[0], a[1]).buffer(a[3] + 2.5) for a in AR if a[4] == 1])
+OBST = unary_union([EDIF_POL.buffer(7), TANQ])
+# eje de las naves: orientación de la nave central (la retícula de la fábrica ordena los pasajes y las huertas)
+nave = max(BV['edif'], key=lambda e: Polygon(e['p']).area)['p']
+lado = max(((nave[i], nave[(i + 1) % len(nave)]) for i in range(len(nave))), key=lambda l: math.dist(*l))
+ang = math.atan2(lado[1][1] - lado[0][1], lado[1][0] - lado[0][0])
 ux, uy = math.cos(ang), math.sin(ang)
-eje = LineString([(C.x - ux * 900, C.y - uy * 900), (C.x + ux * 900, C.y + uy * 900)]).intersection(LOTE.buffer(-25))
-if eje.geom_type == 'MultiLineString': eje = max(eje.geoms, key=lambda g: g.length)
-trans = []  # tres ejes transversales (calles de huertas)
-for f in (-0.32, 0.0, 0.32):
-    px, py = C.x + ux * f * eje.length, C.y + uy * f * eje.length
-    t = LineString([(px + uy * 700, py - ux * 700), (px - uy * 700, py + ux * 700)]).intersection(LOTE.buffer(-25))
-    if t.geom_type == 'MultiLineString': t = max(t.geoms, key=lambda g: g.length)
-    if not t.is_empty: trans.append(t)
-anillo = LOTE.buffer(-70).exterior.simplify(18)
-sistema = unary_union([eje, anillo] + trans)
-ramales = []
+RES = 3.0
+minx, miny, maxx, maxy = LOTE.buffer(60).bounds
+NX, NY = int((maxx - minx) / RES) + 1, int((maxy - miny) / RES) + 1
+from shapely import contains_xy
+gx, gy = np.meshgrid(minx + np.arange(NX) * RES, miny + np.arange(NY) * RES)
+fx, fy = gx.ravel(), gy.ravel()
+costo = np.full(fx.size, np.inf)
+dentro_l = contains_xy(LOTE.buffer(2), fx, fy); cerca_l = contains_xy(LOTE.buffer(55), fx, fy)
+costo[cerca_l] = 6.0                 # franja exterior (solo para llegar desde la puerta)
+costo[dentro_l] = 1.0
+costo[dentro_l & contains_xy(BOSQUE_POL, fx, fy)] = 5.0
+costo[contains_xy(OBST, fx, fy)] = np.inf
+ok = np.isfinite(costo)
+idx = np.arange(fx.size).reshape(NY, NX)
+filas, cols, pesos = [], [], []
+for dy, dx in ((0, 1), (1, 0), (1, 1), (1, -1)):
+    a = idx[max(0, -dy):NY - max(0, dy), max(0, -dx):NX - max(0, dx)] if dx >= 0 else idx[0:NY - dy, 1:NX]
+    b = idx[max(0, dy):NY, max(0, dx):NX] if dx >= 0 else idx[dy:NY, 0:NX - 1]
+    a, b = a.ravel(), b.ravel(); m = ok[a] & ok[b]
+    w = (costo[a[m]] + costo[b[m]]) / 2 * RES * (math.sqrt(2) if dx and dy else 1)
+    filas += [a[m], b[m]]; cols += [b[m], a[m]]; pesos += [w, w]
+GR = coo_matrix((np.concatenate(pesos), (np.concatenate(filas), np.concatenate(cols))), shape=(fx.size, fx.size)).tocsr()
+def celda(p):
+    i = int(round((p[1] - miny) / RES)); j = int(round((p[0] - minx) / RES))
+    best, bd = None, 1e9
+    for di in range(-6, 7):
+        for dj in range(-6, 7):
+            ii, jj = i + di, j + dj
+            if 0 <= ii < NY and 0 <= jj < NX and ok[idx[ii, jj]]:
+                d = math.hypot(di, dj)
+                if d < bd: bd, best = d, idx[ii, jj]
+    return best
+# plaza central: el punto libre más cercano al centro del conjunto de naves
+cen = EDIF_POL.centroid
+libre_c = [k for k in np.where(ok & dentro_l & ~contains_xy(BOSQUE_POL, fx, fy))[0]]
+hub = min(libre_c, key=lambda k: (fx[k] - cen.x) ** 2 + (fy[k] - cen.y) ** 2)
+from scipy.sparse.csgraph import dijkstra as _dij
+dist, pred = _dij(GR, directed=False, indices=hub, return_predecessors=True)
+caminos = []
 for nid, p in entradas:
-    q = sistema.interpolate(sistema.project(Point(p))) if sistema.geom_type == 'LineString' else min(
-        (g.interpolate(g.project(Point(p))) for g in sistema.geoms), key=lambda r: r.distance(Point(p)))
-    ramales.append(LineString([p, (q.x, q.y)]))
-red_nueva = unary_union([sistema] + ramales)  # se nodifica en los cruces
+    c = celda(p)
+    if c is None or not np.isfinite(dist[c]): print('  puerta sin camino', p); continue
+    ruta = [c]
+    while ruta[-1] != hub and pred[ruta[-1]] >= 0: ruta.append(pred[ruta[-1]])
+    pts = [(p[0], p[1])] + [(fx[k], fy[k]) for k in ruta]
+    caminos.append(LineString(pts))
+from shapely.ops import linemerge
+red0 = linemerge(unary_union(caminos))
+def suavizar(g):
+    for tol in (5, 3, 1.5, 0.6):
+        s = g.simplify(tol)
+        if not s.intersects(EDIF_POL.buffer(3)): return s
+    return g
+red_nueva = unary_union([suavizar(g) for g in (red0.geoms if red0.geom_type == 'MultiLineString' else [red0])])
 lineas = list(red_nueva.geoms) if red_nueva.geom_type == 'MultiLineString' else [red_nueva]
+print('pasajes que tocan edificios:', sum(1 for g in lineas if g.intersects(EDIF_POL)))
 ent_pts = {(round(p[0], 1), round(p[1], 1)): nid for nid, p in entradas}
 def clave(p):
     k = (round(p[0], 1), round(p[1], 1))
@@ -135,7 +166,8 @@ print('pasajes nuevos', len(nuevos), 'longitud', round(sum(s['L'] for s in nuevo
 
 # ---------------- sintaxis espacial ----------------
 def rumbo(p, q): return math.atan2(q[1] - p[1], q[0] - p[0])
-def analizar(T):
+def analizar(T, fuentes):
+    """Rn (integración y elección) con fuentes muestreadas, como el modelo de Kennedy del simulador; R800 con todas las fuentes."""
     por_nodo = {}
     for i, s in enumerate(T):
         por_nodo.setdefault(s['a'], []).append((i, 'a')); por_nodo.setdefault(s['b'], []).append((i, 'b'))
@@ -153,31 +185,39 @@ def analizar(T):
     N = len(T)
     GA = csr_matrix((w, (f, c)), shape=(N, N)); GM = csr_matrix((wm, (f, c)), shape=(N, N))
     conn = np.array([len(por_nodo[s['a']]) + len(por_nodo[s['b']]) - 2 for s in T])
-    TD = np.zeros(N); NC = np.zeros(N); CH = np.zeros(N); TD8 = np.zeros(N); NC8 = np.zeros(N)
-    LOT = 120
-    for k in range(0, N, LOT):
-        F = list(range(k, min(N, k + LOT)))
+    TDs = np.zeros(N); CNT = np.zeros(N); CH = np.zeros(N)
+    for k in range(0, len(fuentes), 40):
+        F = fuentes[k:k + 40]
         DA, PR = dijkstra(GA, directed=True, indices=F, return_predecessors=True)
-        DM = dijkstra(GM, directed=True, indices=F, limit=800)
         for r, src in enumerate(F):
-            d = DA[r]; ok = np.isfinite(d)
-            TD[src] = d[ok].sum(); NC[src] = ok.sum()
-            m8 = np.isfinite(DM[r]); TD8[src] = d[m8].sum(); NC8[src] = m8.sum()
+            d = DA[r]; ok = np.isfinite(d); TDs[ok] += d[ok]; CNT[ok] += 1
             orden = np.argsort(-np.where(ok, d, -1)); delta = np.zeros(N); pr = PR[r]
             for v in orden:
                 if not ok[v]: break
                 u = pr[v]
                 if u >= 0 and u != src: delta[u] += 1 + delta[v]
-                elif u == src: pass
             CH += delta
-        print('  fuentes', min(N, k + LOT), '/', N)
-    nain = NC ** 1.2 / (TD + 2); nain8 = NC8 ** 1.2 / (TD8 + 2)
-    nach = np.log(CH / 2 + 1) / np.log(TD + 3)
-    return {'nain': nain, 'nain8': nain8, 'nach': nach, 'conn': conn, 'td': TD / np.maximum(NC - 1, 1)}
+        print('  Rn fuentes', min(len(fuentes), k + 40), '/', len(fuentes))
+    NC = N; TD = TDs / np.maximum(CNT, 1) * (N - 1)
+    nain = NC ** 1.2 / (TD + 2)
+    nach = np.log(CH * N / len(fuentes) / 2 + 1) / np.log(TD + 3)
+    TD8 = np.zeros(N); NC8 = np.zeros(N)
+    for k in range(0, N, 250):
+        F = list(range(k, min(N, k + 250)))
+        DM = dijkstra(GM, directed=True, indices=F, limit=800); D8 = dijkstra(GA, directed=True, indices=F, limit=12)
+        m = np.isfinite(DM) & np.isfinite(D8)
+        TD8[k:k + len(F)] = np.where(m, D8, 0).sum(1); NC8[k:k + len(F)] = m.sum(1)
+        if k % 5000 == 0: print('  R800', k, '/', N)
+    nain8 = NC8 ** 1.2 / (TD8 + 2)
+    return {'nain': nain, 'nain8': nain8, 'nach': nach, 'conn': conn, 'td': TD / max(N - 1, 1)}
 
-print('ANTES'); A = analizar(base)
+random.seed(20261112)
+en_k = [i for i, s in enumerate(base) if LIM.buffer(80).intersects(LineString(s['p']))]
+FUENTES = sorted(random.sample(en_k, min(1500, len(en_k))))
+print('tramos', len(base), 'en Kennedy', len(en_k), 'fuentes', len(FUENTES))
+print('ANTES'); A = analizar(base, FUENTES)
 DESP = base + nuevos
-print('DESPUÉS'); B = analizar(DESP)
+print('DESPUÉS'); B = analizar(DESP, FUENTES)
 
 def stats(T, R, sel):
     idx = [i for i, s in enumerate(T) if sel(s)]
@@ -190,24 +230,29 @@ def stats(T, R, sel):
     return {'n': len(idx), 'km': round(float(L.sum()) / 1000, 2), 'nain': round(wm(R['nain']), 3), 'nain8': round(wm(R['nain8']), 3),
             'nach': round(wm(R['nach']), 3), 'prof': round(wm(R['td']), 2), 'inteligibilidad': round(inteli, 3), 'sinergia': round(sinerg, 3)}
 cerca = lambda s: LineString(s['p']).distance(LOTE) < 600
+EN_K = set(en_k)
+enK = lambda s: s.get('nuevo') or LIM.intersects(LineString(s['p']))
 resumen = {'antes_600m': stats(base, A, cerca), 'despues_600m': stats(DESP, B, lambda s: cerca(s) or s.get('nuevo')),
-           'antes_todo': stats(base, A, lambda s: True), 'despues_todo': stats(DESP, B, lambda s: True)}
+           'antes_todo': stats(base, A, enK), 'despues_todo': stats(DESP, B, enK)}
 print(json.dumps(resumen, indent=1))
 # vías del borde: cuánto cambia su elección (las que tocan una entrada)
 ent_ids = {nid for nid, _ in entradas}
 
-# exportar segmentos a menos de 1,8 km
+# exportar TODA la red de Kennedy (+500 m) a un archivo aparte: data3d/bavaria_sx.json
 def q(v): return round(float(v), 3)
 seg = []
 for i, s in enumerate(DESP):
     ls = LineString(s['p'])
-    if ls.distance(C) > 1800: continue
-    pts = [[round(x, 1), round(y, 1)] for x, y in ls.simplify(1.2).coords]
+    pts = [[round(x), round(y)] for x, y in ls.simplify(2.0).coords]
     j = i if i < len(base) else None
-    seg.append({'p': pts, 'h': s['hw'], 'n': s.get('nuevo', 0),
+    seg.append({'p': pts, 'n': s.get('nuevo', 0), 'k': 1 if (j is None or i in EN_K) else 0,
                 'a': [q(A['nain'][i]), q(A['nain8'][i]), q(A['nach'][i])] if j is not None else None,
                 'b': [q(B['nain'][i]), q(B['nain8'][i]), q(B['nach'][i])]})
-print('segmentos exportados', len(seg))
+json.dump({'fuente': 'OpenStreetMap (© colaboradores, ODbL), tools/cache/kennedy_osm.json; análisis angular de segmentos (método DepthmapX) reimplementado en tools/bavaria_pres_datos.py',
+           'seg': seg, 'limite': [[round(x), round(y)] for x, y in LIM.exterior.simplify(5).coords]},
+          open(os.path.join(D, 'bavaria_sx.json'), 'w', encoding='utf-8'), ensure_ascii=False, separators=(',', ':'))
+print('segmentos exportados', len(seg), round(os.path.getsize(os.path.join(D, 'bavaria_sx.json')) / 1e6, 2), 'MB')
+seg = []
 
 # ---------------- contexto ----------------
 BU = json.load(open(os.path.join(D, 'buildings.json')))
@@ -222,28 +267,43 @@ for b in BU:
 print('contexto', len(ctx))
 
 # ---------------- huertas ----------------
-edif = unary_union([Polygon(e['p']).buffer(6) for e in BV['edif']])
-bosque = unary_union([Point(a[0], a[1]).buffer(a[3] + 2.5) for a in AR if a[4] == 1])
-sueltos = unary_union([Point(a[0], a[1]).buffer(a[3] + 1) for a in AR if a[4] == 0])
-pasos = red_nueva.buffer(5)
-libre = LOTE.buffer(-8).difference(edif).difference(bosque).difference(sueltos).difference(pasos)
+# manzanas de huerta ordenadas sobre la retícula de las naves: bloques de 30 x 26 m separados por calles de 4 m, cada uno con
+# 2 filas de 14 bancales de 1,2 x 10 m (pasillos de 0,8 m y uno central de 3 m). Solo se pone un bloque donde cabe completo:
+# fuera de edificios (10 m de aire), pasajes, plazas, compostaje, patio de carga y bosque denso (menos del 8 % del bloque).
+edif = EDIF_POL.buffer(6); bosque = BOSQUE_POL
+sueltos = [(a[0], a[1], a[3]) for a in AR if a[4] == 0]
+plaza = unary_union([Polygon(e['p']).buffer(22) for e in BV['edif'] if Polygon(e['p']).area > 2500])
+ZONAS_FIJAS = unary_union([box(9485, 3005, 9555, 3060).buffer(6), box(9115, 3127.5, 9185, 3172.5).buffer(6)])
+VETO = unary_union([EDIF_POL.buffer(10), TANQ, red_nueva.buffer(4.5), plaza, ZONAS_FIJAS])
+DENTRO = LOTE.buffer(-10)
+libre = LOTE.buffer(-8).difference(edif).difference(bosque).difference(red_nueva.buffer(5))
 print('suelo libre', round(libre.area / 1e4, 2), 'ha; bosque', round(bosque.intersection(LOTE).area / 1e4, 2), 'ha')
-# bancales de 1,2 x 8 m con pasillos de 0,8 m, alineados al eje del lote, en manzanas de 2 x 6 bancales
-bancales = []
-ex, ey = ux, uy; nx, ny = -uy, ux
-xs = [(x - C.x) * ex + (y - C.y) * ey for x, y in LOTE.exterior.coords]
-ys = [(x - C.x) * nx + (y - C.y) * ny for x, y in LOTE.exterior.coords]
-libre_s = libre.buffer(-0.6)
-for u in np.arange(min(xs), max(xs), 2.0):
-    for v in np.arange(min(ys), max(ys), 9.0):
-        cxx, cyy = C.x + ex * (u + 0.6) + nx * (v + 4), C.y + ey * (u + 0.6) + ny * (v + 4)
-        r = affinity.rotate(box(-0.6, -4, 0.6, 4), math.degrees(math.atan2(ny, nx)) - 90, origin=(0, 0))
-        r = affinity.translate(r, cxx, cyy)
-        if libre_s.contains(r): bancales.append([round(cxx, 1), round(cyy, 1)])
-# se deja libre (plazas y pradera) lo que queda a menos de 35 m de los edificios recuperados y del tanque
-plaza = unary_union([Polygon(e['p']).buffer(28) for e in BV['edif'] if Polygon(e['p']).area > 2500])
-bancales = [b for b in bancales if not plaza.contains(Point(b))]
-area_banc = len(bancales) * 1.2 * 8
+BU, BV_, PU, PV = 30.0, 26.0, 34.0, 30.0
+nx, ny = -uy, ux
+us = [(x - C.x) * ux + (y - C.y) * uy for x, y in LOTE.exterior.coords]
+vs = [(x - C.x) * nx + (y - C.y) * ny for x, y in LOTE.exterior.coords]
+def rect(u0, v0, du, dv):
+    return Polygon([(C.x + ux * (u0 + a) + nx * (v0 + b), C.y + uy * (u0 + a) + ny * (v0 + b)) for a, b in ((-du, -dv), (du, -dv), (du, dv), (-du, dv))])
+mejor = None
+for ou in np.arange(0, PU, 8):
+    for ov in np.arange(0, PV, 6):
+        bl = []
+        for u in np.arange(min(us) + ou, max(us), PU):
+            for v in np.arange(min(vs) + ov, max(vs), PV):
+                r = rect(u, v, BU / 2, BV_ / 2)
+                if DENTRO.contains(r) and not r.intersects(VETO) and r.intersection(bosque).area < 0.08 * r.area and sum(1 for tx, ty, tr in sueltos if r.contains(Point(tx, ty))) <= 2: bl.append((u, v))
+        if mejor is None or len(bl) > len(mejor): mejor = bl
+bloques, bancales = [], []
+for bi, (u, v) in enumerate(mejor):
+    bloques.append([[round(x, 1), round(y, 1)] for x, y in list(rect(u, v, BU / 2 + 1, BV_ / 2 + 1).exterior.coords)[:4]])
+    for j in range(14):
+        du = -14 + 0.6 + j * 2.0
+        for dv in (-6.5, 6.5):
+            x = C.x + ux * (u + du) + nx * (v + dv); y = C.y + uy * (u + du) + ny * (v + dv)
+            if any(math.hypot(x - tx, y - ty) < tr * 0.6 + 0.8 for tx, ty, tr in sueltos if abs(x - tx) < 12 and abs(y - ty) < 12): continue
+            bancales.append([round(x, 1), round(y, 1), (bi * 3 + j // 6) % 8])
+print('manzanas de huerta', len(bloques))
+area_banc = len(bancales) * 1.2 * 10
 print('bancales', len(bancales), 'area cultivada', round(area_banc), 'm2')
 # cubiertas productivas del barrio
 techos = []
@@ -263,7 +323,7 @@ out = {
     'sitio': BV['sitio'], 'edif': BV['edif'], 'tanques': BV['tanques'],
     'arboles': [[round(a[0], 1), round(a[1], 1), round(a[2], 1), round(a[3], 1), a[4]] for a in AR],
     'contexto': ctx, 'seg': seg, 'entradas': [[round(p[0], 1), round(p[1], 1)] for _, p in entradas],
-    'bancales': bancales, 'techos': [t['p'] for t in techos],
+    'bancales': bancales, 'bloques': bloques, 'techos': [t['p'] for t in techos],
     'resumen': resumen, 'pasajes_m': round(sum(s['L'] for s in nuevos)),
     'suelo': {'libre_ha': round(libre.area / 1e4, 2), 'bosque_ha': round(bosque.intersection(LOTE).area / 1e4, 2),
               'edif_m2': round(sum(Polygon(e['p']).area for e in BV['edif'])), 'bancales_m2': round(area_banc), 'techos_m2': round(area_techos),
