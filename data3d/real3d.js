@@ -410,9 +410,9 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   }
   // L0 modelo real completo (cerca) · L1 modelo real reducido (medio) · L2 arbol 3D de bajos poligonos (lejos) · siluetas sólo más allá de R2 o si se llena el cupo
   // la versión ligera (gafas VR, celulares: T3.liviano) usa menos árboles detallados y copas más simples; la completa muestra más modelos reales
-  const KA = !!T3.kenArboles, LV = !!T3.liviano, CAP2 = LV ? 5000 : 10000, R0 = MV ? 0 : LV ? 40 : KA ? 150 : 100, R1 = MV ? (KA ? 380 : 260) : LV ? 400 : KA ? 650 : 1000, OSC = KA ? 0.74 : 1, /* Kennedy: reales hasta 900 m, más oscuros (igual de cerca y de lejos) */ /* Kennedy: reales hasta 420 m (más oscuros); más lejos, copas tipo splat (arboles_splat.js) */ R2 = LV ? 1200 : 2200, d = new THREE.Object3D(), col = new THREE.Color();
+  const KA = !!T3.kenArboles, LV = !!T3.liviano, CAP2 = LV ? 5000 : 10000, R0 = MV ? 0 : LV ? 40 : KA ? 150 : 100, R1 = MV ? (KA ? 380 : 260) : LV ? 400 : KA ? 450 : 1000, OSC = KA ? 0.74 : 1, /* Kennedy: reales hasta 900 m, más oscuros (igual de cerca y de lejos) */ /* Kennedy: reales hasta 420 m (más oscuros); más lejos, copas tipo splat (arboles_splat.js) */ R2 = LV ? 1200 : 2200, d = new THREE.Object3D(), col = new THREE.Color();
   const CAP0S = especies.map(e => MV ? 1 : e.base === 'arbolpeq' ? (LV ? 4 : 10) : (LV ? 10 : KA ? 48 : 32)); // el arbolpeq tiene 83.000 triángulos en el nivel 0
-  const CAP1S = especies.map(e => MV ? (e.base === 'arbolpeq' ? 25 : 90) : e.base === 'arbolpeq' ? (LV ? 40 : KA ? 320 : 200) : (LV ? 240 : KA ? 1800 : 1100)); // el arbolpeq tiene 14.000 triángulos en el nivel 1: menos copias
+  const CAP1S = especies.map(e => MV ? (e.base === 'arbolpeq' ? 25 : 90) : e.base === 'arbolpeq' ? (LV ? 40 : KA ? 80 : 200) : (LV ? 240 : KA ? 600 : 1100)); // el arbolpeq tiene 14.000 triángulos en el nivel 1: menos copias
   const TIPO_BAJO = especies.map(e => (e.base === 'arbolpeq' || e.base === 'island_tree_02') ? 1 : 0);
   const matBajo = materialArbolBajo(T3), REF = [0.17, 0.255, 0.0875]; // REF = verde medio del degradado de vértices
   const USAR_BAJOS = false; // las copas de bajos polígonos se veían como bolas verdes al alejar la cámara: lejos ahora se dibuja el mismo árbol real (fotos desde el lado y desde arriba)
@@ -438,8 +438,12 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   api.pos = { X, Z, Hh }; // posiciones y alturas de los árboles (el modo pájaro pone los nidos en las copas)
   api.update = (cam, force) => {
     const now = performance.now(), dx = cam.position.x - ult.x, dz = cam.position.z - ult.z, U = api.umbral || 6;
-    if (!force && ((dx * dx + dz * dz < U * U && (api.quieto || now - ult.t < 1500)) || now - ult.t < (api.minMs || 0))) return; /* api.quieto: sin cambio de lugar no se re-suben los árboles cada 1,5 s */ // en VR se actualiza menos seguido: recorrer todos los árboles cada pocos metros causaba tirones
-    ult.x = cam.position.x; ult.z = cam.position.z; ult.t = now;
+    const vy = cam.dir ? Math.atan2(cam.dir.x, cam.dir.z) : 0, giro = cam.dir ? Math.abs(Math.atan2(Math.sin(vy - (ult.vy || 0)), Math.cos(vy - (ult.vy || 0)))) : 0;
+    if (!force && ((dx * dx + dz * dz < U * U && giro < 0.3 && (api.quieto || now - ult.t < 1500)) || now - ult.t < (api.minMs || 0))) return; /* también al girar más de 17° */
+    const movio = dx * dx + dz * dz >= U * U;
+    ult.x = cam.position.x; ult.z = cam.position.z; ult.t = now; ult.vy = vy;
+    const CV = cam.cam, DV = cam.dir; /* árboles 3D solo hacia donde mira la cámara (±100°); detrás quedan las siluetas */
+    const enVista = (i) => { if (!CV || !DV) return true; const ex = X[i] - CV.x, ez = Z[i] - CV.z, L = Math.hypot(ex, ez); return L < 60 || (ex * DV.x + ez * DV.z) / L > -0.17; };
     cand.length = 0;
     for (let i = 0; i < N; i++) { const ex = X[i] - ult.x, ez = Z[i] - ult.z, d2 = ex * ex + ez * ez; if (d2 < R2 * R2) cand.push([i, d2]); }
     cand.sort((a, b) => a[1] - b[1]);
@@ -447,6 +451,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
     let tot2 = 0;
     for (const [i, d2] of cand) {
       const s = SP[i], sc = esc(i), tv = 0.82 + hash(i * 19) * 0.34;
+      if (!enVista(i)) continue;
       if (d2 < R0 * R0 && n0[s] < CAP0S[s]) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); const k = n0[s]++; pintar(lod[s].L0, especies[s].niveles.L0, k, i, tv); asignado[i] = 1; }
       else if (d2 < R1 * R1 && n1[s] < CAP1S[s]) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); const k = n1[s]++; pintar(lod[s].L1, especies[s].niveles.L1, k, i, tv); asignado[i] = 1; }
       else if (USAR_BAJOS && tot2 < CAP2) { // arbol 3D de bajos poligonos con el mismo alto y ancho de copa que tendria el modelo real
@@ -457,6 +462,8 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
     }
     bajos.forEach((m, tp) => { m.count = n2[tp]; m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true; });
     lod.forEach((l, s) => { l.L0.forEach(m => { m.count = n0[s]; m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true; }); l.L1.forEach(m => { m.count = n1[s]; m.instanceMatrix.needsUpdate = true; m.instanceColor.needsUpdate = true; }); });
+    if (!force && !movio && now - (ult.sil || 0) < 1500) return; /* solo girando: las siluetas lejanas (90 mil) no se re-suben en cada giro */
+    ult.sil = now;
     const nf = lejos.map(() => 0);
     for (let i = 0; i < N; i++) {
       if (asignado[i] || T3.splatLejos) continue; /* con copas splat lejanas no se dibujan las siluetas planas */
