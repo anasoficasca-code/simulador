@@ -825,6 +825,10 @@ function flight(ms) {
       const e = cam.matrixWorld.elements, fm = e[12] + e[13] * 3.1 + e[14] * 7.3 + e[8] * 101 + e[9] * 203 + e[10] * 307, ahora = performance.now();
       if (Math.abs(fm - (T3._movF || 0)) > 0.01) T3._movT = ahora; T3._movF = fm;
       if (T3.ao) { const mov = KEN && ahora - (T3._movT || 0) < 300; T3.ao.enabled = !mov; if (T3.rpLiviano) T3.rpLiviano.enabled = mov; }
+      { /* resolución dinámica: al moverse se dibuja al 75 % (el doble de cuadros por segundo); quieta, a resolución completa. Cambia como máximo cada 0,4 s */
+        const mov = KEN && ahora - (T3._movT || 0) < 400, R = T3.renderer, base = MOVIL ? 1 : Math.min(devicePixelRatio, 1.25), pr = mov ? base * 0.75 : base;
+        if (R.getPixelRatio() !== pr && ahora - (T3._prT || 0) > 400 && T3.composer && T3.composer.setPixelRatio) { T3._prT = ahora; R.setPixelRatio(pr); T3.composer.setPixelRatio(pr); T3.composer.setSize(innerWidth, innerHeight); }
+      }
     }
     if (!compilandoGPU(cam)) if (!(SIM && SIM.render(cam))) { if (T3.composer) T3.composer.render(); else T3.renderer.render(T3.scene, cam); } // con un sensor (CRT, NVG, FLIR) dibuja el simulador; si no, render con oclusión ambiental
     requestAnimationFrame(flight); return;
