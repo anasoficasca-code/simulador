@@ -116,7 +116,7 @@ export function iniciarCielo({ THREE, T3, luzMalla }) {
     const dirL = L.clone(); if (dirL.y < 0.07) { dirL.y = 0.07; dirL.normalize(); } // sombras largas pero sin pasar bajo el horizonte
     T3.sunOff.copy(dirL).multiplyScalar(2600);
     T3.sun.color.copy(P.sol); T3.sun.intensity = deDia ? P.si * Math.max(0, Math.min(1, (el + 3) / 4)) * (1 - U.uCloud.value * 0.35) : 0.14 * Math.max(0, Math.min(1, elL / 8)) + 0.03;
-    T3.hemi.color.copy(P.hemi); T3.hemi.groundColor.copy(P.suelo); T3.hemi.intensity = P.hi * (1 - U.uCloud.value * 0.12);
+    T3.hemi.color.copy(P.hemi); T3.hemi.groundColor.copy(P.suelo); T3.hemi.intensity = P.hi * (1 - U.uCloud.value * 0.12) * (T3.kenFill || 1); /* Kennedy: menos relleno = sombras con más contraste */
     T3.renderer.toneMappingExposure = P.exp;
     // agua: reflejo del cielo y del sol
     const wu = T3.waterMesh && T3.waterMesh.material && T3.waterMesh.material.uniforms;

@@ -573,7 +573,7 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
 .bt-cat::before{content:'';width:8px;height:8px;border-radius:2px;background:currentColor}
 .bt-esp{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
 .bt-e{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 2px 4px;border:1px solid rgba(255,255,255,.06);border-radius:8px;background:rgba(255,255,255,.03);color:#cbd5e1;font:10px/1.15 system-ui,sans-serif;cursor:pointer;text-align:center}
-.bt-e:hover{border-color:rgba(125,211,252,.4)}.bt-e img{width:56px;height:34px}.bt-e small{color:#64748b;font-size:9px}
+.bt-e:hover{border-color:rgba(125,211,252,.4)}.bt-e img{width:56px;height:34px}.bt-e img.foto{width:40px;height:40px;border-radius:50%;object-fit:cover}.bt-e small{color:#64748b;font-size:9px}
 .bt-nota{margin-top:9px;font-size:9.5px;color:#64748b;line-height:1.4}
 #bt-ficha{position:fixed;z-index:12;left:50%;bottom:96px;transform:translateX(-50%);width:min(380px,calc(100vw - 32px));padding:11px 13px;border-radius:14px;background:rgba(8,16,26,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(125,211,252,.3);color:#e2f3ff;font:11.5px system-ui,sans-serif;display:none}
 #bt-ficha .t{display:flex;gap:10px;align-items:center}#bt-ficha .t img{width:64px;height:40px;flex:none}
@@ -674,6 +674,11 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
   const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   let animRed = 0;
   const imgCache = {}; const imagen = (k) => { if (!imgCache[k]) { const im = new Image(); im.src = IMG[k]; imgCache[k] = im; } return imgCache[k]; };
+  /* FOTOS REALES de cada especie y planta (las mismas de la red de relaciones bióticas: anasoficasca-code.github.io/humedalburro, iNaturalist) */
+  const FOTO = {}, fotoCache = {};
+  fetch('data3d/especies_fotos.json?v=1').then(r => r.json()).then(D => { for (const [kk, u] of Object.entries(D.esp)) FOTO[kk] = u; for (const [kk, u] of Object.entries(D.flora)) FOTO['fl:' + kk] = u; document.querySelectorAll('.bt-e[data-k] img').forEach(im => { const u = FOTO[im.closest('.bt-e').dataset.k]; if (u) { im.src = u; im.classList.add('foto'); } }); }).catch(() => {});
+  const pintaFoto = (g, key, x, y, r) => { const u = FOTO[key]; if (!u) return false; let im = fotoCache[key]; if (!im) { im = new Image(); im.src = u; fotoCache[key] = im; } if (!im.complete || !im.naturalWidth) return false;
+    g.save(); g.beginPath(); g.arc(x, y, r * 0.95, 0, 6.2832); g.clip(); const s = Math.max(2 * r / im.naturalWidth, 2 * r / im.naturalHeight), w = im.naturalWidth * s, h = im.naturalHeight * s; g.drawImage(im, x - w / 2, y - h / 2, w, h); g.restore(); return true; };
   function abrirRed(k) {
     const e = ESP[k], R = REL[k], V = [];
     for (const [f, r] of R.flora) V.push({ n: B.flora[f].n, f, t: r.t, rol: r.rol, r: r.r, flora: true });
@@ -693,7 +698,7 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
     const grupos = tipos.map(t => `<div class="grp" style="color:${TIPOS[t].c}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="${TIPOS[t].c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${SVG[t]}</svg>${esc(TIPOS[t].n.toUpperCase())} · ${V.filter(v => v.t === t).length}</div>`
       + V.map((v, i) => v.t === t ? `<div class="it" data-i="${i}"><b>${v.rol === 'a' ? esc(e.n) + ' → ' + esc(v.n) : esc(v.n) + ' → ' + esc(e.n)}</b><small>${esc(v.r || '')}</small></div>` : '').join('')).join('');
     const nInd = POR[k] ? POR[k].length : 0;
-    red.innerHTML = `<div class="v"><div class="cab"><img src="${IMG[k]}" alt=""><div><h4>${esc(e.n)}</h4><em>${esc(e.sci || '')} · ${CAT[e.cat].n} · ${nInd} individuos en el territorio · ${V.length} relaciones · ${VV.length} conexiones entre ellas</em></div>
+    red.innerHTML = `<div class="v"><div class="cab"><img src="${FOTO[k] || IMG[k]}" alt="" ${FOTO[k] ? 'style="width:60px;height:60px;border-radius:50%;object-fit:cover"' : ''}><div><h4>${esc(e.n)}</h4><em>${esc(e.sci || '')} · ${CAT[e.cat].n} · ${nInd} individuos en el territorio · ${V.length} relaciones · ${VV.length} conexiones entre ellas</em></div>
       <div class="acc"><button class="vt">VER EN EL TERRITORIO</button><button class="x" aria-label="Cerrar">×</button></div></div>
       <div class="ley">${tipos.map(t => `<span><i style="background:${TIPOS[t].c}"></i>${esc(TIPOS[t].n)}</span>`).join('')}<span><b style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${CAT[0].c}"></b>árbol del censo</span><span style="color:#94a3b8">arrastra para girar · toca un animal para ver su red</span></div>
       <div class="cuerpo"><div class="lienzo"><canvas aria-label="Red de ${esc(e.n)} en esfera"></canvas><div class="tip"></div></div><div class="lista">${grupos || '<div class="it">Sin relaciones en la red.</div>'}</div></div></div>`;
@@ -732,13 +737,13 @@ export async function iniciarBiotica({ THREE, T3, lw, OX, OZ, Y0 = 2.0, movil = 
       g.globalAlpha = 1;
       // esferas: de atrás hacia adelante; el centro va donde le toca por profundidad (z = 0)
       const orden = V.map((v, i) => i).sort((i, j) => P[j][2] - P[i][2]); let centroHecho = false;
-      const centro = () => { const r = Math.min(W, H) * 0.075; bola(C[0], C[1], r, CAT[e.cat].c, oscuro(CAT[e.cat].c, 0.35)); const im = imagen(k); if (im.complete) g.drawImage(im, C[0] - r * 0.85, C[1] - r * 0.52, r * 1.7, r * 1.04); g.font = '700 12px system-ui,sans-serif'; g.textAlign = 'center'; g.fillStyle = '#e2f3ff'; g.fillText(e.n, C[0], C[1] + r + 15); centroHecho = true; };
+      const centro = () => { const r = Math.min(W, H) * 0.075; bola(C[0], C[1], r, CAT[e.cat].c, oscuro(CAT[e.cat].c, 0.35)); if (!pintaFoto(g, k, C[0], C[1], r)) { const im = imagen(k); if (im.complete) g.drawImage(im, C[0] - r * 0.85, C[1] - r * 0.52, r * 1.7, r * 1.04); } g.font = '700 12px system-ui,sans-serif'; g.textAlign = 'center'; g.fillStyle = '#e2f3ff'; g.fillText(e.n, C[0], C[1] + r + 15); centroHecho = true; };
       for (const i of orden) {
         const v = V[i], a = P[i]; if (!centroHecho && a[2] < 0) centro();
-        const r = (v.flora ? 7 : 15) * a[3] * (foco === i ? 1.25 : 1), c = v.flora ? CAT[0].c : CAT[ESP[v.k].cat].c, fr = 0.45 + 0.55 * (1 - a[2]) / 2;
+        const r = (v.flora ? (FOTO['fl:' + v.f] ? 11 : 7) : 17) * a[3] * (foco === i ? 1.25 : 1), c = v.flora ? CAT[0].c : CAT[ESP[v.k].cat].c, fr = 0.45 + 0.55 * (1 - a[2]) / 2;
         g.globalAlpha = foco >= 0 && foco !== i ? 0.55 * fr + 0.2 : fr;
         bola(a[0], a[1], r, c, oscuro(c, 0.3));
-        if (!v.flora) { const im = imagen(v.k); if (im.complete) g.drawImage(im, a[0] - r * 0.85, a[1] - r * 0.52, r * 1.7, r * 1.04); }
+        if (!pintaFoto(g, v.flora ? 'fl:' + v.f : v.k, a[0], a[1], r) && !v.flora) { const im = imagen(v.k); if (im.complete) g.drawImage(im, a[0] - r * 0.85, a[1] - r * 0.52, r * 1.7, r * 1.04); } /* foto real dentro del nodo */
         g.strokeStyle = TIPOS[v.t].c; g.lineWidth = foco === i ? 2.5 : 1.2; g.beginPath(); g.arc(a[0], a[1], r + 1.5, 0, 6.2832); g.stroke();
         if (a[2] < -0.25 || foco === i || (!v.flora && a[2] < 0.3)) { g.font = (foco === i ? '700 ' : '') + '10px system-ui,sans-serif'; g.textAlign = a[0] >= W / 2 ? 'left' : 'right'; g.fillStyle = v.flora ? '#b9c9bd' : '#e2f3ff'; g.fillText(v.n.length > 26 ? v.n.slice(0, 25) + '…' : v.n, a[0] + (a[0] >= W / 2 ? r + 4 : -r - 4), a[1] + 3); }
         g.globalAlpha = 1;
