@@ -212,9 +212,9 @@ function sombraCopa(g, m, alto, ancho) {
   g.setAttribute('color', new THREE.BufferAttribute(c, 3)); m.vertexColors = true; m.needsUpdate = true;
 }
 function realzarMaterial(m, env, hoja) {
-  ajustarMat(m, env, { roughness: 0.9, tinte: hoja ? 1.25 : 1.0, env: 0.4 });
+  ajustarMat(m, env, { roughness: realzarMaterial.ken ? 1.0 : 0.9, tinte: hoja ? (realzarMaterial.ken ? 1.0 : 1.25) : 1.0, env: realzarMaterial.ken ? 0.12 : 0.4 }); /* Kennedy: hojas mate, sin reflejo del cielo (se veían brillantes) */
   // las caras que no miran al sol no se ven negras: la textura aporta un poco de luz propia
-  if (m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = hoja ? (realzarMaterial.ken ? 0.34 : 0.42) : (realzarMaterial.ken ? 0.26 : 0.18); } // simulador: luz de relleno en la copa (sin el interior negro): árboles suaves
+  if (m.map) { m.emissiveMap = m.map; m.emissive = new THREE.Color(1, 1, 1); m.emissiveIntensity = hoja ? (realzarMaterial.ken ? 0.27 : 0.42) : (realzarMaterial.ken ? 0.26 : 0.18); } // simulador: luz de relleno en la copa (sin el interior negro): árboles suaves
   m.needsUpdate = true; return m;
 }
 function dibujarSiluetas(T3, partes, alto, ancho) {
@@ -432,7 +432,7 @@ export async function buildTrees(T3, T, W, lw, env, Pq, Net) {
   const FM = new Float32Array(N * 16), FC = new Float32Array(N * 3);
   const porte = (i) => { const v = VARIEDADES[VAR[i]], s = esc(i) * (KEN_A ? 0.82 + hash(i * 23 + 7) * 0.36 : 1), w = KEN_A ? 0.88 + hash(i * 29 + 3) * 0.26 : 1; d.scale.set(s * v.sx * w, s * v.sy, s * v.sx * (2 - w)); if (KEN_A) { d.rotation.x = (hash(i * 31 + 1) - 0.5) * 0.09; d.rotation.z = (hash(i * 37 + 5) - 0.5) * 0.09; } };
   for (let i = 0; i < N; i++) { d.position.set(X[i], 0, Z[i]); d.rotation.set(0, ROT[i], 0); porte(i); d.updateMatrix(); FM.set(d.matrix.elements, i * 16); const tv = 0.88 + hash(i * 19) * 0.24, h = VARIEDADES[VAR[i]].h, g = (h[0] + h[1] + h[2]) / 3; const ok_ = KA ? 0.74 * 1.08 : 0.6; FC[i * 3] = tv * ok_ * (0.3 * h[0] + 0.7 * g) + (KA ? 0.05 : 0); FC[i * 3 + 1] = tv * ok_ * 0.98 * (0.3 * h[1] + 0.7 * g) + (KA ? 0.045 : 0); FC[i * 3 + 2] = tv * ok_ * (0.3 * h[2] + 0.7 * g) + (KA ? 0.05 : 0); } /* Kennedy: siluetas lejanas con el mismo color que el árbol de cerca */ // lejos: las siluetas no reciben luz (material básico), se oscurecen y apagan para igualar a los cercanos
-  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) { const g = (h[0] + h[1] + h[2]) / 3; col.setRGB(tv * 1.14 * (0.3 * h[0] + 0.7 * g) + 0.07, tv * 1.04 * j * (0.3 * h[1] + 0.7 * g) + 0.06, tv * 1.1 * (0.3 * h[2] + 0.7 * g) + 0.07); } else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); if (OSC !== 1) col.multiplyScalar(OSC); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
+  const pintar = (lista, partes, k, i, tv) => { const h = VARIEDADES[VAR[i]].h, j = 0.96 + hash(i) * 0.08; lista.forEach((m, pi) => { if (partes[pi] && partes[pi].hoja) { const g = (h[0] + h[1] + h[2]) / 3; { const ad = KA ? 0.45 : 1; col.setRGB(tv * 1.14 * (0.3 * h[0] + 0.7 * g) + 0.07 * ad, tv * 1.04 * j * (0.3 * h[1] + 0.7 * g) + 0.06 * ad, tv * 1.1 * (0.3 * h[2] + 0.7 * g) + 0.07 * ad); } } else col.setRGB(tv * 0.92, tv * 0.88, tv * 0.84); if (OSC !== 1) col.multiplyScalar(OSC); m.setMatrixAt(k, d.matrix); m.setColorAt(k, col); }); };
   const ult = { x: 1e9, z: 1e9, t: 0 }, cand = [];
   const api = { ...api0, N, ribera, enParques, deCalle, especies: especies.map(e => e.base + ':' + e.niveles.L0.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0) + '/' + e.niveles.L1.reduce((a, p) => a + (p.geo.index ? p.geo.index.count : p.geo.attributes.position.count) / 3, 0)) };
   api.pos = { X, Z, Hh }; // posiciones y alturas de los árboles (el modo pájaro pone los nidos en las copas)
