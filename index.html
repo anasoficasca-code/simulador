@@ -3613,7 +3613,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
         b2.insertAdjacentElement('afterend', b3);
         /* asambleas existentes: Juntas de Acción Comunal (IDPAC); empieza apagado */
         const b4 = document.createElement('button'); b4.id = 'as-btn'; b4.textContent = 'Asambleas (JAC)'; b4.title = 'Juntas de Acción Comunal de Kennedy: sede, horario y red de vecindad'; b4.style.cssText = 'width:100%;margin-top:6px';
-        let pAs = null; b4.onclick = async () => { const on = !b4.classList.contains('on'); b4.classList.toggle('on', on); try { const m = await import('./data3d/asambleas.js?v=4'); if (!pAs) pAs = m.crearAsambleas({ THREE: T3.THREE, T3 }); const a = await pAs; a.ver(on); m.panelAsambleas(a, on); } catch (e) { console.warn('asambleas:', e); } };
+        let pAs = null; b4.onclick = async () => { const on = !b4.classList.contains('on'); b4.classList.toggle('on', on); try { const m = await import('./data3d/asambleas.js?v=5'); if (!pAs) pAs = m.crearAsambleas({ THREE: T3.THREE, T3 }); const a = await pAs; a.ver(on); m.panelAsambleas(a, on); } catch (e) { console.warn('asambleas:', e); } };
         b3.insertAdjacentElement('afterend', b4);
       }
       if (!document.getElementById('vi-btn')) { // Visión: la propuesta encendida sobre el territorio oscuro (data3d/vision.js)
