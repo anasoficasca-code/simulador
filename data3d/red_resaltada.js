@@ -4,7 +4,7 @@ export async function redResaltada({ THREE, T3, pos: pos0, colores: col0, color,
   /* arco > 0: cada tramo se dibuja como una curva (parábola) que sube arco × su largo, como una conectografía */
   let pos = pos0, colores = col0;
   if (arco > 0) { const S = 14, n0 = pos0.length / 6, P = new Float32Array(n0 * S * 6), C = col0 ? new Float32Array(n0 * S * 6) : null;
-    for (let k = 0; k < n0; k++) { const o = k * 6, L = Math.hypot(pos0[o + 3] - pos0[o], pos0[o + 5] - pos0[o + 2]), h = Math.min(260, L * arco);
+    for (let k = 0; k < n0; k++) { const o = k * 6, L = Math.hypot(pos0[o + 3] - pos0[o], pos0[o + 5] - pos0[o + 2]), h = Math.min(arco < 0.1 ? 900 : 260, L * arco);
       const pt = (u) => [pos0[o] + (pos0[o + 3] - pos0[o]) * u, pos0[o + 1] + (pos0[o + 4] - pos0[o + 1]) * u + 4 * h * u * (1 - u), pos0[o + 2] + (pos0[o + 5] - pos0[o + 2]) * u];
       for (let s = 0; s < S; s++) { const a = pt(s / S), b = pt((s + 1) / S), q = (k * S + s) * 6; P.set([...a, ...b], q); if (C) C.set(col0.subarray(o, o + 6), q); } }
     pos = P; colores = C; }
@@ -26,7 +26,7 @@ export async function redResaltada({ THREE, T3, pos: pos0, colores: col0, color,
   let raf = 0; const anim = () => { raf = requestAnimationFrame(anim); if (!g.visible || !g.parent || !g.parent.visible) return;
     T3.renderer.getSize(res); mats.forEach(m => m.resolution.copy(res));
     const t = performance.now() / 1000;
-    for (let k = 0; k < n; k++) { const u = (t * 0.3 + fase[k]) % 1, o = k * 6, p = pos0, h = arco > 0 ? Math.min(260, Math.hypot(p[o + 3] - p[o], p[o + 5] - p[o + 2]) * arco) : 0; pp[k * 3] = p[o] + (p[o + 3] - p[o]) * u; pp[k * 3 + 1] = p[o + 1] + (p[o + 4] - p[o + 1]) * u + 4 * h * u * (1 - u); pp[k * 3 + 2] = p[o + 2] + (p[o + 5] - p[o + 2]) * u; }
+    for (let k = 0; k < n; k++) { const u = (t * 0.3 + fase[k]) % 1, o = k * 6, p = pos0, h = arco > 0 ? Math.min(arco < 0.1 ? 900 : 260, Math.hypot(p[o + 3] - p[o], p[o + 5] - p[o + 2]) * arco) : 0; pp[k * 3] = p[o] + (p[o + 3] - p[o]) * u; pp[k * 3 + 1] = p[o + 1] + (p[o + 4] - p[o + 1]) * u + 4 * h * u * (1 - u); pp[k * 3 + 2] = p[o + 2] + (p[o + 5] - p[o + 2]) * u; }
     pg.attributes.position.needsUpdate = true; };
   anim();
   return g;

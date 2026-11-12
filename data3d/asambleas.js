@@ -20,7 +20,7 @@ export async function crearAsambleas({ THREE, T3 }) {
   const TC = TEMAS_COL.map(h => new THREE.Color(h)), lp = new Float32Array(D.e.length * 6), lcol = new Float32Array(D.e.length * 6);
   D.e.forEach(([a, b, t], k) => { const A = D.p[a], B = D.p[b], cc = TC[t]; lp.set([A[0], Y(A[0], A[1]) + 3, A[1], B[0], Y(B[0], B[1]) + 3, B[1]], k * 6); lcol.set([cc.r, cc.g, cc.b, cc.r, cc.g, cc.b], k * 6); });
   const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(lp, 3));
-  g.add(await (await import('./red_resaltada.js?v=1')).redResaltada({ THREE, T3, pos: lp, colores: lcol, ancho: 2.4, arco: 0.22 })); /* red resaltada: grosor real, halo y pulsos */
+  g.add(await (await import('./red_resaltada.js?v=2')).redResaltada({ THREE, T3, pos: lp, colores: lcol, ancho: 2.4, arco: 0.22 })); /* red resaltada: grosor real, halo y pulsos */
   // ficha al pasar el cursor
   const tip = document.createElement('div'); tip.style.cssText = 'position:fixed;z-index:45;display:none;pointer-events:none;max-width:260px;background:rgba(13,15,18,.9);border:1px solid rgba(233,196,106,.4);border-radius:8px;padding:8px 10px;color:#e9ebec;font:12px/1.4 Inter,system-ui,sans-serif'; document.body.appendChild(tip);
   const v = new THREE.Vector3(), cv = T3.renderer.domElement;
