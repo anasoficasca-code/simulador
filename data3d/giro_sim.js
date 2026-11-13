@@ -259,7 +259,7 @@ export async function iniciarSimulacion(cfg = {}) {
   $('gs-cv-b').onclick = (e) => { st0.conv = !st0.conv; e.currentTarget.classList.toggle('on', st0.conv); vCache = -1;
     if (SINP) { izq.querySelectorAll('.gs-est').forEach(b => { b.classList.toggle('on', st0.conv); b.style.opacity = st0.conv ? 1 : 0.4; }); if (cfg.verEstrategia) for (const x of EST) if (!x.sinLugar) cfg.verEstrategia(x.id, st0.conv); return; }
     if (M3) ZONAS3D.visible = st0.conv; };
-  izq.querySelectorAll('.gs-est').forEach(b => b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.style.opacity = on ? 1 : 0.4; if (cfg.verEstrategia) cfg.verEstrategia(b.dataset.e, on); });
+  izq.querySelectorAll('.gs-est').forEach(b => b.onclick = () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.style.opacity = on ? 1 : 0.4; if (cfg.verEstrategia) cfg.verEstrategia(b.dataset.e, on, true); }); /* true: tocada sola -> la cámara vuela a su lugar */
 
   /* ---------- capa fija por ángulo: calles con sintaxis espacial y zonas de las convenciones ---------- */
   let vCache = -1, W = 0, Hh = 0, dpr = 1;

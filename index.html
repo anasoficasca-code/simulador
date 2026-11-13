@@ -772,8 +772,11 @@ function flight(ms) {
       const a = T3.anim;
       a.t += Math.min(dt, 1 / 30); /* sin saltos si un cuadro tarda */
       const u = Math.min(1, a.t / a.dur), k2 = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; /* entra y frena suave */
-      T3.camera.position.lerpVectors(a.p0, a.p1, k2);
       T3.orbit.target.lerpVectors(a.c0, a.c1, k2);
+      if (a.cil) { /* vuelo de estrategia: gira alrededor del destino mientras se acerca y sube en arco a mitad de camino */
+        const C = a.cil, th = C.t0 + C.dt * k2, rr = C.r0 + (C.r1 - C.r0) * k2, yy = C.y0 + (C.y1 - C.y0) * k2 + C.arco * Math.sin(Math.PI * k2);
+        T3.camera.position.set(T3.orbit.target.x + Math.cos(th) * rr, yy, T3.orbit.target.z + Math.sin(th) * rr);
+      } else T3.camera.position.lerpVectors(a.p0, a.p1, k2);
       if (a.t >= a.dur) T3.anim = null;
     }
     const cam = T3.camera, o = T3.orbit;
@@ -3060,6 +3063,19 @@ function vueloLlegada() {
   }
   T3.anim = { t: 0, dur: 3.4, p0, c0: c1.clone(), p1, c1 };
 }
+/* vuelo a una estrategia: la cámara sale, sube en arco, gira alrededor y baja sobre el lugar con vista oblicua (centro y tamaño de EST.lugar) */
+function volarEstrategia(L) {
+  if (!T3 || !T3.orbit || !L) return;
+  const V = T3.THREE.Vector3, c0 = T3.orbit.target.clone(), p0 = T3.camera.position.clone(), c1 = new V(L.c[0], 0, L.c[1]);
+  const dist = Math.max(420, Math.min(3600, L.s * 1.15 + 260)); /* sitio puntual: cerca; red repartida: se ve completa */
+  const o0 = p0.clone().sub(c0), t0 = Math.atan2(o0.z, o0.x), r0 = Math.hypot(o0.x, o0.z);
+  let dt = 0.7; /* ~40° de giro alrededor del destino: entra de lado, como un dron */
+  const viaje = Math.hypot(c1.x - c0.x, c1.z - c0.z);
+  const y1 = dist * 0.62, r1 = dist * 0.78;
+  T3.anim = { t: 0, dur: Math.max(2.6, Math.min(4.6, 2.2 + viaje / 1600)), p0, c0, c1, p1: null,
+    cil: { t0, dt, r0, r1, y0: p0.y, y1, arco: Math.min(900, viaje * 0.28) } };
+  T3.anim.p1 = new V(c1.x + Math.cos(t0 + dt) * r1, y1, c1.z + Math.sin(t0 + dt) * r1);
+}
 function flyTodoHome() {
   T3.anim = {
     t: 0, dur: 2.2, p0: T3.camera.position.clone(), c0: T3.orbit.target.clone(),
@@ -3564,7 +3580,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
   listoK().then(() => import('./data3d/canchas.js?v=2')).then(m => m.iniciarCanchas({ THREE: T3.THREE, T3, OX: 2095.67, OZ: -109.06, Y0: 0, movil: MOVIL })).catch(e => console.warn('canchas:', e));
   const FAUNA_RED = ['tingua', 'garza', 'pato', 'monjita', 'copeton', 'mirla', 'colibri']; // las mueve la red biótica
   let EST = null; // estrategias de la propuesta (data3d/estrategias.js): reemplazan las convenciones P1-P4
-  Promise.all([import('./data3d/giro_sim.js?v=25'), import('./data3d/estrategias.js?v=14'), listoK()])
+  Promise.all([import('./data3d/giro_sim.js?v=26'), import('./data3d/estrategias.js?v=15'), listoK()])
     .then(async ([m, me]) => {
       /* rendimiento: estrategias, plan de Bavaria y plan de Corabastos se arman a la vez (antes uno tras otro) */
       let PLAN = null, CPLAN = null; // E1 Bavaria Común (data3d/bavaria_plan.js) · E3 Corabastos reducido (data3d/corabastos_plan.js)
@@ -3575,7 +3591,7 @@ if (KEN) { // simulación de Kennedy (data3d/giro_sim.js) dentro de la maqueta
       T3.planBavaria = PLAN; T3.planCorabastos = CPLAN;
       if (EST && EST.hidroponia) setTimeout(() => EST.hidroponia(), 1500); // techos y balcones con huerta y sus animales desde el inicio
       const lista = EST ? EST.lista.slice() : []; if (PLAN) lista.unshift(PLAN.entrada);
-      return m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'], estrategias: lista.length ? lista : null, verEstrategia: (id, on) => { /* la red de gobernanza (data3d/red_gobernanza.js) ya no se muestra al elegir estrategia */ if (id === 'E1') { if (EST) EST.marcar('E1', on); if (!window.__colB) window.__colB = import('./data3d/colectivo_bavaria.js?v=3').then(m => m.crearColectivo({ THREE: T3.THREE, T3, lw })); window.__colB.then(cb => cb.ver(on)).catch(e => console.warn('colectivo Bavaria:', e)); return PLAN && PLAN.ver(on); } if (id === 'E3' && CPLAN) { if (EST) EST.marcar('E3', on); return CPLAN.ver(on); } return EST && EST.ver(id, on); } }); // todas muestran su lugar; las conexiones entre estrategias se ven cuando las dos están prendidas
+      return m.iniciarSimulacion({ T3, say, sinFauna: FAUNA_RED, sinMalla: ['abeja'], estrategias: lista.length ? lista : null, verEstrategia: (id, on, sola) => { /* la red de gobernanza (data3d/red_gobernanza.js) ya no se muestra al elegir estrategia */ if (on && sola && id !== 'E8' && EST && EST.lugar) volarEstrategia(EST.lugar(id)); if (id === 'E1') { if (EST) EST.marcar('E1', on); if (!window.__colB) window.__colB = import('./data3d/colectivo_bavaria.js?v=3').then(m => m.crearColectivo({ THREE: T3.THREE, T3, lw })); window.__colB.then(cb => cb.ver(on)).catch(e => console.warn('colectivo Bavaria:', e)); return PLAN && PLAN.ver(on); } if (id === 'E3' && CPLAN) { if (EST) EST.marcar('E3', on); return CPLAN.ver(on); } return EST && EST.ver(id, on); } }); // todas muestran su lugar; las conexiones entre estrategias se ven cuando las dos están prendidas
     })
     .then(() => { // botón para apagar y prender la foto 3D de Google (el suelo de base)
       const ag = document.getElementById('gs-ag');

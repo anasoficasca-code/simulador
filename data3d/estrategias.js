@@ -200,6 +200,12 @@ export async function iniciarEstrategias({ THREE, T3, lw, Y0 = 2.0, dentro = nul
   return {
     lista,
     ver: (id, on) => { PREN[id] = on; conexiones(); if (id === 'E8') { redHuertas(on); return; } const k = CAPA[id]; if (!k) return; if (on && !k.lista) { armar(k.e, k.gr); k.lista = true; } k.gr.visible = on; },
+    // lugar de la estrategia para el vuelo de cámara: centro y tamaño de sus sitios (sin los extremos sueltos: percentiles 5-95)
+    lugar: (id) => { const L = REP[id]; if (!L || !L.length) return null;
+      const q = (a, f) => a[Math.min(a.length - 1, Math.max(0, Math.round(f * (a.length - 1))))];
+      const xs = L.map(p => p[0]).sort((a, b) => a - b), zs = L.map(p => p[1]).sort((a, b) => a - b), n = L.length > 8;
+      const x0 = n ? q(xs, 0.05) : xs[0], x1 = n ? q(xs, 0.95) : xs[xs.length - 1], z0 = n ? q(zs, 0.05) : zs[0], z1 = n ? q(zs, 0.95) : zs[zs.length - 1];
+      return { c: [(x0 + x1) / 2, (z0 + z1) / 2], s: Math.max(x1 - x0, z1 - z0) }; },
     marcar: (id, on) => { PREN[id] = on; conexiones(); }, // E1 y E3 tienen su propio plan: solo cuentan para las conexiones
     // sitios de huerta en el suelo (lotes baldíos) para las colmenas y lombrices de la red biótica
     hidroponia: () => hidroponia(true), // huertas hidropónicas en techos y balcones con sus polinizadores: siempre a la vista
