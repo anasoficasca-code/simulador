@@ -4,8 +4,10 @@
    Datos: R.hist (corrida actual, un I por semana) y R.ecoBase (la otra mitad del par, misma semilla). Los valores salen de indicadores_macro.js
    (funciones puras, verificadas en node). Rendimiento: solo se dibujan las tarjetas visibles (IntersectionObserver) de la vista abierta, una vez
    por semana simulada como mucho cada 300 ms, en tiempo ocioso y por partes; las gráficas reutilizan sus nodos SVG.
-   Paleta: con propuesta #338ced continua / sin propuesta #e76624 punteada; especies clave #d28e05 #00a888 #9887ef (graficas_vivas.js, validadas). */
-import { COL, CAT, SEQ, esc, num, año, clave, tip, Linea, nodo, marcas, fmtEje, barraV, columnasAño } from './graficas_vivas.js?v=1';
+   Paleta (2026-11-25, colores URBIA + morados de la portada, validada en graficas_arte.js): con propuesta #7d6bff continua o llena / sin propuesta #f2694a
+   punteada o hueca; especies clave #c08f1c #22a89d #7d6bff; límites #ffd27a rotulados. Formas «de infografía» por indicador: graficas_arte.js. */
+import { esc, num, año, tip, Linea, nodo } from './graficas_vivas.js?v=2';
+import { ARTE, leyenda, llave, contar, arco, TiempoRadial, Anillos, Burbujas, arcosRed, matrizPuntos, Medidor, MediaDona, Tanques, sankeyEspejo, RadialSectores, retícula, personas, ponerTip } from './graficas_arte.js?v=1';
 import { T, IND, INDK, MACROS, CLAVE, valor, clavePct, claveArea, acceso, ACCESO_SUP, ACCESO_R, hayEstaciones, SEM_REF } from './indicadores_macro.js?v=1';
 
 const PASO = 2; // series de 15 años muestreadas cada 2 semanas
@@ -109,110 +111,125 @@ const PROPM = {
 
 const CSS = `
 #lp-tablero.pi-montado{padding:0!important}
-.pi{--pi-pad:14px;--pi-sur:#1e2422;--tb-sur:#1e2422;--tb-grid:rgba(255,255,255,.07);--tb-axis:rgba(255,255,255,.22);font:400 12px/1.45 var(--ui-sans,'Inter',system-ui,sans-serif);color:var(--ui-tx,#f1f3ee);font-variant-numeric:tabular-nums;text-shadow:none;min-width:0}
+.pi{--pi-pad:14px;--pi-sur:#1e2422;--tb-sur:#1b1f24;--tb-grid:rgba(255,255,255,.06);--tb-axis:rgba(255,255,255,.2);--pi-v:#7d6bff;--pi-v2:#a99cff;--pi-v3:#d4ceff;--pi-ink:#f4f3ef;--pi-num:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;font:400 12px/1.45 var(--ui-sans,'Inter',system-ui,sans-serif);color:var(--ui-tx,#f1f3ee);font-variant-numeric:tabular-nums;text-shadow:none;min-width:0}
 .pi *{box-sizing:border-box}
-.pi-hd{position:sticky;top:0;z-index:4;padding:12px var(--pi-pad) 0;background:linear-gradient(180deg,rgba(24,29,27,.97),rgba(22,27,25,.93));border-bottom:1px solid rgba(255,255,255,.08);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.pi-hd{position:sticky;top:0;z-index:4;padding:12px var(--pi-pad) 0;background:linear-gradient(180deg,rgba(22,24,32,.97),rgba(20,22,28,.93));border-bottom:1px solid rgba(169,156,255,.14);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
 .pi-l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.pi-tit{font:500 15px/1.1 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.12em;text-transform:uppercase}
+.pi-tit{font:500 15px/1.1 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.14em;text-transform:uppercase}
 .pi-sem{font:400 10.5px/1.2 var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx2,#c9cfc4);white-space:nowrap}
-.pi-sem b{font-weight:500;color:var(--ui-tx,#f1f3ee)}
+.pi-sem b{font-weight:500;color:var(--pi-ink)}
 .pi-esc{margin:4px 0 0;font-size:11px;color:var(--ui-tx2,#c9cfc4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pi-esc b{font-weight:600;color:var(--ui-tx,#f1f3ee)}
-.pi-go{margin:6px 0 0;padding:5px 8px;border-radius:8px;border:1px solid rgba(220,60,61,.5);background:rgba(220,60,61,.12);font-size:11px;line-height:1.35}
+.pi-esc b{font-weight:600;color:var(--pi-ink)}
+.pi-go{margin:6px 0 0;padding:5px 8px;border-radius:8px;border:1px solid rgba(255,79,123,.5);background:rgba(255,79,123,.1);font-size:11px;line-height:1.35}
 .pi-tabs{display:flex;margin:10px calc(-1 * var(--pi-pad)) 0;padding:0 var(--pi-pad);border-top:1px solid rgba(255,255,255,.07)}
-.pi-tab{all:unset;box-sizing:border-box;position:relative;flex:1;text-align:center;padding:10px 4px 9px;cursor:pointer;font:500 13px/1 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.1em;text-transform:uppercase;color:var(--ui-tx3,#a5ae9f)}
-.pi-tab:hover,.pi-tab[aria-selected=true]{color:var(--ui-tx,#f1f3ee)}
-.pi-tab[aria-selected=true]::after{content:'';position:absolute;left:10%;right:10%;bottom:0;border-bottom:2px solid var(--ui-acc,#d4ecb0)}
-.pi-tab:focus-visible{outline:1px solid var(--ui-acc,#d4ecb0);outline-offset:-3px;border-radius:6px}
+.pi-tab{all:unset;box-sizing:border-box;position:relative;flex:1;text-align:center;padding:10px 4px 9px;cursor:pointer;font:500 13px/1 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--ui-tx3,#a5ae9f)}
+.pi-tab:hover,.pi-tab[aria-selected=true]{color:var(--pi-ink)}
+.pi-tab[aria-selected=true]::after{content:'';position:absolute;left:12%;right:12%;bottom:0;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--pi-v),var(--pi-v3))}
+.pi-tab:focus-visible{outline:1px solid var(--pi-v2);outline-offset:-3px;border-radius:6px}
 .pi-nav{display:flex;gap:4px;margin:0 calc(-1 * var(--pi-pad));padding:8px var(--pi-pad);overflow-x:auto;scrollbar-width:none;border-top:1px solid rgba(255,255,255,.06)}
 .pi-nav[hidden]{display:none}
-.pi-nav button{all:unset;box-sizing:border-box;flex:none;padding:5px 10px;border-radius:99px;border:1px solid rgba(255,255,255,.12);font:500 11px/1 var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx2,#c9cfc4);cursor:pointer}
-.pi-nav button:hover,.pi-nav button.on{border-color:var(--ui-acc,#d4ecb0);color:var(--ui-tx,#f1f3ee);background:rgba(212,236,176,.08)}
-.pi-nav button:focus-visible{outline:1px solid var(--ui-acc,#d4ecb0);outline-offset:2px}
+.pi-nav button{all:unset;box-sizing:border-box;flex:none;display:inline-flex;align-items:baseline;gap:6px;padding:5px 11px 5px 6px;border-radius:99px;border:1px solid rgba(255,255,255,.12);font:500 11px/1 var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx2,#c9cfc4);cursor:pointer}
+.pi-nav button i{font:400 9.5px/1 var(--ui-mono,'JetBrains Mono',monospace);font-style:normal;color:var(--pi-v2);padding:2px 5px;border-radius:99px;background:rgba(125,107,255,.14)}
+.pi-nav button:hover,.pi-nav button.on{border-color:rgba(169,156,255,.6);color:var(--pi-ink);background:rgba(125,107,255,.1)}
+.pi-nav button:focus-visible{outline:1px solid var(--pi-v2);outline-offset:2px}
 .pi-ley{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:10px;color:var(--ui-tx2,#c9cfc4);padding:8px var(--pi-pad) 0}
 .pi-ley span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.pi-ley b{font-weight:600;color:var(--ui-tx,#f1f3ee)}
+.pi-ley b{font-weight:600;color:var(--pi-ink)}
 .pi-v{padding:4px var(--pi-pad) 18px}
 .pi-v[hidden]{display:none}
 .pi-vacio{font-size:11.5px;color:var(--ui-tx2,#c9cfc4);padding:16px var(--pi-pad)}
 .pi-mac{scroll-margin-top:var(--pi-hd,120px)}
-.pi-mac>h2{margin:16px 0 8px;display:flex;align-items:baseline;gap:8px;font:500 14.5px/1.1 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.1em;text-transform:uppercase;color:var(--ui-tx,#f1f3ee)}
-.pi-mac>h2 i{font:400 10px var(--ui-mono,'JetBrains Mono',monospace);font-style:normal;color:var(--ui-acc,#d4ecb0);letter-spacing:.04em}
-.pi-card{border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.025);padding:10px 11px 9px;margin:0 0 8px;scroll-margin-top:var(--pi-hd,120px)}
-.pi-card.pi-flash{animation:pi-flash 1.2s ease}@keyframes pi-flash{0%{border-color:var(--ui-acc,#d4ecb0)}100%{border-color:rgba(255,255,255,.09)}}
+.pi-mac>h2{margin:22px 0 10px;display:grid;grid-template-columns:auto 1fr;align-items:end;column-gap:10px;font:500 13.5px/1.1 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.12em;text-transform:uppercase;color:var(--pi-ink)}
+.pi-mac>h2 i{grid-row:span 2;font:200 46px/.8 var(--pi-num);font-style:normal;letter-spacing:-.01em;background:linear-gradient(170deg,var(--pi-v3),var(--pi-v) 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pi-mac>h2 small{font:400 10px/1.3 var(--ui-sans,'Inter',sans-serif);letter-spacing:.02em;text-transform:none;color:var(--ui-tx3,#a5ae9f)}
+.pi-card{position:relative;border:1px solid rgba(169,156,255,.13);border-radius:16px;background:radial-gradient(130% 70% at 100% 0%,rgba(125,107,255,.11),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));padding:11px 12px 10px;margin:0 0 10px;scroll-margin-top:var(--pi-hd,120px);container-type:inline-size}
+.pi-card.pi-flash{animation:pi-flash 1.2s ease}@keyframes pi-flash{0%{border-color:var(--pi-v2)}100%{border-color:rgba(169,156,255,.13)}}
 .pi-ch{display:flex;align-items:center;gap:8px}
-.pi-ch h3{flex:1;min-width:0;margin:0;font:500 11.5px/1.25 var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx2,#c9cfc4);letter-spacing:.01em}
-.pi-fx{all:unset;box-sizing:border-box;flex:none;display:inline-grid;place-items:center;width:28px;height:24px;border-radius:7px;border:1px solid rgba(255,255,255,.12);color:var(--ui-tx2,#c9cfc4);cursor:pointer}
-.pi-fx:hover,.pi-fx[aria-expanded=true]{color:var(--ui-tx,#f1f3ee);border-color:var(--ui-acc,#d4ecb0);background:rgba(212,236,176,.08)}
-.pi-fx:focus-visible{outline:1px solid var(--ui-acc,#d4ecb0);outline-offset:2px}
-.pi-val{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;margin:4px 0 2px}
-.pi-val .v{font:400 26px/1 var(--ui-mono,'JetBrains Mono',monospace);letter-spacing:-.03em;color:var(--ui-tx,#f1f3ee)}
-.pi-val small{font:400 11px var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx3,#a5ae9f);margin-left:-4px}
-.pi-val .dl{font:400 10.5px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx2,#c9cfc4);margin-left:auto;white-space:nowrap}
-.pi-val .dl b{font-weight:500}
-.pi-val .dl b.up{color:#7fd49a}.pi-val .dl b.dn{color:#f08a7a}
-.pi-cmp{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:10.5px;color:var(--ui-tx3,#a5ae9f);margin:0 0 4px}
-.pi-cmp span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.pi-cmp b{font:500 10.5px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx,#f1f3ee)}
-.pi-cmp .me{color:var(--ui-tx2,#c9cfc4)}
-.pi-viz{min-width:0}
+.pi-n{flex:none;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;border:1px solid rgba(169,156,255,.45);font:500 9.5px/1 var(--ui-mono,'JetBrains Mono',monospace);color:var(--pi-v3)}
+.pi-ch h3{flex:1;min-width:0;margin:0;font:500 12.5px/1.15 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.1em;text-transform:uppercase;color:var(--ui-tx2,#c9cfc4)}
+.pi-fx{all:unset;box-sizing:border-box;flex:none;display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px 0 6px;border-radius:99px;border:1px solid rgba(255,255,255,.13);font:500 10px/1 var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx2,#c9cfc4);cursor:pointer;white-space:nowrap}
+.pi-fx:hover,.pi-fx[aria-expanded=true]{color:var(--pi-ink);border-color:rgba(169,156,255,.7);background:rgba(125,107,255,.14)}
+.pi-fx:focus-visible{outline:1px solid var(--pi-v2);outline-offset:2px}
+@container (max-width:300px){.pi-fx span{display:none}}
+.pi-val{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px;margin:6px 0 2px}
+.pi-val .v{font:300 46px/.86 var(--pi-num);letter-spacing:.005em;color:var(--pi-ink)}
+.pi-val small{font:400 13px var(--pi-num);letter-spacing:.06em;color:var(--ui-tx3,#a5ae9f);margin-left:-3px;text-transform:uppercase}
+.pi-val .dl{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font:400 10px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx3,#a5ae9f);white-space:nowrap}
+.pi-val .dl b{font-weight:500;padding:2px 7px;border-radius:99px;background:rgba(255,255,255,.06);color:var(--pi-ink)}
+.pi-val .dl b.up{color:#4fd1c5;background:rgba(79,209,197,.12)}.pi-val .dl b.dn{color:#ff9a80;background:rgba(242,105,74,.14)}
+.pi-cmp{display:flex;flex-wrap:wrap;gap:4px 6px;font-size:10.5px;color:var(--ui-tx3,#a5ae9f);margin:4px 0 6px}
+.pi-cmp span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;padding:2px 8px 2px 6px;border-radius:99px;border:1px solid rgba(255,255,255,.08)}
+.pi-cmp span.me{border-color:rgba(169,156,255,.35);background:rgba(125,107,255,.08);color:var(--ui-tx2,#c9cfc4)}
+.pi-cmp b{font:500 10.5px var(--ui-mono,'JetBrains Mono',monospace);color:var(--pi-ink)}
+.pi-viz{min-width:0;overflow:hidden}
+.pi-art{margin:2px 0 0}
+.pi-art[hidden]{display:none}
 .pi svg.tb-svg{display:block;overflow:visible;touch-action:pan-y;max-width:100%;height:auto}
-.pi-viz{overflow:hidden}
 .pi svg.tb-svg text{font:9px var(--ui-sans,'Inter',system-ui,sans-serif);fill:var(--ui-tx3,#a5ae9f)}
 .pi svg.tb-svg text.tb-tn{fill:var(--ui-tx2,#c9cfc4);font-size:9.5px}
-.pi svg.tb-svg text.tb-tv{fill:var(--ui-tx,#f1f3ee);font:500 9.5px var(--ui-mono,'JetBrains Mono',monospace)}
-.pi svg.tb-svg:focus-visible{outline:1px solid var(--ui-acc,#d4ecb0);outline-offset:2px;border-radius:3px}
+.pi svg.tb-svg text.tb-tv,.pi svg.tb-svg text.ar-tv{fill:var(--pi-ink);font:500 9.5px var(--ui-mono,'JetBrains Mono',monospace)}
+.pi svg.tb-svg text.ar-tk{font-size:8.5px;fill:rgba(244,243,239,.5)}
+.pi svg.tb-svg text.ar-tk.b{fill:rgba(244,243,239,.8);font-weight:500}
+.pi svg.tb-svg text.ar-ln{font-size:10.5px;fill:var(--ui-tx2,#c9cfc4)}
+.pi svg.tb-svg text.ar-halo{paint-order:stroke;stroke:#1b1f24;stroke-width:3px;stroke-linejoin:round}
+.pi svg.tb-svg text.ar-c1{font:300 21px var(--pi-num);fill:var(--pi-ink);letter-spacing:.02em}
+.pi svg.tb-svg text.ar-c2{font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;fill:rgba(244,243,239,.55)}
+.pi svg.tb-svg:focus-visible{outline:1px solid var(--pi-v2);outline-offset:2px;border-radius:3px}
 .pi .tb-fin{transition:cx .3s ease,cy .3s ease}
-.pi .pi-anim{transition:stroke-dashoffset .5s ease,d .5s ease,width .5s ease,height .5s ease,y .5s ease,transform .5s ease,cx .5s ease,cy .5s ease}
-@media (prefers-reduced-motion:reduce){.pi .pi-anim,.pi .tb-fin{transition:none}}
+.pi .ar-an{transition:r .6s cubic-bezier(.2,.7,.2,1),cx .6s cubic-bezier(.2,.7,.2,1),cy .6s cubic-bezier(.2,.7,.2,1),d .5s ease}
+.pi .ar-rot{transition:transform .7s cubic-bezier(.3,1.25,.4,1)}
+.pi .ar-liq{transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+@media (prefers-reduced-motion:reduce){.pi .ar-an,.pi .ar-rot,.pi .ar-liq,.pi .tb-fin{transition:none}}
+.pi [data-tt]{cursor:crosshair}
+.ar-ley{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:10px;color:var(--ui-tx2,#c9cfc4);margin:5px 0 0}
+.ar-ley span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.ar-ley b{font-weight:500;color:var(--pi-ink)}
 .pi-sub{font-size:10px;line-height:1.4;color:var(--ui-tx3,#a5ae9f);margin:4px 0 0}
-.pi-rings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:4px 0 2px}
-.pi-ring{text-align:center;min-width:0}
-.pi-ring svg{display:block;margin:0 auto;width:100%;max-width:96px;height:auto}
-.pi-ring b{display:block;font:500 11px/1.2 var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx,#f1f3ee)}
-.pi-ring small{display:block;font:400 10px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx3,#a5ae9f)}
+.pi-sub b{font-weight:600;color:var(--pi-ink)}
+.pi-tira{margin:10px 0 0;padding-top:6px;border-top:1px dashed rgba(255,255,255,.08)}
+.pi-tl{display:block;font:400 8.5px/1 var(--ui-mono,'JetBrains Mono',monospace);letter-spacing:.14em;text-transform:uppercase;color:rgba(244,243,239,.42);margin:0 0 2px}
 .pi-cuerda{position:relative;margin:4px 0 0}
 .pi-cuerda canvas{display:block;width:100%!important;max-width:430px;margin:2px auto 0}
-.pi-hero{background:radial-gradient(120% 80% at 50% 40%,rgba(255,255,255,.05),rgba(255,255,255,.015));border-color:rgba(212,236,176,.22)}
-.pi-hero .pi-ch h3{font:500 13px/1.2 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.1em;text-transform:uppercase;color:var(--ui-tx,#f1f3ee)}
+.pi-hero{background:radial-gradient(90% 60% at 50% 45%,rgba(125,107,255,.16),transparent 70%),radial-gradient(120% 60% at 0% 0%,rgba(48,79,254,.1),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));border-color:rgba(169,156,255,.3)}
+.pi-hero .pi-ch h3{font-size:14px;color:var(--pi-ink)}
 .pi-cuerda .pie{font-size:10.5px;line-height:1.4;color:var(--ui-tx2,#c9cfc4);margin:4px 0 0;min-height:2.8em}
 .pi-tipos{display:flex;flex-wrap:wrap;gap:3px 10px;margin:6px 0 4px;font-size:10px;color:var(--ui-tx2,#c9cfc4)}
 .pi-tipos span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.pi-tipos i{width:9px;height:9px;border-radius:2px;flex:none}
-.pi-tipos b{font:500 10px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx,#f1f3ee)}
-.pi-enc{font:400 10.5px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx2,#c9cfc4)}
-.pi-enc b{font-weight:500;color:var(--ui-tx,#f1f3ee);font-size:13px}
-.pi-dos{display:grid;grid-template-columns:118px minmax(0,1fr);gap:8px;align-items:center}
-@container (max-width:330px){.pi-dos{grid-template-columns:1fr}}
-.pi-form{margin:8px 0 2px;padding:10px 10px 8px;border-radius:10px;background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.08)}
+.pi-tipos i{width:9px;height:9px;border-radius:50%;flex:none}
+.pi-tipos b{font:500 10px var(--ui-mono,'JetBrains Mono',monospace);color:var(--pi-ink)}
+.pi-enc{display:flex;align-items:baseline;gap:8px;font:400 10.5px var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx2,#c9cfc4)}
+.pi-enc b{font:300 30px/1 var(--pi-num);color:var(--pi-v3)}
+.pi-dos{display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px;align-items:center}
+@container (max-width:330px){.pi-dos{grid-template-columns:1fr}.pi-dos>div:first-child svg{margin:0 auto}}
+.pi-form{margin:8px 0 2px;padding:11px 11px 9px;border-radius:12px;background:linear-gradient(180deg,rgba(48,79,254,.1),rgba(0,0,0,.25));border:1px solid rgba(169,156,255,.22)}
 .pi-form[hidden]{display:none}
-.pi-form math{font-size:13.5px;font-family:var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx,#f1f3ee);margin:2px 0 8px;max-width:100%}
+.pi-form math{font-size:13.5px;font-family:var(--ui-sans,'Inter',sans-serif);color:var(--pi-ink);margin:2px 0 8px;max-width:100%}
 .pi-form math :is(mi,mn,mo,mtext){font-family:var(--ui-sans,'Inter',sans-serif);text-transform:none;font-style:normal}
-.pi-form math mi{color:var(--ui-acc-tx,#e3f1cd)}
-.pi-form h4{margin:8px 0 3px;font:500 10px var(--ui-mono,'JetBrains Mono',monospace);letter-spacing:.1em;text-transform:uppercase;color:var(--ui-tx3,#a5ae9f)}
+.pi-form math mi{color:var(--pi-v3)}
+.pi-form h4{margin:9px 0 3px;font:500 10px var(--ui-mono,'JetBrains Mono',monospace);letter-spacing:.12em;text-transform:uppercase;color:var(--pi-v2)}
 .pi-form dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:0;font-size:11px}
-.pi-form dt{font:500 11px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-acc,#d4ecb0);white-space:nowrap}
+.pi-form dt{font:500 11px var(--ui-mono,'JetBrains Mono',monospace);color:var(--pi-v3);white-space:nowrap}
 .pi-form dd{margin:0;color:var(--ui-tx2,#c9cfc4)}
 .pi-form table{width:100%;border-collapse:collapse;font-size:10.5px}
-.pi-form td,.pi-form th{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,.07);text-align:right;font:400 10.5px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx,#f1f3ee)}
+.pi-form td,.pi-form th{padding:3px 4px;border-bottom:1px solid rgba(255,255,255,.07);text-align:right;font:400 10.5px var(--ui-mono,'JetBrains Mono',monospace);color:var(--pi-ink)}
 .pi-form th{font:500 9.5px var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx3,#a5ae9f)}
 .pi-form td:first-child,.pi-form th:first-child{text-align:left;font-family:var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx2,#c9cfc4)}
 .pi-form p{margin:0;font-size:11px;line-height:1.5;color:var(--ui-tx2,#c9cfc4)}
 /* estrategias */
 .pi-est{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
-.pi-est li{border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:10px 11px;background:rgba(255,255,255,.025)}
+.pi-est li{border:1px solid rgba(169,156,255,.13);border-radius:14px;padding:10px 11px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012))}
 .pi-est li.on{border-color:var(--c)}
 .pi-est .h{display:flex;align-items:center;gap:8px}
-.pi-est .h i{flex:none;width:10px;height:10px;border-radius:3px;background:var(--c)}
+.pi-est .h i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--c)}
 .pi-est .h b{flex:1;min-width:0;font:500 12.5px/1.25 var(--ui-sans,'Inter',sans-serif)}
 .pi-est .h small{font:400 10px var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx3,#a5ae9f)}
 .pi-est p{margin:5px 0 6px;font-size:11px;line-height:1.5;color:var(--ui-tx2,#c9cfc4)}
 .pi-est .ch{display:flex;flex-wrap:wrap;gap:4px}
 .pi-est .ch button,.pi-est .mapa{all:unset;box-sizing:border-box;padding:3px 8px;border-radius:99px;border:1px solid rgba(255,255,255,.12);font:400 10.5px var(--ui-sans,'Inter',sans-serif);color:var(--ui-tx2,#c9cfc4);cursor:pointer}
-.pi-est .ch button:hover,.pi-est .mapa:hover{color:var(--ui-tx,#f1f3ee);border-color:var(--ui-acc,#d4ecb0)}
+.pi-est .ch button:hover,.pi-est .mapa:hover{color:var(--pi-ink);border-color:var(--pi-v2)}
 .pi-est .mapa{display:inline-flex;align-items:center;gap:5px;flex:none}
-.pi-est .mapa[aria-pressed=true]{color:var(--ui-tx,#f1f3ee);border-color:var(--c);background:rgba(255,255,255,.06)}
-.pi-est :is(button,.mapa):focus-visible{outline:1px solid var(--ui-acc,#d4ecb0);outline-offset:2px}
+.pi-est .mapa[aria-pressed=true]{color:var(--pi-ink);border-color:var(--c);background:rgba(255,255,255,.06)}
+.pi-est :is(button,.mapa):focus-visible{outline:1px solid var(--pi-v2);outline-offset:2px}
 .pi-int{font-size:11px;line-height:1.5;color:var(--ui-tx2,#c9cfc4);margin:10px 0 0}
 /* variables (sim_ui.js #su-der dentro del tablero) */
 html.limpio body #lp-tablero #su-der{position:static!important;display:block!important;width:auto!important;max-height:none!important;overflow:visible!important;margin:8px 0 0!important;padding:0!important;background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;font-family:var(--ui-sans)!important;z-index:auto!important}
@@ -223,51 +240,20 @@ html.limpio body #lp-tablero #su-der .lp-det>summary{display:flex;align-items:ce
 html.limpio body #lp-tablero #su-der .lp-det>summary::-webkit-details-marker{display:none}
 html.limpio body #lp-tablero #su-der .lp-dt{font:500 13px/1 var(--ui-tit);letter-spacing:.1em;text-transform:uppercase;color:var(--ui-tx)}
 html.limpio body #lp-tablero #su-der .lp-ds{flex:1;min-width:0;text-align:right;font:400 10.5px/1.2 var(--ui-mono);color:var(--ui-tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#tb-tip{position:fixed;z-index:10050;pointer-events:none;display:none;min-width:140px;max-width:270px;padding:7px 9px;border-radius:9px;background:rgba(18,22,21,.97);border:1px solid rgba(255,255,255,.15);box-shadow:0 10px 26px rgba(0,0,0,.45);color:#f1f3ee;font:11px/1.45 var(--ui-sans,'Inter',system-ui,sans-serif);font-variant-numeric:tabular-nums}
-#tb-tip .t{color:#a9b2a6;font-size:10px;margin-bottom:3px}
+#tb-tip{position:fixed;z-index:10050;pointer-events:none;display:none;min-width:140px;max-width:270px;padding:8px 10px;border-radius:11px;background:linear-gradient(180deg,rgba(28,26,48,.97),rgba(16,17,24,.97));border:1px solid rgba(169,156,255,.35);box-shadow:0 12px 30px rgba(0,0,0,.5);color:#f4f3ef;font:11px/1.45 var(--ui-sans,'Inter',system-ui,sans-serif);font-variant-numeric:tabular-nums}
+#tb-tip .t{color:#d4ceff;font-size:10px;letter-spacing:.02em;margin-bottom:3px}
 #tb-tip .r{display:flex;align-items:center;gap:6px;white-space:nowrap}
 #tb-tip .r b{font:500 11px var(--ui-mono,'JetBrains Mono',monospace)}
-#tb-tip .r span{color:#b9c1b5}
+#tb-tip .r span{color:#b9bccb}
 `;
 
-/* ---------- utilidades SVG ---------- */
+/* ---------- utilidades ---------- */
 const fija = (e, at) => { for (const k in at) { const v = String(at[k]); if (e.getAttribute(k) !== v) e.setAttribute(k, v); } };
-const arco = (cx, cy, r, a0, a1) => { const p = (a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)], [x0, y0] = p(a0), [x1, y1] = p(a1); return `M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`; };
 const sig = (x, d) => { const r = +Math.abs(x).toFixed(d); return (r === 0 ? '±' : x > 0 ? '+' : '−') + num(Math.abs(x), d); };
-
-/* anillo radial (0–max) con su pista; anima stroke-dashoffset */
-function anillo(host, op) {
-  const R = op.r || 34, S = 2 * R + 20, L = 2 * Math.PI * R, L2 = 2 * Math.PI * (R + 6);
-  const s = nodo('svg', { viewBox: `0 0 ${S} ${S}`, width: S, height: S, role: 'img', 'aria-label': op.n }, host);
-  nodo('circle', { cx: S / 2, cy: S / 2, r: R, fill: 'none', stroke: 'rgba(255,255,255,.09)', 'stroke-width': 7 }, s);
-  const o = nodo('circle', { cx: S / 2, cy: S / 2, r: R + 6, fill: 'none', stroke: op.cOtro || COL.sin, 'stroke-width': 1.5, 'stroke-dasharray': '3 2', transform: `rotate(-90 ${S / 2} ${S / 2})`, class: 'pi-anim', opacity: 0.9 }, s);
-  const a = nodo('circle', { cx: S / 2, cy: S / 2, r: R, fill: 'none', stroke: op.c, 'stroke-width': 7, 'stroke-linecap': 'round', 'stroke-dasharray': `${L} ${L}`, 'stroke-dashoffset': L, transform: `rotate(-90 ${S / 2} ${S / 2})`, class: 'pi-anim' }, s);
-  const ref = op.ref != null ? nodo('line', {}, s) : null;
-  if (ref) { const an = -Math.PI / 2 + 2 * Math.PI * Math.min(1, op.ref / op.max); fija(ref, { x1: S / 2 + (R - 7) * Math.cos(an), y1: S / 2 + (R - 7) * Math.sin(an), x2: S / 2 + (R + 7) * Math.cos(an), y2: S / 2 + (R + 7) * Math.sin(an), stroke: 'var(--ui-tx,#f1f3ee)', 'stroke-width': 1.5 }); }
-  const t = nodo('text', { x: S / 2, y: S / 2 + 5, 'text-anchor': 'middle', style: 'font:500 14px var(--ui-mono,monospace);fill:var(--ui-tx,#f1f3ee)' }, s);
-  return (v, vo) => { const f = (x) => Math.max(0, Math.min(1, (x || 0) / op.max));
-    fija(a, { 'stroke-dashoffset': (L * (1 - f(v))).toFixed(1) }); fija(o, { 'stroke-dasharray': vo == null ? '0 999' : `${(L2 * f(vo)).toFixed(1)} ${L2}` });
-    t.textContent = v == null ? '—' : num(v, op.d || 0) + (op.u || ''); };
-}
-/* medidor semicircular */
-function semi(host, op) {
-  const W = 118, H = 70, cx = W / 2, cy = 62, R = 50, a0 = Math.PI, a1 = 2 * Math.PI;
-  const s = nodo('svg', { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: 'img', 'aria-label': op.n, class: 'tb-svg' }, host);
-  const A = (v) => a0 + (a1 - a0) * Math.max(0, Math.min(1, (v - op.min) / (op.max - op.min)));
-  for (const b of op.bandas || []) nodo('path', { d: arco(cx, cy, R, A(b[0]), A(b[1])), fill: 'none', stroke: b[2], 'stroke-width': 9, 'stroke-opacity': 0.55 }, s);
-  if (!op.bandas) nodo('path', { d: arco(cx, cy, R, a0, a1 - 1e-4), fill: 'none', stroke: 'rgba(255,255,255,.09)', 'stroke-width': 9 }, s);
-  const val = op.bandas ? null : nodo('path', { fill: 'none', stroke: COL.con, 'stroke-width': 9, 'stroke-linecap': 'butt' }, s);
-  const ag = nodo('line', { stroke: 'var(--ui-tx,#f1f3ee)', 'stroke-width': 2.2, 'stroke-linecap': 'round', class: 'pi-anim' }, s), agO = nodo('line', { stroke: COL.sin, 'stroke-width': 1.6, 'stroke-dasharray': '3 2' }, s);
-  nodo('circle', { cx, cy, r: 3.5, fill: 'var(--ui-tx,#f1f3ee)' }, s);
-  nodo('text', { x: cx - R, y: H, 'text-anchor': 'middle' }, s).textContent = op.min; nodo('text', { x: cx + R, y: H, 'text-anchor': 'middle' }, s).textContent = op.max;
-  return (v, vo, colV) => { if (val) fija(val, { d: v == null ? '' : arco(cx, cy, R, a0, Math.max(a0 + 1e-3, A(v))), stroke: colV || COL.con });
-    const p = (x, r) => [cx + r * Math.cos(A(x)), cy + r * Math.sin(A(x))];
-    if (v != null) { const [x, y] = p(v, R + 4); fija(ag, { x1: cx, y1: cy, x2: x.toFixed(1), y2: y.toFixed(1) }); }
-    if (vo != null) { const [x0, y0] = p(vo, R - 8), [x, y] = p(vo, R + 7); fija(agO, { x1: x0.toFixed(1), y1: y0.toFixed(1), x2: x.toFixed(1), y2: y.toFixed(1), visibility: 'visible' }); } else fija(agO, { visibility: 'hidden' }); };
-}
 
 export function iniciarPanelIndicadores({ R, getM, getFIN }) {
   if (!document.getElementById('pi-css')) { const st = document.createElement('style'); st.id = 'pi-css'; st.textContent = CSS; document.head.appendChild(st); }
+  ponerTip((html, x, y) => (html == null ? tip().ocultar() : tip().mostrar(html, x, y)));
   let root = null, wrap = null, hd = null, vista = 'ind', simHecho, H0 = null, nHecho = -1, nBase = -1, ultimo = 0, sucio = true, pendiente = false, espera0 = performance.now(), goHecho = null;
   const CACHE = new Map(), cards = new Map(); let io = null;
 
@@ -276,7 +262,7 @@ export function iniciarPanelIndicadores({ R, getM, getFIN }) {
     if (!s && performance.now() - espera0 > 6000) { s = document.createElement('aside'); s.id = 'lp-tablero'; s.setAttribute('aria-label', 'Tablero'); s.style.cssText = 'position:fixed;top:66px;right:14px;bottom:14px;width:min(440px,92vw);overflow-y:auto;z-index:40;background:var(--ui-glass,rgba(22,27,25,.9));border-radius:16px'; document.body.appendChild(s); }
     if (!s) return false;
     if (s !== root || !wrap || !s.contains(wrap)) { root = s; s.classList.add('pi-montado'); s.querySelectorAll(':scope > .tb, :scope > .pi').forEach((e) => e.remove()); wrap = document.createElement('div'); wrap.className = 'pi'; root.appendChild(wrap); esqueleto();
-      root.addEventListener('pointermove', (e) => { const g = e.target.closest && e.target.closest('[data-tt]'); if (g && !e.target.closest('svg.tb-lin')) { const [t0, ...rs] = g.getAttribute('data-tt').split('|'); tip().mostrar(`<div class="t">${esc(t0)}</div>${rs.map((x) => `<div class="r">${esc(x)}</div>`).join('')}`, e.clientX, e.clientY); } else if (!e.target.closest || !e.target.closest('svg.tb-lin')) tip().ocultar(); });
+      root.addEventListener('pointermove', (e) => { const g = e.target.closest && e.target.closest('[data-tt]'); if (g && !e.target.closest('svg.tb-lin, svg.ar-rad')) { const [t0, ...rs] = g.getAttribute('data-tt').split('|'); tip().mostrar(`<div class="t">${esc(t0)}</div>${rs.map((x) => `<div class="r">${esc(x)}</div>`).join('')}`, e.clientX, e.clientY); } else if (!e.target.closest || !e.target.closest('svg.tb-lin, svg.ar-rad')) tip().ocultar(); });
       root.addEventListener('pointerleave', () => tip().ocultar());
       if ('ResizeObserver' in window) new ResizeObserver(() => { sucio = true; if (hd) wrap.style.setProperty('--pi-hd', hd.offsetHeight + 8 + 'px'); }).observe(wrap); }
     return true;
@@ -287,8 +273,8 @@ export function iniciarPanelIndicadores({ R, getM, getFIN }) {
   function esqueleto() {
     wrap.innerHTML = `<header class="pi-hd"><div class="pi-l1"><span class="pi-tit">Tablero en vivo</span><span class="pi-sem"></span></div><p class="pi-esc"></p><p class="pi-go" hidden></p>`
       + `<div class="pi-tabs" role="tablist" aria-label="Contenido del tablero">${VISTAS.map(([id, n]) => `<button type="button" role="tab" class="pi-tab" id="pi-t-${id}" data-v="${id}" aria-selected="${id === vista}" tabindex="${id === vista ? 0 : -1}">${n}</button>`).join('')}</div>`
-      + `<nav class="pi-nav" aria-label="Macromodelos">${MACROS.map((m, i) => `<button type="button" data-m="${m.id}">${i + 1} · ${m.c}</button>`).join('')}</nav></header>`
-      + `<div class="pi-v" role="tabpanel" id="pi-v-ind" aria-labelledby="pi-t-ind"${vista === 'ind' ? '' : ' hidden'}><div class="pi-ley" style="padding:8px 0 0">${clave(COL.con)}<span>Con propuesta</span>${clave(COL.sin, 'pun')}<span>Sin propuesta</span><span class="pi-run"></span></div><p class="pi-vacio" hidden></p><div class="pi-macs"></div></div>`
+      + `<nav class="pi-nav" aria-label="Macromodelos">${MACROS.map((m, i) => `<button type="button" data-m="${m.id}"><i>0${i + 1}</i>${m.c}</button>`).join('')}</nav></header>`
+      + `<div class="pi-v" role="tabpanel" id="pi-v-ind" aria-labelledby="pi-t-ind"${vista === 'ind' ? '' : ' hidden'}><div class="pi-ley" style="padding:8px 0 0"><span>${llave('lin', ARTE.con)}Con propuesta</span><span>${llave('pun', ARTE.sin)}Sin propuesta</span><span class="pi-run"></span></div><p class="pi-vacio" hidden></p><div class="pi-macs"></div></div>`
       + `<div class="pi-v" role="tabpanel" id="pi-v-est" aria-labelledby="pi-t-est"${vista === 'est' ? '' : ' hidden'}></div>`
       ;
     hd = wrap.querySelector('.pi-hd');
@@ -329,7 +315,8 @@ export function iniciarPanelIndicadores({ R, getM, getFIN }) {
   /* ---------- tarjetas ---------- */
   function tarjeta(sec, k, viz) {
     const d = INDK[k], a = document.createElement('article'); a.className = 'pi-card'; a.id = 'pi-c-' + k; a.dataset.k = k;
-    a.innerHTML = `<div class="pi-ch"><h3>${k === 'inter' ? 'Interacciones bióticas · quién interactúa con quién' : esc(d.n)}</h3><button type="button" class="pi-fx" aria-expanded="false" aria-controls="pi-f-${k}" aria-label="Ver fórmula de ${esc(d.n)}" title="Ver fórmula">${ICO_FX}</button></div>`
+    const nro = String(IND.findIndex((x) => x.k === k) + 1).padStart(2, '0');
+    a.innerHTML = `<div class="pi-ch"><span class="pi-n" aria-hidden="true">${nro}</span><h3>${k === 'inter' ? 'Interacciones bióticas' : esc(d.n)}</h3><button type="button" class="pi-fx" aria-expanded="false" aria-controls="pi-f-${k}" aria-label="Ver fórmula de ${esc(d.n)}" title="Ver fórmula">${ICO_FX}<span>Ver fórmula</span></button></div>`
       + `<div class="pi-val"><b class="v">—</b><small>${esc(d.u === '%' ? '%' : d.u)}</small><span class="dl"></span></div><div class="pi-cmp"></div><div class="pi-viz"></div><div class="pi-form" id="pi-f-${k}" hidden></div>`;
     sec.appendChild(a);
     if (k === 'inter') a.classList.add('pi-hero');
@@ -339,12 +326,13 @@ export function iniciarPanelIndicadores({ R, getM, getFIN }) {
   }
   function cabecera(C, c) {
     const d = INDK[C.k], v = valor(C.k, c.I, c.CA), v1 = c.n > SEM_REF ? valor(C.k, c.I1, c.CA) : null, vo = c.Bk ? valor(C.k, c.Bk, c.CB) : null, el = C.el;
-    el.querySelector('.v').textContent = v == null ? '—' : num(v, d.d);
+    contar(el.querySelector('.v'), v, (x) => (d.k === 'presion' && x > 0 ? '+' : '') + num(x, d.d));
     const dl = el.querySelector('.dl');
-    if (v != null && v1 != null) { const dx = v - v1, mejor = d.acum || Math.abs(dx) < Math.pow(10, -d.d) / 2 ? null : d.sube ? dx > 0 : dx < 0; dl.innerHTML = `vs año 1 <b class="${mejor == null ? '' : mejor ? 'up' : 'dn'}">${sig(dx, d.d)}${d.u === '%' ? ' pts' : d.u ? ' ' + esc(d.u) : ''}</b>`; }
-    else dl.textContent = c.n <= SEM_REF ? 'año 1 en curso' : '';
+    if (v != null && v1 != null) { const dx = v - v1, mejor = d.acum || Math.abs(dx) < Math.pow(10, -d.d) / 2 ? null : d.sube ? dx > 0 : dx < 0; const t = `vs año 1 <b class="${mejor == null ? '' : mejor ? 'up' : 'dn'}">${mejor == null ? '' : mejor ? '▲ ' : '▼ '}${sig(dx, d.d)}${d.u === '%' ? ' pts' : d.u ? ' ' + esc(d.u) : ''}</b>`; if (dl._k !== t) { dl._k = t; dl.innerHTML = t; } }
+    else { dl._k = ''; dl.textContent = c.n <= SEM_REF ? 'año 1 en curso' : ''; }
     const vc = c.prop ? v : vo, vs = c.prop ? vo : v, u = d.u === '%' ? ' %' : d.u ? ' ' + d.u : '';
-    el.querySelector('.pi-cmp').innerHTML = `<span class="${c.prop ? 'me' : ''}">${clave(COL.con)}Con <b>${vc == null ? '—' : num(vc, d.d) + esc(u)}</b></span><span class="${c.prop ? '' : 'me'}">${clave(COL.sin, 'pun')}Sin <b>${vs == null ? '—' : num(vs, d.d) + esc(u)}</b></span>`;
+    const cm = el.querySelector('.pi-cmp'), tx = `<span class="${c.prop ? 'me' : ''}">${llave('lin', ARTE.con)}Con <b>${vc == null ? '—' : num(vc, d.d) + esc(u)}</b></span><span class="${c.prop ? '' : 'me'}">${llave('pun', ARTE.sin)}Sin <b>${vs == null ? '—' : num(vs, d.d) + esc(u)}</b></span>`;
+    if (cm._k !== tx) { cm._k = tx; cm.innerHTML = tx; }
     return { v, vo, v1 };
   }
   /* ---------- «Ver fórmula»: fórmula, términos, valores de esta semana, cómo se calcula, fuente ---------- */
@@ -379,17 +367,29 @@ export function iniciarPanelIndicadores({ R, getM, getFIN }) {
     return [];
   }
 
-  /* ---------- visualizaciones por indicador ---------- */
-  const linea = (host, k, op = {}) => { const d = INDK[k], L = new Linea(host, { n: d.n, u: d.u, d: d.d, alto: op.alto || 74, cero: op.cero, pl: 32 }); return (c) => { const S = serie(c, k, vK(k)); L.update({ W: c.W, FIN: c.FIN, xs: S.xs, con: S.con, sin: S.sin, run: c.prop ? 'con' : 'sin' }); }; };
+  /* ---------- visualizaciones por indicador (formas de graficas_arte.js; cada una mide valores reales con su escala) ---------- */
+  const linea = (host, k, op = {}) => { const d = INDK[k], L = new Linea(host, { n: d.n, u: d.u, d: d.d, alto: op.alto || 74, cero: op.cero, pl: op.pl || 30 }); return (c) => { const S = serie(c, k, vK(k)); L.update({ W: c.W, FIN: c.FIN, xs: S.xs, con: S.con, sin: S.sin, run: c.prop ? 'con' : 'sin' }); }; };
+  const div = (h, cls) => { const e = document.createElement('div'); if (cls) e.className = cls; h.appendChild(e); return e; };
+  const tira = (h, k, op = {}) => { const t = div(h, 'pi-tira'); t.insertAdjacentHTML('beforeend', `<span class="pi-tl">${op.t || '15 años · con y sin propuesta'}</span>`); return linea(t, k, { alto: op.alto || 58, cero: op.cero, pl: op.pl }); };
+  const TAU = Math.PI * 2, Ic = (c) => (c.prop ? c.I : c.Bk), Is = (c) => (c.prop ? c.Bk : c.I), colO = (c) => (c.prop ? ARTE.sin : ARTE.con), otra = (c) => (c.prop ? 'Sin' : 'Con');
+  const LEY_CS = leyenda([['lin', ARTE.con, 'Con propuesta'], ['pun', ARTE.sin, 'Sin propuesta']]);
+  const COL_V = { existente: ARTE.cat[2], reforzado: ARTE.pur[4], nuevo: ARTE.cat[0], liberado: ARTE.cat[1], hogares: ARTE.durazno };
+  const TXT_V = { existente: 'zona verde existente', reforzado: 'existente, reforzada por la propuesta', nuevo: 'módulo de huerta nuevo', liberado: 'borde liberado de Corabastos' };
   const VIZ = {
-    shannon: (h) => linea(h, 'shannon', { alto: 84 }),
-    clave: (h) => { const g = document.createElement('div'); g.className = 'pi-rings'; h.appendChild(g);
-      const R2 = CLAVE.map((e) => { const d = document.createElement('div'); d.className = 'pi-ring'; g.appendChild(d); const up = anillo(d, { n: e.larga, c: e.c, max: 150, ref: 100, u: '%' }); d.insertAdjacentHTML('beforeend', `<b>${esc(e.n)}</b><small></small>`); return { e, up, sm: d.querySelector('small'), d }; });
-      h.insertAdjacentHTML('beforeend', `<div class="pi-ley" style="padding:4px 0 0">${clave('var(--ui-tx,#f1f3ee)', 'tick')}<span>año 1 = 100 %</span>${clave(COL.sin, 'pun')}<span>otra corrida</span></div>`);
-      return (c) => { for (const r of R2) { const v = clavePct(c.I, r.e.id, c.CA), vo = c.Bk ? clavePct(c.Bk, r.e.id, c.CB) : null; r.up(v, vo); r.sm.textContent = `${c.prop ? 'sin' : 'con'} ${vo == null ? '—' : num(vo) + ' %'}`; r.d.setAttribute('data-tt', `${r.e.larga}|Ahora: ${num(v)} % del año 1|${num(claveArea(c.I, r.e.id), 1)} ha ocupadas|${c.prop ? 'Sin' : 'Con'} propuesta: ${vo == null ? '—' : num(vo) + ' %'}`); } }; },
+    /* reloj de 15 años: el radio es H′; una vuelta = los 15 años */
+    shannon: (h) => { const R = new TiempoRadial(div(h, 'pi-art'), { n: INDK.shannon.n, d: 2 });
+      h.insertAdjacentHTML('beforeend', LEY_CS + '<p class="pi-sub">Una vuelta = 15 años, desde arriba en el sentido del reloj; el radio es H′ (anillos = escala).</p>');
+      return (c) => { const S = serie(c, 'shannon', vK('shannon')); R.update({ W: c.W, FIN: c.FIN, xs: S.xs, con: S.con, sin: S.sin, run: c.prop ? 'con' : 'sin' }); }; },
+    /* tres barras radiales concéntricas con la silueta de cada especie */
+    clave: (h) => { const cols = [ARTE.cat[1], ARTE.cat[2], ARTE.cat[0]];
+      const A = new Anillos(div(h, 'pi-art'), { items: CLAVE.map((e, i) => ({ n: e.n, c: cols[i], ico: e.id })), max: 150, ref: 100, u: '%', aria: 'Especies clave: hectáreas ocupadas frente al año 1 (100 %)' });
+      const lg = div(h);
+      return (c) => { const t = leyenda([['pun', ARTE.ink, 'año 1 = 100 %'], ['hue', colO(c), `${otra(c).toLowerCase()} propuesta`]]); if (lg._k !== t) { lg._k = t; lg.innerHTML = t; }
+        A.update(c.W, CLAVE.map((e) => { const v = clavePct(c.I, e.id, c.CA), vo = c.Bk ? clavePct(c.Bk, e.id, c.CB) : null;
+          return { v, vo, colO: colO(c), txt: v == null ? '—' : num(v) + ' %', tt: `${e.larga}|Ahora: ${num(v)} % del año 1|${num(claveArea(c.I, e.id), 1)} ha ocupadas|${otra(c)} propuesta: ${vo == null ? '—' : num(vo) + ' %'}` }; })); }; },
     inter: (h, el) => { const box = document.createElement('div'); box.className = 'pi-cuerda'; h.appendChild(box);
-      box.innerHTML = '<div class="pi-enc"><b>0</b> encuentros ocurriendo ahora en el 3D</div><div class="pi-cv"></div><p class="pie">Pasa sobre una especie para ver con quién se relaciona.</p><div class="pi-tipos"></div>';
-      const L = linea(h, 'inter', { alto: 64 }); let tiposN = 0;
+      box.innerHTML = '<div class="pi-enc"><b>0</b><span>encuentros ocurriendo ahora en el 3D</span></div><div class="pi-cv"></div><p class="pie">Pasa sobre una especie para ver con quién se relaciona.</p><div class="pi-tipos"></div>';
+      const L = tira(h, 'inter', { alto: 60 }); let tiposN = 0;
       const vivo = () => { const cv = document.getElementById('tb-cuerda'), slot = box.querySelector('.pi-cv'); if (cv && cv.parentNode !== slot) slot.appendChild(cv);
         const on = !!cv && vista === 'ind' && cards.get('inter').vis && !!root && root.getClientRects().length > 0 && !document.hidden; window.KEN_CUERDA_VIVA = on;
         if (!on) return; box.querySelector('.pi-enc b').textContent = num(window.KEN_ENC || 0);
@@ -399,79 +399,99 @@ export function iniciarPanelIndicadores({ R, getM, getFIN }) {
           box.querySelectorAll('.pi-tipos b').forEach((b) => { const v = E[+b.dataset.i] || 0, tx = num(v); if (b.textContent !== tx) b.textContent = tx; }); } };
       const iv = setInterval(() => { if (!box.isConnected) { clearInterval(iv); return; } vivo(); }, 400);
       return (c) => { vivo(); L(c); }; },
-    verde: (h) => { return linea(h, 'verde', { alto: 74 }); },
-    conect: (h) => { const g = document.createElement('div'); g.className = 'pi-dos'; h.appendChild(g); const a = document.createElement('div'), b = document.createElement('div'); g.append(a, b);
-      const G = semi(a, { n: 'Conectividad ecológica', min: 0, max: 100 }); const svg = nodo('svg', { class: 'tb-svg', role: 'img', 'aria-label': 'Red de parches verdes y sus conexiones' }, b), gl = nodo('g', {}, svg), gp = nodo('g', {}, svg);
-      h.insertAdjacentHTML('beforeend', `<div class="pi-ley" style="padding:4px 0 0">${clave('#7fd49a')}<span>conexión (≥ 0,5)</span>${clave('rgba(255,255,255,.35)', 'pun')}<span>débil</span>${clave(COL.lim, 'pun')}<span>rota</span></div>`);
-      const L = linea(h, 'conect', { alto: 58, cero: true }); let kk = '';
-      return (c) => { const v = valor('conect', c.I), vo = c.Bk ? valor('conect', c.Bk) : null; G(v, vo, c.prop ? COL.con : COL.sin); L(c);
-        const V = c.I.verde; if (!V) return; const k = c.I.sem >> 2; if (k === kk) return; kk = k; const P = V.parches.filter((p) => p.r > 0); if (!P.length) return;
-        const w = Math.max(120, b.clientWidth || 200), ht = Math.round(w * 0.72), xs = P.map((p) => p.x), zs = P.map((p) => p.z), x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs), sc = Math.min((w - 8) / (x1 - x0 || 1), (ht - 8) / (z1 - z0 || 1));
-        const X = (x) => 4 + (x - x0) * sc, Y = (z) => 4 + (z - z0) * sc; fija(svg, { width: w, height: ht, viewBox: `0 0 ${w} ${ht}` });
-        gl.innerHTML = V.conexiones.map((L2) => `<line x1="${X(L2.x1).toFixed(1)}" y1="${Y(L2.z1).toFixed(1)}" x2="${X(L2.x2).toFixed(1)}" y2="${Y(L2.z2).toFixed(1)}" stroke="${L2.tipo === 'roto' ? COL.lim : L2.f >= 0.5 ? '#7fd49a' : 'rgba(255,255,255,.35)'}" stroke-width="${L2.f >= 0.5 ? 1.4 : 1}" ${L2.f >= 0.5 && L2.tipo !== 'roto' ? '' : 'stroke-dasharray="2 2"'} opacity=".85"/>`).join('');
-        gp.innerHTML = P.map((p) => `<circle cx="${X(p.x).toFixed(1)}" cy="${Y(p.z).toFixed(1)}" r="${Math.max(1.6, Math.min(7, p.r * sc * 0.9)).toFixed(1)}" fill="${p.tipo === 'nuevo' ? '#84cc16' : p.tipo === 'liberado' ? '#fb923c' : '#34d399'}" fill-opacity=".8" stroke="var(--tb-sur)" stroke-width="1" data-tt="${esc(`${p.n}|${p.tipo}|calidad ${num(p.calidad * 100)} %`)}"/>`).join(''); }; },
-    atrop: (h) => { const B1 = document.createElement('div'); h.appendChild(B1); let k0 = '';
-      h.insertAdjacentHTML('beforeend', `<div class="pi-ley" style="padding:4px 0 0">${clave(COL.con, 'barra')}<span>Con propuesta</span>${clave(COL.sin, 'hueca')}<span>Sin propuesta</span><span>por año</span></div>`);
+    /* burbujas empacadas: el área de cada círculo es la superficie de cada zona verde */
+    verde: (h) => { const B = new Burbujas(div(h, 'pi-art'), { alto: 172, aria: 'Zonas verdes como burbujas: el área de cada círculo es su superficie' });
+      h.insertAdjacentHTML('beforeend', leyenda([['pto', COL_V.existente, 'existente'], ['pto', COL_V.reforzado, 'reforzada'], ['pto', COL_V.nuevo, 'módulo nuevo'], ['pto', COL_V.liberado, 'borde liberado'], ['pto', COL_V.hogares, 'huertas de hogares']]) + '<p class="pi-sub">Esta corrida, esta semana. Área del círculo ∝ hectáreas.</p>');
+      const L = tira(h, 'verde');
+      return (c) => { L(c); const V = c.I.verde; if (!V) return;
+        const its = V.parches.filter((p) => p.r > 0).map((p) => { const ha = Math.PI * p.r * p.r / 1e4; return { id: p.id, v: ha, c: COL_V[p.tipo] || COL_V.existente, tt: `${p.n}|${num(ha, ha < 1 ? 2 : 1)} ha|${TXT_V[p.tipo] || p.tipo}` }; });
+        const suma = its.reduce((a, b) => a + b.v, 0), resto = (T(c.I).verde || 0) - suma; if (resto > 0.05) its.push({ id: 'hogares', v: resto, c: COL_V.hogares, tt: `Huertas de los hogares|${num(resto, 1)} ha en total (50 m² cada una)` });
+        B.update(c.W, its, { v: 1, txt: '1 ha' }); }; },
+    /* diagrama de arcos de los parches, de oeste a este */
+    conect: (h) => { const a = div(h, 'pi-art'); let kk = '';
+      h.insertAdjacentHTML('beforeend', leyenda([['lin', ARTE.con, 'conecta (f ≥ 0,5)'], ['pun', 'rgba(244,243,239,.6)', 'débil'], ['pun', ARTE.crit, 'rota por las vías']]) + '<p class="pi-sub">Cada punto es un parche verde ubicado de oeste a este (tamaño ∝ área); cada arco, una conexión de esta corrida.</p>');
+      const L = tira(h, 'conect', { cero: true });
+      return (c) => { L(c); const V = c.I.verde; if (!V) return; const k = (c.I.sem >> 2) + '|' + c.W; if (k === kk) return; kk = k; const P = V.parches.filter((p) => p.r > 0); if (!P.length) return;
+        a.innerHTML = arcosRed(P, V.conexiones, c.W, { alto: 150, aria: 'Diagrama de arcos: parches verdes de oeste a este y sus conexiones' }); }; },
+    /* matriz de puntos por año */
+    atrop: (h) => { const a = div(h, 'pi-art'), lg = div(h); let k0 = '';
       return (c) => { const A = c.I.atropellos.porAño || [], Ab = c.Bk ? c.Bk.atropellos.porAño || [] : [], nA = Math.min(15, Math.ceil(c.n / 52)), conA = c.prop ? A : Ab, sinA = c.prop ? Ab : A, años = [];
-        for (let y = 0; y < 15; y++) años.push(y < nA ? [[conA[y] || 0], [sinA[y] || 0]] : null);
+        for (let y = 0; y < 15; y++) años.push(y < nA ? [conA[y] || 0, sinA[y] || 0] : null);
         const k = JSON.stringify(años) + c.W; if (k === k0) return; k0 = k;
-        B1.innerHTML = columnasAño(años, [[{ c: COL.con }], [{ c: COL.sin, op: 0.35 }]], c.W, { alto: 92, aria: 'Atropellos de fauna por año, con y sin propuesta', tt: (y, r) => `Año ${y + 1}${y === nA - 1 ? ' (en curso)' : ''}|Con propuesta: ${num(r[0][0])}|Sin propuesta: ${num(r[1][0])}` }); }; },
-    ruido: (h) => { const g = document.createElement('div'); g.className = 'pi-dos'; h.appendChild(g); const a = document.createElement('div'), b = document.createElement('div'); g.append(a, b);
-      const G = semi(a, { n: 'Ruido promedio en dB(A)', min: 40, max: 80, bandas: [[40, 50, '#3f8f5e'], [50, 65, '#b9a23a'], [65, 75, '#c56a2e'], [75, 80, '#b83a3a']] });
-      b.innerHTML = `<div class="pi-ley" style="padding:0;flex-direction:column;gap:3px">${[['#3f8f5e', '≤ 50 sin efecto'], ['#b9a23a', '50–65 molestia'], ['#c56a2e', '65–75 fuerte'], ['#b83a3a', '> 75 pérdida']].map(([c2, n2]) => `<span>${clave(c2, 'barra')}${n2}</span>`).join('')}</div>`;
-      const L = linea(h, 'ruido', { alto: 70 }); return (c) => { G(valor('ruido', c.I), c.Bk ? valor('ruido', c.Bk) : null); L(c); }; },
-    bienestar: (h) => { const W0 = 300, H0 = 104, pl = 30, pr = 6, pt = 8, pb = 16; const s = nodo('svg', { class: 'tb-svg', height: H0, role: 'img', 'aria-label': 'Curva dosis-respuesta del bienestar de la fauna frente al ruido' }, h);
-      const g0 = nodo('g', {}, s), pc = nodo('circle', { r: 5, fill: COL.con, stroke: 'var(--tb-sur)', 'stroke-width': 2, class: 'pi-anim' }, s), ps = nodo('circle', { r: 4.5, fill: 'none', stroke: COL.sin, 'stroke-width': 2, 'stroke-dasharray': '2 1.5', class: 'pi-anim' }, s);
-      h.insertAdjacentHTML('beforeend', `<div class="pi-ley" style="padding:3px 0 0">${clave('var(--ui-tx2,#c9cfc4)')}<span>dosis-respuesta</span><span><svg width="9" height="9" aria-hidden="true"><circle cx="4.5" cy="4.5" r="4" fill="${COL.con}"/></svg>con</span><span><svg width="9" height="9" aria-hidden="true"><circle cx="4.5" cy="4.5" r="3.5" fill="none" stroke="${COL.sin}" stroke-width="1.5"/></svg>sin</span><span>(ruido medio de las aves)</span></div>`);
-      const L = linea(h, 'bienestar', { alto: 62 }); let w0 = 0;
-      return (c) => { const W = c.W, iw = W - pl - pr, ih = H0 - pt - pb, X = (db) => pl + (db - 40) / 40 * iw, Y = (b) => pt + ih - b * ih;
+        const M = matrizPuntos(años, c.W, { alto: 132, actual: nA - 1, aria: 'Atropellos de fauna por año, con y sin propuesta', tt: (y, r) => `Año ${y + 1}${y === nA - 1 ? ' (en curso)' : ''}|Con propuesta: ${num(r[0])} animales|Sin propuesta: ${num(r[1])} animales` });
+        a.innerHTML = M.svg; lg.innerHTML = leyenda([['pto', ARTE.con, 'con propuesta'], ['hue', ARTE.sin, 'sin propuesta'], ['txt', '', `<b>1 punto = ${num(M.N)} ${M.N === 1 ? 'animal' : 'animales'}</b> · por año`]]); }; },
+    /* medidor de dB(A) con bandas de efecto */
+    ruido: (h) => { const G = new Medidor(div(h, 'pi-art'), { min: 40, max: 80, u: 'dB(A)', ticks: [40, 50, 65, 75, 80], aria: 'Ruido promedio en dB(A)', bandas: [[40, 50, ARTE.pur[0], 'sin efecto'], [50, 65, ARTE.pur[2], 'molestia'], [65, 75, ARTE.pur[3], 'efecto fuerte'], [75, 80, ARTE.pur[4], 'pérdida']] });
+      const lg = div(h); const L = tira(h, 'ruido');
+      return (c) => { G.update(c.W, valor('ruido', c.I), c.Bk ? valor('ruido', c.Bk) : null, colO(c)); const t = leyenda([['lin', ARTE.ink, 'aguja: esta corrida'], ['hue', colO(c), `${otra(c).toLowerCase()} propuesta`]]); if (lg._k !== t) { lg._k = t; lg.innerHTML = t; } L(c); }; },
+    /* media dona (0–100 %) + curva dosis-respuesta */
+    bienestar: (h) => { const g = div(h, 'pi-dos'), a = div(g), b = div(g);
+      const sv = nodo('svg', { class: 'tb-svg', width: 150, height: 100, viewBox: '0 0 150 100', role: 'img', 'aria-label': 'Bienestar de la fauna de 0 a 100 %' }, a), SD = new MediaDona(sv, {});
+      const lab = nodo('text', { class: 'ar-c2', x: 75, y: 97, 'text-anchor': 'middle' }, sv); lab.textContent = 'aves sin estrés por ruido';
+      const H0 = 100, pl = 26, pr = 14, pt = 8, pb = 16; const s = nodo('svg', { class: 'tb-svg', height: H0, role: 'img', 'aria-label': 'Curva dosis-respuesta del bienestar de la fauna frente al ruido' }, b);
+      const g0 = nodo('g', {}, s), pc = nodo('circle', { r: 5, fill: ARTE.con, stroke: 'var(--tb-sur)', 'stroke-width': 2, class: 'ar-an' }, s), ps = nodo('circle', { r: 4.3, fill: 'var(--tb-sur)', stroke: ARTE.sin, 'stroke-width': 2, class: 'ar-an' }, s);
+      h.insertAdjacentHTML('beforeend', leyenda([['pto', ARTE.con, 'con'], ['hue', ARTE.sin, 'sin'], ['lin', 'rgba(244,243,239,.6)', 'dosis-respuesta (ruido medio de las aves)']]));
+      const L = tira(h, 'bienestar'); let w0 = 0;
+      return (c) => { SD.colO = colO(c); SD.update(75, 74, 50, valor('bienestar', c.I), c.Bk ? valor('bienestar', c.Bk) : null, c.prop ? ARTE.con : ARTE.sin);
+        const W = Math.max(140, Math.floor(b.clientWidth || c.W - 160)), iw = W - pl - pr, ih = H0 - pt - pb, X = (db) => pl + (db - 40) / 40 * iw, Y = (v) => pt + ih - v * ih;
         if (W !== w0) { w0 = W; fija(s, { width: W, viewBox: `0 0 ${W} ${H0}` }); let t = '';
-          for (const b of [0, 0.5, 1]) t += `<line x1="${pl}" x2="${W - pr}" y1="${Y(b).toFixed(1)}" y2="${Y(b).toFixed(1)}" stroke="var(--tb-grid)"/><text x="${pl - 4}" y="${(Y(b) + 3).toFixed(1)}" text-anchor="end">${b * 100}%</text>`;
-          for (const db of [40, 50, 60, 70, 80]) t += `<text x="${X(db).toFixed(1)}" y="${H0 - 3}" text-anchor="middle">${db}${db === 80 ? ' dB(A)' : ''}</text>`;
-          t += `<rect x="${X(50).toFixed(1)}" y="${pt}" width="${(X(75) - X(50)).toFixed(1)}" height="${ih}" fill="#fbb315" fill-opacity=".05"/><path d="M${X(40)} ${Y(1)}L${X(50)} ${Y(1)}L${X(75)} ${Y(0)}L${X(80)} ${Y(0)}" fill="none" stroke="var(--ui-tx2,#c9cfc4)" stroke-width="1.6"/>`; g0.innerHTML = t; }
-        const pto = (I, e, col) => { const A = I && I.avesRuido; if (!A || A.dbAves == null) { fija(e, { visibility: 'hidden' }); return; } fija(e, { cx: X(Math.max(40, Math.min(80, A.dbAves))).toFixed(1), cy: Y(A.bienestarFauna).toFixed(1), visibility: 'visible' }); e.setAttribute('data-tt', `${col}|${num(A.dbAves, 1)} dB(A) de exposición media|bienestar ${num(A.bienestarFauna * 100, 1)} %`); };
-        const Ic = c.prop ? c.I : c.Bk, Is = c.prop ? c.Bk : c.I; pto(Ic, pc, 'Con propuesta'); pto(Is, ps, 'Sin propuesta'); L(c); }; },
-    saturacion: (h) => { const B1 = document.createElement('div'); h.appendChild(B1); const L = linea(h, 'saturacion', { alto: 62, cero: true }); let k0 = '';
-      return (c) => { const I = c.prop ? c.I : c.Bk, t = T(I); L(c);
-        if (!I || !hayEstaciones(I)) { const tx = '<p class="pi-sub">Sin Estaciones Circulares en ninguna de las dos corridas.</p>'; if (k0 !== tx) { k0 = tx; B1.innerHTML = tx; } return; }
-        const est = (t.estaciones || []).filter((e) => isFinite(e.valor)).sort((a, b) => b.valor - a.valor).slice(0, 16);
-        const filas = est.length ? est.map((e) => ({ n: e.n.replace(/^Estación Circular · /, ''), v: e.valor, tt: `${e.n}|Llena: ${num(e.valor)} %|Acumulado: ${num(e.acumulado_t * 1000)} kg|Trata ${num(e.tratado_t_dia * 1000)} de ${num(e.cap_t_dia * 1000)} kg/día` })) : [{ n: 'Todas las estaciones', v: t.saturacion, tt: `Estaciones Circulares|${num(t.pendientes * 1000)} kg de ${num(t.capacidadAlmacen * 1000)} kg` }];
-        const W = c.W, n = filas.length, gw = Math.min(26, (W - 30) / n - 4), Hh = 64, k = JSON.stringify(filas.map((f) => Math.round(f.v))) + W; if (k === k0) return; k0 = k;
-        let s = `<svg class="tb-svg" width="${W}" height="${Hh + 14}" viewBox="0 0 ${W} ${Hh + 14}" role="img" aria-label="Llenado de cada Estación Circular">`;
-        filas.forEach((f, i) => { const x = 26 + i * (gw + 4), hv = Math.min(1.2, f.v / 100) / 1.2 * Hh, col = f.v >= 100 ? '#dc3c3d' : f.v >= 85 ? '#fbb315' : COL.con;
-          s += `<g data-tt="${esc(f.tt)}"><rect x="${x}" y="0" width="${gw}" height="${Hh}" rx="3" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.12)"/><path class="tb-m" d="${barraV(x, Hh - hv, gw, hv, 3)}" fill="${col}"/></g>`; });
-        const y100 = Hh - Hh / 1.2; s += `<line x1="22" x2="${26 + n * (gw + 4)}" y1="${y100.toFixed(1)}" y2="${y100.toFixed(1)}" stroke="${COL.lim}" stroke-dasharray="3 2"/><text x="20" y="${(y100 + 3).toFixed(1)}" text-anchor="end">100%</text><text x="20" y="${Hh}" text-anchor="end">0</text><text x="26" y="${Hh + 12}">${est.length ? n + (n === 1 ? ' estación' : ' estaciones (las más llenas)') : 'Estaciones Circulares, total'}</text></svg>`;
-        B1.innerHTML = s; }; },
-    aprov: (h) => { const B1 = document.createElement('div'); h.appendChild(B1); const L = linea(h, 'aprov', { alto: 62, cero: true }); let k0 = '';
-      return (c) => { L(c); const fila = (I, lab, hueca) => { if (!I) return null; const t = T(I), G = t.organicos || 0, Tt = Math.min(G, t.tratados || 0), sr = (I.basura && I.basura.fraccionSinRecoger || 0) * Math.max(0, G - Tt); return { lab, G, seg: [[Tt, '#00a888', 'Aprovechado'], [Math.max(0, G - Tt - sr), '#8b938a', 'Relleno Doña Juana'], [sr, '#d28e05', 'Sin recoger']], hueca }; };
-        const F2 = [fila(c.prop ? c.I : c.Bk, 'Con', false), fila(c.prop ? c.Bk : c.I, 'Sin', true)].filter(Boolean), W = c.W, x0 = 34, bw = W - x0 - 44, k = JSON.stringify(F2.map((f) => f.seg.map((s2) => Math.round(s2[0])))) + W; if (k === k0) return; k0 = k;
-        let s = `<svg class="tb-svg" width="${W}" height="${F2.length * 20 + 4}" viewBox="0 0 ${W} ${F2.length * 20 + 4}" role="img" aria-label="Destino de los orgánicos generados">`;
-        F2.forEach((f, i) => { let x = x0; const y = i * 20 + 3; s += `<text class="tb-tn" x="${x0 - 4}" y="${y + 9}" text-anchor="end">${f.lab}</text>`;
-          for (const [v, col, n] of f.seg) { const w = f.G ? v / f.G * bw : 0; if (w < 0.4) continue; s += `<rect data-tt="${esc(`${n}|${num(v * 1000)} kg/día|${num(v / f.G * 100, 1)} % de lo generado|${f.lab} propuesta`)}" x="${x.toFixed(1)}" y="${y}" width="${Math.max(0.5, w - 1.5).toFixed(1)}" height="12" rx="2" fill="${col}"${f.hueca ? ' fill-opacity=".45"' : ''}/>`; x += w; }
-          s += `<text class="tb-tv" x="${x0 + bw + 5}" y="${y + 9}">${num(f.seg[0][0] / (f.G || 1) * 100, 1)} %</text>`; });
-        B1.innerHTML = s + `</svg><div class="pi-ley" style="padding:3px 0 0">${clave('#00a888', 'barra')}<span>Aprovechado</span>${clave('#8b938a', 'barra')}<span>Relleno</span>${clave('#d28e05', 'barra')}<span>Sin recoger</span></div>`; }; },
-    cobertura: (h) => { const B1 = document.createElement('div'); h.appendChild(B1); let k0 = '';
-      return (c) => { const fila = (I, lab) => { const S = (T(I).sectores || []).filter((s) => isFinite(s.valor)).map((s) => ({ n: s.n, v: Math.min(100, s.valor) })).sort((a, b) => a.v - b.v); return { lab, S }; };
-        const F2 = [c.prop ? c.I : c.Bk, c.prop ? c.Bk : c.I].map((I, i) => (I ? fila(I, i ? 'Sin' : 'Con') : null)).filter((f) => f && f.S.length);
-        if (!F2.length) { if (k0 !== 'x') { k0 = 'x'; B1.innerHTML = '<p class="pi-sub">Esta corrida no reparte la comida por sector.</p>'; } return; }
-        const W = c.W, x0 = 34, bw = W - x0 - 4, k = F2.map((f) => f.S.map((s) => Math.round(s.v)).join(',')).join('|') + W; if (k === k0) return; k0 = k; const col = (v) => SEQ[Math.max(0, Math.min(SEQ.length - 1, Math.floor((v - 60) / 40 * SEQ.length)))];
-        let s = `<svg class="tb-svg" width="${W}" height="${F2.length * 22 + 12}" viewBox="0 0 ${W} ${F2.length * 22 + 12}" role="img" aria-label="Cobertura alimentaria de cada sector, del peor al mejor">`;
-        F2.forEach((f, i) => { const y = i * 22 + 2, cw = bw / f.S.length; s += `<text class="tb-tn" x="${x0 - 4}" y="${y + 11}" text-anchor="end">${f.lab}</text>`;
-          f.S.forEach((q, j) => { s += `<rect data-tt="${esc(`${q.n}|${num(q.v, 1)} % de su demanda|${f.lab} propuesta`)}" x="${(x0 + j * cw).toFixed(2)}" y="${y}" width="${Math.max(0.6, cw - 0.6).toFixed(2)}" height="16" fill="${q.v < 80 ? '#dc3c3d' : col(q.v)}"/>`; }); });
-        s += `<text x="${x0}" y="${F2.length * 22 + 10}">peor sector</text><text x="${W - 4}" y="${F2.length * 22 + 10}" text-anchor="end">mejor · ${F2[0].S.length} sectores</text></svg>`;
-        B1.innerHTML = s + `<div class="pi-ley" style="padding:3px 0 0"><span>60 %</span>${SEQ.map((x) => `<svg width="12" height="8" aria-hidden="true"><rect width="12" height="8" rx="1.5" fill="${x}"/></svg>`).join('')}<span>100 %</span>${clave('#dc3c3d', 'barra')}<span>bajo 80 %</span></div>`; }; },
-    autonomia: (h) => { const g = document.createElement('div'); g.className = 'pi-dos'; h.appendChild(g); const a = document.createElement('div'), b = document.createElement('div'); g.append(a, b);
-      const up = anillo(a, { n: 'Autonomía alimentaria sobre 100 %', c: COL.con, max: 100, d: 2, u: '%', r: 38 }); b.innerHTML = '<div class="pi-ley" style="padding:0"><span>anillo = 0–100 % de la demanda</span></div>';
-      const L = linea(h, 'autonomia', { alto: 62, cero: true }); return (c) => { up(valor('autonomia', c.I), c.Bk ? valor('autonomia', c.Bk) : null); L(c); }; },
-    acceso: (h) => { const svg = nodo('svg', { class: 'tb-svg', style: 'overflow:hidden', role: 'img', 'aria-label': 'Sectores a 15 minutos a pie de un mercado' }, h), gs = nodo('g', {}, svg), gm = nodo('g', {}, svg);
-      h.insertAdjacentHTML('beforeend', `<div class="pi-ley" style="padding:3px 0 0"><span><svg width="9" height="9" aria-hidden="true"><circle cx="4.5" cy="4.5" r="4" fill="#7fd49a"/></svg>a ≤ 15 min</span><span><svg width="9" height="9" aria-hidden="true"><circle cx="4.5" cy="4.5" r="3.5" fill="none" stroke="rgba(255,255,255,.4)"/></svg>más lejos</span><span><svg width="9" height="9" aria-hidden="true"><rect x="1" y="1" width="7" height="7" fill="#facc15"/></svg>mercado</span><span>(esta corrida)</span></div>`);
-      const L = linea(h, 'acceso', { alto: 62, cero: true }); let k0 = '';
-      return (c) => { L(c); const a = acceso(c.I, c.M); if (!a) return; const k = a.mercados.length + '|' + c.W; if (k === k0) return; k0 = k;
+          for (const v of [0, 0.5, 1]) t += `<line x1="${pl}" x2="${W - pr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--tb-grid)"/><text class="ar-tk" x="${pl - 4}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end">${v * 100}%</text>`;
+          for (const db of [40, 50, 60, 70, 80]) t += `<text class="ar-tk" x="${X(db).toFixed(1)}" y="${H0 - 3}" text-anchor="middle">${db}</text>`;
+          t += `<path d="M${X(40)} ${Y(1)}L${X(50)} ${Y(1)}L${X(75)} ${Y(0)}L${X(80)} ${Y(0)}V${Y(0)}H${X(40)}Z" fill="${ARTE.con}" fill-opacity=".08"/><path d="M${X(40)} ${Y(1)}L${X(50)} ${Y(1)}L${X(75)} ${Y(0)}L${X(80)} ${Y(0)}" fill="none" stroke="rgba(244,243,239,.6)" stroke-width="1.5"/>`; g0.innerHTML = t; }
+        const pto = (I, e, n) => { const A = I && I.avesRuido; if (!A || A.dbAves == null) { fija(e, { visibility: 'hidden' }); return; } fija(e, { cx: X(Math.max(40, Math.min(80, A.dbAves))).toFixed(1), cy: Y(A.bienestarFauna).toFixed(1), visibility: 'visible' }); e.setAttribute('data-tt', `${n}|${num(A.dbAves, 1)} dB(A) de exposición media|bienestar ${num(A.bienestarFauna * 100, 1)} %`); };
+        pto(Ic(c), pc, 'Con propuesta'); pto(Is(c), ps, 'Sin propuesta'); L(c); }; },
+    /* tanques con líquido: cada Estación Circular */
+    saturacion: (h) => { const a = div(h, 'pi-art'), msg = div(h), TQ = new Tanques(a), lg = div(h); const L = tira(h, 'saturacion', { cero: true });
+      lg.innerHTML = leyenda([['bar', ARTE.con, 'bajo 85 %'], ['bar', ARTE.lim, '85–100 %'], ['bar', ARTE.crit, 'lleno'], ['pun', ARTE.lim, '100 %']]);
+      return (c) => { L(c); const I = Ic(c), t = T(I);
+        if (!I || !hayEstaciones(I)) { a.hidden = true; lg.hidden = true; const tx = '<p class="pi-sub">Sin Estaciones Circulares en ninguna de las dos corridas: lo recogido va al relleno Doña Juana y el indicador no aplica.</p>'; if (msg._k !== tx) { msg._k = tx; msg.innerHTML = tx; } return; }
+        a.hidden = false; lg.hidden = false; if (msg._k) { msg._k = ''; msg.innerHTML = ''; }
+        const est = (t.estaciones || []).filter((e) => isFinite(e.valor)).sort((x, y) => y.valor - x.valor).slice(0, 16);
+        const filas = est.length ? est.map((e) => ({ id: e.n, v: e.valor, tt: `${e.n}|Llena: ${num(e.valor)} %|Acumulado: ${num(e.acumulado_t * 1000)} kg|Trata ${num(e.tratado_t_dia * 1000)} de ${num(e.cap_t_dia * 1000)} kg/día` }))
+          : [{ id: 'todas', v: t.saturacion, tt: `Estaciones Circulares|${num(t.pendientes * 1000)} kg de ${num(t.capacidadAlmacen * 1000)} kg` }];
+        TQ.update(c.W, filas); }; },
+    /* sankey en espejo: a dónde van los orgánicos con (izquierda) y sin (derecha) propuesta */
+    aprov: (h) => { const a = div(h, 'pi-art'); let k0 = ''; const D3 = [{ n: 'aprovechado', c: ARTE.cat[2] }, { n: 'relleno', c: ARTE.neutro }, { n: 'sin recoger', c: ARTE.cat[1] }];
+      h.insertAdjacentHTML('beforeend', leyenda([['bar', ARTE.cat[2], 'aprovechado (compost)'], ['bar', ARTE.neutro, 'relleno Doña Juana'], ['bar', ARTE.cat[1], 'sin recoger']]) + '<p class="pi-sub">Izquierda: con propuesta (lleno) · derecha: sin propuesta (hueco). Ancho ∝ kg/día, una sola escala.</p>');
+      const L = tira(h, 'aprov', { cero: true });
+      return (c) => { L(c); const f = (I) => { if (!I) return null; const t = T(I), G = t.organicos || 0, Tt = Math.min(G, t.tratados || 0), sr = (I.basura && I.basura.fraccionSinRecoger || 0) * Math.max(0, G - Tt); return { G, seg: [Tt, Math.max(0, G - Tt - sr), sr] }; };
+        const A = f(Ic(c)), B = f(Is(c)), k = JSON.stringify([A, B].map((x) => x && x.seg.map((v) => Math.round(v * 400)))) + c.W; if (k === k0) return; k0 = k;
+        a.innerHTML = sankeyEspejo(A, B, D3, c.W, { alto: 176, aria: 'Destino de los orgánicos generados, con y sin propuesta' }); }; },
+    /* histograma radial de los 134 sectores: exterior con, interior sin */
+    cobertura: (h) => { const RS = new RadialSectores(div(h, 'pi-art'), { lo: 60, aria: 'Cobertura alimentaria de cada sector: anillo exterior con propuesta, interior sin propuesta' }); let k0 = '';
+      h.insertAdjacentHTML('beforeend', leyenda([['bar', ARTE.pur[3], 'con propuesta (afuera)'], ['bar', ARTE.neutro, 'sin propuesta (adentro)'], ['bar', ARTE.crit, 'bajo 80 %'], ['pun', ARTE.lim, '80 %']]) + '<p class="pi-sub">Cada barra es un sector de 500 m, del peor al mejor en el sentido del reloj; largo = % de su demanda (escala 60–100 %).</p>');
+      const L = tira(h, 'cobertura', { pl: 38 });
+      return (c) => { L(c); const f = (I) => (I ? (T(I).sectores || []).filter((s) => isFinite(s.valor)).map((s) => ({ n: s.n, v: Math.min(100, s.valor) })).sort((x, y) => x.v - y.v) : []);
+        const A = f(Ic(c)), B = f(Is(c)), k = A.map((s) => Math.round(s.v)).join(',') + '|' + B.map((s) => Math.round(s.v)).join(',') + c.W; if (k === k0) return; k0 = k;
+        RS.update(c.W, A, B, 'Con propuesta', 'Sin propuesta'); }; },
+    /* dona + retícula: cada celda = 1 % de la demanda */
+    autonomia: (h) => { const a = div(h, 'pi-art'), cap = div(h); let k0 = '';
+      const L = tira(h, 'autonomia', { cero: true });
+      return (c) => { L(c); const v = valor('autonomia', Ic(c)), vo = valor('autonomia', Is(c)), k = [v, vo].map((x) => (x == null ? '' : x.toFixed(2))).join('|') + c.W; if (k === k0) return; k0 = k;
+        const W = c.W, R = 52, cx = Math.round(W * 0.3), cy = 62, A = (x) => -Math.PI / 2 + TAU * Math.max(0, Math.min(1, (x || 0) / 100));
+        let s = `<svg class="tb-svg" width="${W}" height="128" viewBox="0 0 ${W} 128" role="img" aria-label="Autonomía alimentaria: parte de la demanda que se cultiva en Kennedy">`;
+        s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="13"/><circle cx="${cx}" cy="${cy}" r="${R - 17}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="3"/>`;
+        if (v != null && v > 0) s += `<path d="${arco(cx, cy, R, -Math.PI / 2, Math.max(-Math.PI / 2 + 0.03, A(v)))}" fill="none" stroke="${ARTE.con}" stroke-width="13" stroke-linecap="round" data-tt="Con propuesta|${num(v, 2)} % de la demanda es local"/>`;
+        if (vo != null && vo > 0) s += `<path d="${arco(cx, cy, R - 17, -Math.PI / 2, Math.max(-Math.PI / 2 + 0.03, A(vo)))}" fill="none" stroke="${ARTE.sin}" stroke-width="3" stroke-dasharray="3 2" data-tt="Sin propuesta|${num(vo, 2)} % de la demanda es local"/>`;
+        s += `<text class="ar-c1" x="${cx}" y="${cy + 4}" text-anchor="middle">${num(v, v != null && v < 10 ? 1 : 0)}%</text><text class="ar-c2" x="${cx}" y="${cy + 17}" text-anchor="middle">local</text>`;
+        const gx = Math.round(W * 0.62); if (W >= 250) s += `<g data-tt="Retícula|cada celda = 1 % de la demanda|con: ${num(v, 1)} % · sin: ${num(vo, 1)} %">${retícula(v, vo, gx, 22)}</g><text class="ar-tk" x="${gx}" y="14">1 celda = 1 % de la demanda</text>`;
+        a.innerHTML = s + '</svg>';
+        const n1 = v > 0 ? Math.round(100 / v) : null;
+        cap.innerHTML = leyenda([['lin', ARTE.con, 'con propuesta'], ['pun', ARTE.sin, 'sin propuesta']]) + `<p class="pi-sub">${n1 ? `Con propuesta, cerca de <b>1 de cada ${num(n1)} kg</b> de alimentos frescos se cultiva en Kennedy.` : 'Con propuesta aún no hay comida local consumida.'}</p>`; }; },
+    /* fracción pictórica de personas + mapa de sectores con los anillos de 15 minutos */
+    acceso: (h) => { const per = div(h, 'pi-art'), svg = nodo('svg', { class: 'tb-svg', style: 'overflow:hidden', role: 'img', 'aria-label': 'Sectores a 15 minutos a pie de un mercado' }, div(h, 'pi-art')), gm = nodo('g', {}, svg), gs = nodo('g', {}, svg);
+      const lg = div(h); const L = tira(h, 'acceso', { cero: true }); let k0 = '', kP = '';
+      return (c) => { L(c); const a = acceso(c.I, c.M); if (!a) return; const ao = c.Bk ? acceso(c.Bk, c.M) : null, colR = c.prop ? ARTE.con : ARTE.sin;
+        const kp = Math.round(a.pct) + '|' + (ao ? Math.round(ao.pct) : '') + c.W + c.prop; if (kp !== kP) { kP = kp; per.innerHTML = personas(a.pct, ao ? ao.pct : null, c.W, 34).replace(new RegExp(ARTE.con, 'g'), colR).replace(/stroke="#f2694a"/, `stroke="${colO(c)}"`) + `<p class="pi-sub" style="text-align:center"><b>${num(a.pct / 10, 1)} de cada 10</b> habitantes viven a 15 min o menos a pie de un mercado${ao ? ` · ${otra(c).toLowerCase()} propuesta: ${num(ao.pct / 10, 1)} (triángulo)` : ''}</p>`;
+          lg.innerHTML = leyenda([['pto', colR, 'sector a ≤ 15 min'], ['hue', 'rgba(244,243,239,.45)', 'más lejos'], ['bar', ARTE.lim, 'mercado y su radio']]); }
+        const k = a.mercados.length + '|' + c.W + '|' + a.sectores.filter((s) => s.ok).length; if (k === k0) return; k0 = k;
         const W = c.W, ht = Math.round(W * 0.8), P2 = a.sectores.concat(a.mercados), xs = P2.map((s) => s.x), zs = P2.map((s) => s.z), x0 = Math.min(...xs) - 300, x1 = Math.max(...xs) + 300, z0 = Math.min(...zs) - 300, z1 = Math.max(...zs) + 300, sc = Math.min(W / (x1 - x0), ht / (z1 - z0));
         const X = (x) => (x - x0) * sc + (W - (x1 - x0) * sc) / 2, Y = (z) => (z - z0) * sc; fija(svg, { width: W, height: Math.round((z1 - z0) * sc), viewBox: `0 0 ${W} ${Math.round((z1 - z0) * sc)}` });
-        gs.innerHTML = a.sectores.map((s) => `<circle cx="${X(s.x).toFixed(1)}" cy="${Y(s.z).toFixed(1)}" r="${Math.max(2, Math.min(5, Math.sqrt(s.w) * 6)).toFixed(1)}" ${s.ok ? 'fill="#7fd49a" fill-opacity=".85"' : 'fill="none" stroke="rgba(255,255,255,.35)"'} data-tt="${esc(`Sector|${num(s.d)} m al mercado más cercano|${s.ok ? 'a 15 min o menos a pie' : 'a más de 15 min a pie'}`)}"/>`).join('');
-        gm.innerHTML = a.mercados.map((m) => `<g data-tt="${esc(`${m.n}|${m.tipo === 'propuesta' ? 'mercado de la propuesta' : m.tipo === 'plaza' ? 'plaza existente' : 'central mayorista'}`)}"><circle cx="${X(m.x).toFixed(1)}" cy="${Y(m.z).toFixed(1)}" r="${(ACCESO_R * sc).toFixed(1)}" fill="#facc15" fill-opacity=".035"/><rect x="${(X(m.x) - 3).toFixed(1)}" y="${(Y(m.z) - 3).toFixed(1)}" width="6" height="6" fill="#facc15" stroke="var(--tb-sur)"/></g>`).join(''); }; },
-    presion: (h) => linea(h, 'presion', { alto: 84, cero: true })
+        gm.innerHTML = a.mercados.map((m) => `<circle cx="${X(m.x).toFixed(1)}" cy="${Y(m.z).toFixed(1)}" r="${(ACCESO_R * sc).toFixed(1)}" fill="${ARTE.lim}" fill-opacity=".045" stroke="${ARTE.lim}" stroke-opacity=".22" stroke-dasharray="2 3"/>`).join('');
+        gs.innerHTML = a.sectores.map((s) => `<circle cx="${X(s.x).toFixed(1)}" cy="${Y(s.z).toFixed(1)}" r="${Math.max(2, Math.min(5, Math.sqrt(s.w) * 6)).toFixed(1)}" ${s.ok ? `fill="${colR}" fill-opacity=".9"` : 'fill="none" stroke="rgba(244,243,239,.38)"'} data-tt="${esc(`Sector|${num(s.d)} m al mercado más cercano|${s.ok ? 'a 15 min o menos a pie' : 'a más de 15 min a pie'}`)}"/>`).join('')
+          + a.mercados.map((m) => `<rect x="${(X(m.x) - 3.5).toFixed(1)}" y="${(Y(m.z) - 3.5).toFixed(1)}" width="7" height="7" transform="rotate(45 ${X(m.x).toFixed(1)} ${Y(m.z).toFixed(1)})" fill="${ARTE.lim}" stroke="var(--tb-sur)" data-tt="${esc(`${m.n}|${m.tipo === 'propuesta' ? 'mercado de la propuesta' : m.tipo === 'plaza' ? 'plaza existente' : 'central mayorista'}`)}"/>`).join(''); }; },
+    /* área grande de 15 años: la cifra del titular es el % */
+    presion: (h) => { h.insertAdjacentHTML('beforeend', LEY_CS); return linea(h, 'presion', { alto: 128, cero: true }); }
   };
 
   function construirIndicadores() {
@@ -479,7 +499,8 @@ export function iniciarPanelIndicadores({ R, getM, getFIN }) {
     if (io) io.disconnect();
     io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => { for (const e of es) { const C = cards.get(e.target.dataset.k); if (!C) continue; const ant = C.vis; C.vis = e.isIntersecting; if (C.vis && !ant) { sucio = true; programar(); } } }, { root: root, rootMargin: '200px 0px' }) : null;
     MACROS.forEach((m, i) => { const s = document.createElement('section'); s.className = 'pi-mac'; s.id = 'pi-m-' + m.id; s.setAttribute('aria-labelledby', 'pi-h-' + m.id);
-      s.innerHTML = `<h2 id="pi-h-${m.id}"><i>${String(i + 1).padStart(2, '0')}</i>${esc(m.n)}</h2>`; box.appendChild(s);
+      const nI = IND.filter((x) => x.macro === m.id).length;
+      s.innerHTML = `<h2 id="pi-h-${m.id}"><i>${String(i + 1).padStart(2, '0')}</i><span>${esc(m.n.replace(/^Macromodelo (de )?/, ''))}</span><small>Macromodelo · ${nI} indicadores</small></h2>`; box.appendChild(s);
       for (const d of IND.filter((x) => x.macro === m.id)) { const C = tarjeta(s, d.k, VIZ[d.k]); if (!io) C.vis = true; } });
   }
 

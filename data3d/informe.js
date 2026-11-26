@@ -1,5 +1,6 @@
 import {adjuntarBalance} from './balance_final.js?v=2';
-import { conclusionAbasto } from './conclusion_abasto.js?v=1'; // par 01: veredicto y «Conclusión general» con dos tarjetas (2026-11-25)
+import { conclusionAbasto } from './conclusion_abasto.js?v=2';
+import { TiempoRadial } from './graficas_arte.js?v=1'; // 2026-11-26: relojes de 15 años, línea de tiempo de burbujas y dona del veredicto (paleta URBIA + morados de la portada) // par 01: veredicto y «Conclusión general» con dos tarjetas (2026-11-25)
 /* ============ INFORME FINAL DE UNA SIMULACIÓN (versión 3: una sola historia) ============
    export function abrirInforme2({ cont, sim, def, hist, base, reglas, go, eventos, extinciones, ind, semilla, onCerrar })
    Pinta en `cont` (la caja de vidrio #su-inf .caja) un informe para no expertos (y para proyectar ante un jurado):
@@ -167,23 +168,24 @@ const icono = (t, cls = '') => `<svg class="i2-ic ${cls}" viewBox="0 0 16 16" ar
 const CSS = `
 #su-inf.i2-dlg { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: transparent; color: #eef0ea; overflow: hidden; }
 #su-inf.i2-dlg:modal { overscroll-behavior: contain; }
-#su-inf.i2-dlg::backdrop { overflow: hidden; overscroll-behavior: contain; background: radial-gradient(120% 90% at 50% 0%, rgba(14,17,18,.42), rgba(5,6,8,.78)); backdrop-filter: blur(12px) saturate(.7) brightness(.82); -webkit-backdrop-filter: blur(12px) saturate(.7) brightness(.82); }
-#su-inf.i2-dlg.go::backdrop { background: radial-gradient(110% 80% at 50% 10%, rgba(120,36,30,.34), rgba(14,6,6,.82)); }
-#su-inf.i2-dlg.ok::backdrop { background: radial-gradient(110% 80% at 50% 10%, rgba(70,104,64,.26), rgba(5,8,6,.8)); }
+#su-inf.i2-dlg::backdrop { overflow: hidden; overscroll-behavior: contain; background: radial-gradient(70% 60% at 85% 0%, rgba(48,79,254,.32), transparent 70%), radial-gradient(120% 90% at 50% 0%, rgba(14,14,26,.5), rgba(5,5,10,.84)); backdrop-filter: blur(12px) saturate(.7) brightness(.82); -webkit-backdrop-filter: blur(12px) saturate(.7) brightness(.82); }
+#su-inf.i2-dlg.go::backdrop { background: radial-gradient(60% 55% at 85% 0%, rgba(255,79,123,.22), transparent 70%), radial-gradient(110% 80% at 50% 10%, rgba(70,22,48,.42), rgba(10,5,10,.86)); }
+#su-inf.i2-dlg.ok::backdrop { background: radial-gradient(60% 55% at 85% 0%, rgba(48,79,254,.34), transparent 70%), radial-gradient(110% 80% at 50% 10%, rgba(40,36,92,.36), rgba(5,5,12,.84)); }
 @media (prefers-reduced-motion: no-preference) { #su-inf.i2-dlg[open]::backdrop { animation: i2fondo .7s ease-out both; } }
 @keyframes i2fondo { from { opacity: 0; } }
 #su-inf.i2-dlg > .caja { width: 100%; height: 100%; max-height: none; overflow-y: auto; overflow-x: hidden; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; scrollbar-color: rgba(255,255,255,.25) transparent; }
 .inf2 { --ink: var(--ui-tx, #eef0ea); --ink2: rgba(238,240,234,.76); --mut: rgba(238,240,234,.54); --line: rgba(255,255,255,.13); --line2: rgba(255,255,255,.07);
   --glass: var(--ui-glass, rgba(32,36,35,.8)); --glass-bd: var(--ui-glass-bd, rgba(226,236,211,.2)); --card: rgba(13,15,17,.46); --bg: #14161b;
-  --bien: #95d8a6; --mal: #ff9a8a; --amb: #e6d29e; --gris: #8d939b; --grid: rgba(255,255,255,.07); --s-con: #4aab90; --s-lim: #e0665a;
-  --bienbg: rgba(149,216,166,.13); --malbg: rgba(255,154,138,.14); --ambbg: rgba(230,210,158,.13); --track: rgba(255,255,255,.08);
-  --g-ave: #3987e5; --g-poli: #d95926; --g-mam: #199e70; --g-herp: #c98500; --g-inv: #d55181; --g-pla: #0ca30c;
-  --tone: #cfd5dc; --tone-bg: rgba(207,213,220,.1);
+  --bien: #4fd1c5; --mal: #ff8a6b; --amb: #ffd27a; --gris: #8c929c; --grid: rgba(255,255,255,.065); --s-con: #7d6bff; --s-sin: #f2694a; --s-lim: #ffd27a; --s-crit: #ff4f7b;
+  --v1: #304ffe; --v2: #5b4bff; --v3: #a99cff; --v4: #d4ceff; --lima: #d5ff3f;
+  --bienbg: rgba(79,209,197,.12); --malbg: rgba(242,105,74,.14); --ambbg: rgba(255,210,122,.12); --track: rgba(255,255,255,.08);
+  --g-ave: #7d6bff; --g-poli: #c08f1c; --g-mam: #22a89d; --g-herp: #f2694a; --g-inv: #d4ceff; --g-pla: #6f9e5a;
+  --tone: #d4ceff; --tone-bg: rgba(169,156,255,.12); --tone2: #7d6bff;
   --num: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
   color: var(--ink); font: 400 15px/1.5 Geist, Inter, system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; min-height: 100%; }
-.inf2.go { --tone: #ff9a8a; --tone-bg: rgba(224,102,90,.14); }
-.inf2.ok { --tone: var(--ui-acc, #c9e6b2); --tone-bg: rgba(201,230,178,.12); }
-.inf2.parte { --tone: #e6d29e; --tone-bg: rgba(230,210,158,.12); }
+.inf2.go { --tone: #ff7a59; --tone-bg: rgba(255,122,89,.14); --tone2: #ff4f7b; }
+.inf2.ok { --tone: #d5ff3f; --tone-bg: rgba(213,255,63,.1); --tone2: #4fd1c5; }
+.inf2.parte { --tone: #ffd27a; --tone-bg: rgba(255,210,122,.12); --tone2: #ff7a59; }
 .inf2 *, .inf2 *::before, .inf2 *::after { box-sizing: border-box; }
 .inf2 p { margin: 0; }
 .inf2 .i2-in { width: min(1280px, 100%); margin: 0 auto; padding: 0 clamp(16px, 3vw, 40px); }
@@ -207,13 +209,14 @@ const CSS = `
 .inf2 .i2-pill.t { border-color: color-mix(in srgb, var(--tone) 50%, transparent); color: var(--tone); }
 .inf2 .i2-tit { grid-area: tit; margin: 0; }
 .inf2 .i2-eye { display: block; font: 500 clamp(13px, 1.3vw, 16px)/1.2 Geist, Inter, system-ui, sans-serif; letter-spacing: .3em; text-transform: uppercase; color: var(--mut); margin-bottom: 4px; }
-.inf2 .i2-big { display: block; font: 300 clamp(56px, calc(140vw / var(--len, 9)), 168px)/.84 var(--num); letter-spacing: .03em; text-transform: uppercase; color: var(--tone); overflow: clip; padding-bottom: .04em; text-wrap: balance; }
+.inf2 .i2-big { display: block; font: 200 clamp(56px, calc(140vw / var(--len, 9)), 176px)/.84 var(--num); letter-spacing: .03em; text-transform: uppercase; color: var(--tone); overflow: clip; padding-bottom: .04em; text-wrap: balance; }
+.inf2 .i2-big .l { background: linear-gradient(175deg, var(--tone) 30%, color-mix(in srgb, var(--tone2) 80%, var(--tone))); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .inf2 .i2-big .w { display: inline-block; white-space: nowrap; }
 .inf2 .i2-big .l { display: inline-block; }
 .inf2 .i2-sub { margin-top: 10px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; }
 .inf2 .i2-sub b { font: 400 clamp(22px, 2.4vw, 32px)/1.1 var(--num); letter-spacing: .02em; color: var(--ink); }
 .inf2 .i2-sub span { font-size: 14.5px; color: var(--ink2); max-width: 70ch; text-wrap: pretty; }
-.inf2 .i2-panel { position: relative; padding: 20px 22px; border-radius: 16px; border: 1px solid var(--glass-bd); background: linear-gradient(var(--card), var(--card)), var(--glass); box-shadow: var(--ui-glass-sh, 0 14px 38px rgba(0,0,0,.24)); min-width: 0; break-inside: avoid; }
+.inf2 .i2-panel { position: relative; padding: 20px 22px; border-radius: 18px; border: 1px solid rgba(169,156,255,.16); background: radial-gradient(120% 70% at 100% 0%, rgba(125,107,255,.09), transparent 60%), linear-gradient(var(--card), var(--card)), var(--glass); box-shadow: var(--ui-glass-sh, 0 14px 38px rgba(0,0,0,.24)); min-width: 0; break-inside: avoid; }
 .inf2 .i2-ver { grid-area: ver; border-left: 3px solid var(--tone); }
 .inf2 .i2-vlab { font: 600 11px/1.2 Geist, Inter, system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; color: var(--mut); }
 .inf2 .i2-vf { margin-top: 8px; font: 500 clamp(16px, 1.5vw, 19px)/1.45 Geist, Inter, system-ui, sans-serif; text-wrap: pretty; }
@@ -236,8 +239,8 @@ const CSS = `
 .inf2 .i2-rgt em { font-style: normal; color: var(--tone); }
 .inf2 .i2-met { margin-top: 18px; }
 .inf2 .i2-metr { position: relative; height: 10px; border-radius: 5px; background: var(--track); }
-.inf2 .i2-metz { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: repeating-linear-gradient(135deg, rgba(224,102,90,.34) 0 4px, rgba(224,102,90,.16) 4px 8px); }
-.inf2 .i2-metu { position: absolute; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; background: var(--s-lim); }
+.inf2 .i2-metz { position: absolute; top: 0; bottom: 0; border-radius: 5px; background: repeating-linear-gradient(135deg, rgba(255,79,123,.36) 0 4px, rgba(255,79,123,.14) 4px 8px); }
+.inf2 .i2-metu { position: absolute; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; background: var(--s-crit); }
 .inf2 .i2-meth { position: absolute; top: -3px; bottom: -3px; width: 1px; background: rgba(255,255,255,.45); }
 .inf2 .i2-metv { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 0 3px var(--bg); }
 .inf2 .i2-metl { position: relative; height: 44px; font-size: 12px; color: var(--mut); }
@@ -256,7 +259,7 @@ const CSS = `
 .inf2 .i2-kn { font: 600 13.5px/1.3 Geist, Inter, system-ui, sans-serif; }
 .inf2 .i2-ku { font-size: 12px; color: var(--mut); margin-top: 1px; }
 .inf2 .i2-kv { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin-top: 10px; }
-.inf2 .i2-kv b { font: 400 clamp(38px, 3.6vw, 52px)/.9 var(--num); letter-spacing: .005em; white-space: nowrap; }
+.inf2 .i2-kv b { font: 200 clamp(44px, 4.2vw, 64px)/.86 var(--num); letter-spacing: .005em; white-space: nowrap; }
 .inf2 .i2-tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 6px; border-radius: 6px; font: 600 12px/1.2 Geist, Inter, system-ui, sans-serif; white-space: nowrap; background: rgba(255,255,255,.06); color: var(--ink2); }
 .inf2 .i2-tag .i2-ic { width: 13px; height: 13px; stroke-width: 2; }
 .inf2 .i2-tag.bien { background: var(--bienbg); color: var(--bien); } .inf2 .i2-tag.mal { background: var(--malbg); color: var(--mal); }
@@ -265,41 +268,54 @@ const CSS = `
 .inf2 .i2-bar span:nth-child(2) { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 .inf2 .i2-bar.ref span:nth-child(2) { color: var(--ink2); font-weight: 500; }
 .inf2 .i2-tr { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
-.inf2 .i2-tr i { display: block; height: 100%; border-radius: 3px; background: var(--s-con); transform-origin: left; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.inf2 .i2-tr i.ref { background: rgba(238,240,234,.36); }
+.inf2 .i2-tr i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--v2), var(--s-con) 60%, var(--v3)); transform-origin: left; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.inf2 .i2-tr i.ref { background: repeating-linear-gradient(90deg, var(--s-sin) 0 5px, transparent 5px 8px); }
 /* gráficas */
 .inf2 .i2-main { grid-area: graf; }
 .inf2 .i2-sec { margin-top: 56px; }
 .inf2 .i2-sh { margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; }
-.inf2 .i2-st { margin: 4px 0 0; font: 300 clamp(30px, 3.4vw, 46px)/1 var(--num); letter-spacing: .01em; }
+.inf2 .i2-st { margin: 4px 0 0; font: 200 clamp(34px, 3.8vw, 54px)/1 var(--num); letter-spacing: .01em; }
 .inf2 .i2-sd { font-size: 14px; color: var(--ink2); max-width: 70ch; }
 .inf2 .i2-leg { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink2); }
 .inf2 .i2-leg span { display: inline-flex; align-items: center; gap: 8px; }
 .inf2 .i2-leg i { display: inline-block; width: 24px; height: 0; border-top: 2px solid var(--s-con); }
-.inf2 .i2-leg i.ref { border-top: 2px dashed var(--gris); } .inf2 .i2-leg i.lim { border-top: 1px solid var(--s-lim); }
+.inf2 .i2-leg i.ref { border-top: 2px dashed var(--s-sin); } .inf2 .i2-leg i.lim { border-top: 1px solid var(--s-lim); }
 .inf2 .i2-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .inf2 .i2-ch { margin: 0; }
 .inf2 .i2-cht { font: 600 15.5px/1.25 Geist, Inter, system-ui, sans-serif; } .inf2 .i2-chs { font-size: 12.5px; color: var(--mut); margin-top: 2px; }
 .inf2 .i2-ch .i2-leg { margin-top: 8px; font-size: 12px; }
 .inf2 .i2-ch svg { display: block; width: 100%; height: auto; margin-top: 8px; touch-action: pan-y; overflow: visible; }
 .inf2 .i2-tip { position: absolute; pointer-events: none; z-index: 3; padding: 8px 10px; border-radius: 8px; background: rgba(10,12,14,.96); border: 1px solid var(--line); font-size: 12.5px; line-height: 1.45; white-space: nowrap; display: none; }
-.inf2 .i2-tip b { font-weight: 600; } .inf2 .i2-tip i { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--s-con); vertical-align: middle; margin-right: 6px; } .inf2 .i2-tip i.ref { border-top: 2px dashed var(--gris); }
+.inf2 .i2-tip b { font-weight: 600; } .inf2 .i2-tip i { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--s-con); vertical-align: middle; margin-right: 6px; } .inf2 .i2-tip i.ref { border-top: 2px dashed var(--s-sin); }
 .inf2 svg .ax { font: 500 11.5px Geist, Inter, system-ui, sans-serif; fill: var(--mut); font-variant-numeric: tabular-nums; }
 .inf2 svg .gr { stroke: var(--grid); stroke-width: 1; } .inf2 svg .bl { stroke: rgba(255,255,255,.22); stroke-width: 1; }
 .inf2 svg .ln { fill: none; stroke: var(--s-con); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.inf2 svg .ar { fill: var(--s-con); opacity: .1; stroke: none; }
-.inf2 svg .lr { fill: none; stroke: var(--gris); stroke-width: 2; stroke-dasharray: 5 5; stroke-linecap: round; }
-.inf2 svg .lim { stroke: var(--s-lim); stroke-width: 1; }
-.inf2 svg .limt { font: 600 11px Geist, Inter, system-ui, sans-serif; fill: var(--mal); }
+.inf2 svg .ar { fill: url(#i2-grad); opacity: 1; stroke: none; }
+.inf2 svg .lr { fill: none; stroke: var(--s-sin); stroke-width: 2; stroke-dasharray: 5 5; stroke-linecap: round; }
+.inf2 svg .lim { stroke: var(--s-lim); stroke-width: 1; stroke-dasharray: 4 3; }
+.inf2 svg .limt { font: 600 11px Geist, Inter, system-ui, sans-serif; fill: var(--s-lim); }
 .inf2 svg .halo { paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
-.inf2 svg .dot { fill: var(--s-con); stroke: var(--bg); stroke-width: 2; } .inf2 svg .dotr { fill: var(--gris); stroke: var(--bg); stroke-width: 2; }
-.inf2 svg .gox { stroke: var(--s-lim); stroke-width: 2; stroke-linecap: round; }
-.inf2 svg .gol { stroke: var(--s-lim); stroke-width: 1.5; stroke-dasharray: 2 3; }
+.inf2 svg .dot { fill: var(--s-con); stroke: var(--bg); stroke-width: 2; } .inf2 svg .dotr { fill: var(--bg); stroke: var(--s-sin); stroke-width: 2; }
+.inf2 svg .gox { stroke: var(--s-crit); stroke-width: 2; stroke-linecap: round; }
+.inf2 svg .gol { stroke: var(--s-crit); stroke-width: 1.5; stroke-dasharray: 2 3; }
 .inf2 svg .val { font: 600 13.5px Geist, Inter, system-ui, sans-serif; fill: var(--ink); font-variant-numeric: tabular-nums; }
 .inf2 svg .valr { font: 500 12px Geist, Inter, system-ui, sans-serif; fill: var(--ink2); font-variant-numeric: tabular-nums; }
 .inf2 svg .sn { font: 500 11px Geist, Inter, system-ui, sans-serif; fill: var(--mut); }
-.inf2 svg .got { font: 600 11px Geist, Inter, system-ui, sans-serif; fill: var(--mal); }
+.inf2 svg .got { font: 600 11px Geist, Inter, system-ui, sans-serif; fill: var(--s-crit); }
 .inf2 svg .cr { stroke: rgba(255,255,255,.4); stroke-width: 1; }
+/* relojes de 15 años (graficas_arte.js) y dona del veredicto */
+.inf2 { --tb-sur: #14161b; }
+.inf2 svg.ar-rad { display: block; margin: 8px auto 0; max-width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.inf2 svg.ar-rad:focus-visible { outline: 2px solid var(--v3); outline-offset: 2px; border-radius: 6px; }
+.inf2 svg .ar-tk { font: 500 10px Geist, Inter, system-ui, sans-serif; fill: var(--mut); font-variant-numeric: tabular-nums; }
+.inf2 svg .ar-tk.b { fill: var(--ink2); }
+.inf2 svg .ar-c1 { font: 200 30px var(--num); fill: var(--ink); letter-spacing: .02em; }
+.inf2 svg .ar-c2 { font: 600 9.5px Geist, Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; fill: var(--mut); }
+.inf2 .i2-tip .t { color: var(--v4); font-size: 11.5px; margin-bottom: 3px; } .inf2 .i2-tip .r { display: flex; align-items: center; gap: 6px; } .inf2 .i2-tip .r span { color: var(--mut); }
+.inf2 .i2-dona { flex: none; display: block; }
+.inf2 .i2-dona .dn, .inf2 svg .bn { font: 300 22px var(--num); fill: var(--ink); }
+.inf2 svg .bn { font-size: 15px; font-weight: 400; fill: var(--ink); }
+.inf2 .i2-cad .i2-paso b, .inf2 .i2-rs b { font-weight: 200; }
 /* causa → efecto */
 .inf2 .i2-cad { grid-area: cad; }
 .inf2 .i2-cadl { display: flex; align-items: stretch; gap: 0; margin-top: 10px; overflow-x: auto; scrollbar-width: thin; }
@@ -316,7 +332,7 @@ const CSS = `
 .inf2 .i2-tlw svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
 .inf2 svg .fb { fill: rgba(255,255,255,.035); } .inf2 svg .fb.b { fill: rgba(255,255,255,.015); }
 .inf2 svg .fl { font: 600 10px Geist, Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; fill: var(--mut); }
-.inf2 svg .mk.bien { fill: #5cbf7a; } .inf2 svg .mk.mal { fill: var(--s-lim); } .inf2 svg .mk.neu { fill: var(--gris); }
+.inf2 svg .mk.bien { fill: var(--bien); } .inf2 svg .mk.mal { fill: var(--s-sin); } .inf2 svg .mk.neu { fill: var(--gris); }
 .inf2 svg .mk { stroke: var(--bg); stroke-width: 1.5; }
 .inf2 svg .mas { font: 600 10px Geist, Inter, system-ui, sans-serif; fill: var(--mut); }
 .inf2 .i2-tll { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--ink2); margin-top: 6px; }
@@ -380,7 +396,7 @@ const CSS = `
 .inf2 .i2-notas h4:first-child { margin-top: 0; }
 .inf2 .i2-reg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .inf2 .i2-reg > div { padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.035); font-size: 13px; line-height: 1.45; break-inside: avoid; }
-.inf2 .i2-reg > div.go { box-shadow: inset 3px 0 0 var(--s-lim); }
+.inf2 .i2-reg > div.go { box-shadow: inset 3px 0 0 var(--s-crit); }
 .inf2 .i2-reg b { font-weight: 600; } .inf2 .i2-reg p { margin-top: 4px; font-size: 11.5px; color: var(--mut); overflow-wrap: anywhere; } .inf2 .i2-reg a { color: var(--ink2); }
 .inf2 .i2-reg .fin { color: var(--ink2); } .inf2 .i2-reg .fin.mal { color: var(--mal); }
 .inf2 .i2-notas ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; color: var(--ink2); } .inf2 .i2-notas li { margin: 4px 0; }
@@ -520,7 +536,7 @@ function grafica(G, W) {
   const pad = (hi - lo) * 0.12; lo -= pad; hi += pad; if (pos && lo < 0) lo = 0;
   const st = paso(lo, hi, 3); lo = Math.floor(lo / st) * st; if (pos && lo < 0) lo = 0; hi = Math.ceil(hi / st) * st;
   const y = (v) => T + (1 - (v - lo) / (hi - lo)) * ph, dec = st < 0.1 ? 2 : st < 1 ? 1 : 0;
-  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(G.t)}: años 1 a 15">`;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${esc(G.t)}: años 1 a 15"><defs><linearGradient id="i2-grad" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#7d6bff" stop-opacity=".45"/><stop offset="1" stop-color="#304ffe" stop-opacity="0"/></linearGradient></defs>`;
   for (let v = lo; v <= hi + st * 1e-6; v += st) s += `<line class="gr" x1="${L}" x2="${L + pw}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="ax" x="${L - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${esc(G.fa ? G.fa(v) : nf(v, dec))}</text>`;
   s += `<line class="bl" x1="${L}" x2="${L + pw}" y1="${T + ph}" y2="${T + ph}"/>`;
   for (const a of (W < 480 ? [1, 5, 10, 15] : [1, 3, 5, 7, 9, 11, 13, 15])) { const xa = x((a - 0.5) * AÑO); s += `<text class="ax" x="${xa.toFixed(1)}" y="${T + ph + 18}" text-anchor="middle">${a === 1 ? 'año 1' : a}</text>`; }
@@ -607,23 +623,38 @@ function presenciaFauna(H, ext) {
 const REDU = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 /* ---------- línea de tiempo de avisos (años 1–15, por plazo) ---------- */
 function lineaTiempo(EV, W, go) {
-  const H = W < 520 ? 112 : 124, L = 8, R = 8, T = 22, B = 26, pw = W - L - R, y0 = H - B;
-  const x = (w) => L + Math.max(0, Math.min(FIN, w)) / FIN * pw;
-  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Avisos del modelo en los 15 años">`;
-  FASES.forEach((F, i) => { const a = x((F.a0 - 1) * AÑO), b = x(Math.min(15, F.a1) * AÑO);
-    s += `<rect class="fb${i % 2 ? ' b' : ''}" x="${a.toFixed(1)}" y="${T - 14}" width="${(b - a).toFixed(1)}" height="${y0 - T + 14}" rx="4"/><text class="fl" x="${(a + 6).toFixed(1)}" y="${T - 2}">${W < 520 ? F.n.split(' ')[0] : F.n + ' · años ' + F.a0 + '–' + Math.min(15, F.a1)}</text>`; });
-  s += `<line class="bl" x1="${L}" x2="${L + pw}" y1="${y0}" y2="${y0}"/>`;
-  for (let a = 1; a <= 15; a++) { if (W < 520 && a !== 1 && a % 5) continue; s += `<text class="ax" x="${x((a - 0.5) * AÑO).toFixed(1)}" y="${y0 + 16}" text-anchor="middle">${a === 1 ? 'año 1' : a}</text>`; }
-  if (go) { const xg = x(go.sem); s += `<line class="gol" x1="${xg.toFixed(1)}" x2="${xg.toFixed(1)}" y1="${T - 14}" y2="${y0}"/>`; }
-  const pila = new Map(), pts = []; let k = 0;
-  for (const e of EV) { const g = /^game over/i.test(e.titulo), cls = g || e.signo < 0 ? 'mal' : e.signo > 0 ? 'bien' : 'neu';
-    const col = Math.round(x(e.sem) / 9), n = pila.get(col) || 0; pila.set(col, n + 1);
-    const xx = col * 9, yy = y0 - 8 - n * 11;
-    if (n === 5) { s += `<text class="mas" x="${xx}" y="${yy + 4}" text-anchor="middle">+</text>`; continue; } if (n > 5) continue;
-    const d = 2600 + Math.min(1400, k++ * 18);
-    s += cls === 'bien' ? `<circle class="mk bien" style="--d:${d}" cx="${xx}" cy="${yy}" r="4.2"/>` : cls === 'mal' ? `<path class="mk mal" style="--d:${d}" d="M${xx - 4.6},${yy - 3.6}L${xx + 4.6},${yy - 3.6}L${xx},${yy + 4.4}Z"/>` : `<rect class="mk neu" style="--d:${d}" x="${xx - 3.6}" y="${yy - 3.6}" width="7.2" height="7.2" rx="1"/>`;
-    pts.push({ x: xx, y: yy, e }); }
+  /* burbujas por año: área ∝ número de avisos; cada burbuja es una dona de buenos (turquesa), malos (coral) y neutros (gris) */
+  const H = W < 520 ? 150 : 176, L = 10, R = 10, T = 22, y0 = H - 22, pw = W - L - R, x = (a) => L + (a - 0.5) / 15 * pw;
+  const por = []; for (let a = 1; a <= 15; a++) por.push({ a, b: 0, m: 0, n: 0, ev: [] });
+  for (const e of EV) { const a = añoDe(e.sem), q = por[Math.min(14, a - 1)], g = /^game over/i.test(e.titulo); q.ev.push(e); if (g || e.signo < 0) q.m++; else if (e.signo > 0) q.b++; else q.n++; }
+  const mx = Math.max(1, ...por.map((q) => q.ev.length)), rMax = Math.max(8, Math.min(pw / 15 / 2 - 1.5, (y0 - T - 8) / 2)), cy = T + 4 + (y0 - T - 8) / 2;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="Avisos del modelo por año: burbujas de 15 años">`;
+  FASES.forEach((F, i) => { const a = L + (F.a0 - 1) / 15 * pw, b = L + Math.min(15, F.a1) / 15 * pw;
+    s += `<rect class="fb${i % 2 ? ' b' : ''}" x="${a.toFixed(1)}" y="${T - 14}" width="${(b - a).toFixed(1)}" height="${y0 - T + 14}" rx="10"/><text class="fl" x="${(a + 8).toFixed(1)}" y="${T - 2}">${W < 520 ? F.n.split(' ')[0] : F.n + ' · años ' + F.a0 + '–' + Math.min(15, F.a1)}</text>`; });
+  s += `<line class="gr" x1="${L}" x2="${L + pw}" y1="${cy.toFixed(1)}" y2="${cy.toFixed(1)}"/>`;
+  for (let a = 1; a <= 15; a++) { if (W < 520 && a !== 1 && a % 5) continue; s += `<text class="ax" x="${x(a).toFixed(1)}" y="${y0 + 16}" text-anchor="middle">${a === 1 ? 'año 1' : a}</text>`; }
+  if (go) { const xg = L + Math.max(0, Math.min(FIN, go.sem)) / FIN * pw; s += `<line class="gol" x1="${xg.toFixed(1)}" x2="${xg.toFixed(1)}" y1="${T - 14}" y2="${y0}"/><text class="got halo" x="${(xg + 4).toFixed(1)}" y="${y0 - 4}">game over</text>`; }
+  const pts = []; let k = 0;
+  for (const q of por) { if (!q.ev.length) { s += `<circle cx="${x(q.a).toFixed(1)}" cy="${cy.toFixed(1)}" r="1.6" fill="rgba(255,255,255,.25)"/>`; continue; }
+    const r = Math.max(5, rMax * Math.sqrt(q.ev.length / mx)), cx = x(q.a), d = 2600 + Math.min(1400, k++ * 70), segs = [[q.b, 'var(--bien)'], [q.m, 'var(--s-sin)'], [q.n, 'var(--gris)']].filter((z) => z[0] > 0);
+    let a0 = -Math.PI / 2, g = '';
+    for (const [n, c] of segs) { const a1 = a0 + n / q.ev.length * Math.PI * 2, ri = r * 0.55;
+      if (segs.length === 1) g += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${((r + ri) / 2).toFixed(1)}" fill="none" stroke="${c}" stroke-width="${(r - ri).toFixed(1)}"/>`;
+      else { const P = (rr, aa) => `${(cx + rr * Math.cos(aa)).toFixed(1)} ${(cy + rr * Math.sin(aa)).toFixed(1)}`, L2 = a1 - a0 > Math.PI ? 1 : 0;
+        g += `<path d="M${P(r, a0)}A${r.toFixed(1)} ${r.toFixed(1)} 0 ${L2} 1 ${P(r, a1)}L${P(ri, a1)}A${ri.toFixed(1)} ${ri.toFixed(1)} 0 ${L2} 0 ${P(ri, a0)}Z" fill="${c}" stroke="var(--bg)" stroke-width="1.2"/>`; }
+      a0 = a1; }
+    s += `<g class="mk" style="--d:${d}">${g}${r >= 11 ? `<text class="bn" x="${cx.toFixed(1)}" y="${(cy + 4).toFixed(1)}" text-anchor="middle">${q.ev.length}</text>` : ''}</g>`;
+    pts.push({ x: cx, y: cy, r, e: { sem: (q.a - 1) * AÑO + 1, titulo: `${q.ev.length} avisos · ${q.b} buenos · ${q.m} malos`, lista: q.ev.slice(0, 5).map((e) => e.titulo).concat(q.ev.length > 5 ? [`y ${q.ev.length - 5} más`] : []) } }); }
   return { svg: s + '</svg>', pts };
+}
+/* dona del veredicto: indicadores clave que mejoran / empeoran / casi iguales (segmentos rotulados en la leyenda de al lado) */
+function donaVer(b, m, i) {
+  const n = b + m + i, R = 34, r = 22, c = 42; if (!n) return '';
+  let a0 = -Math.PI / 2, s = `<svg class="i2-dona" viewBox="0 0 84 84" width="84" height="84" role="img" aria-label="${b} mejoran, ${m} empeoran y ${i} casi iguales de ${n} indicadores clave">`;
+  const P = (rr, aa) => `${(c + rr * Math.cos(aa)).toFixed(2)} ${(c + rr * Math.sin(aa)).toFixed(2)}`;
+  for (const [v, col] of [[b, 'var(--bien)'], [m, 'var(--s-sin)'], [i, 'var(--gris)']]) { if (!v) continue; const a1 = a0 + v / n * Math.PI * 2 - (v === n ? 1e-3 : 0), L = a1 - a0 > Math.PI ? 1 : 0;
+    s += `<path d="M${P(R, a0 + 0.02)}A${R} ${R} 0 ${L} 1 ${P(R, a1 - 0.02)}L${P(r, a1 - 0.02)}A${r} ${r} 0 ${L} 0 ${P(r, a0 + 0.02)}Z" fill="${col}"/>`; a0 = a1 + (v === n ? 1e-3 : 0); }
+  return s + `<text x="42" y="46" text-anchor="middle" class="dn">${n}</text></svg>`;
 }
 const FLECHA = '<svg class="i2-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg>';
 
@@ -745,7 +776,7 @@ export function abrirInforme2({ parametros={}, definiciones=[], cont, sim, def =
   if (!G0) G0 = GRv[0] || null;
   const CH = [G0, ...GRv];
   const leyenda = (g) => `<div class="i2-leg"><span><i></i>${B ? 'Con propuesta' : 'Esta simulación'}</span>${g && g.r ? '<span><i class="ref"></i>Sin propuesta</span>' : ''}${g && g.lim != null ? '<span><i class="lim"></i>Límite</span>' : ''}</div>`;
-  const fig = (g, i, cls, d) => `<figure class="i2-ch i2-panel ${cls}" data-i2-g="${i}" style="--dd:${d}"><div class="i2-cht">${esc(g.t)}</div><div class="i2-chs">${esc(g.sub || '')} Años 1 a 15, promedio cada ${CADA} semanas.</div>${cls.includes('i2-main') ? leyenda(g) : ''}<div data-i2-svg></div><div class="i2-tip"></div></figure>`;
+  const fig = (g, i, cls, d) => `<figure class="i2-ch i2-panel ${cls}" data-i2-g="${i}" style="--dd:${d}"><div class="i2-cht">${esc(g.t)}</div><div class="i2-chs">${esc(g.sub || '')} ${i > 0 ? 'Una vuelta = los 15 años, desde arriba en el sentido del reloj; el radio es el valor (anillos = escala).' : `Años 1 a 15, promedio cada ${CADA} semanas.`}</div>${cls.includes('i2-main') ? leyenda(g) : ''}<div data-i2-svg></div><div class="i2-tip"></div></figure>`;
   const htmlMain = G0 ? fig(G0, 0, 'i2-main', 2300).replace('<figure ', '<figure data-a style="--d:2100" ').replace(' style="--dd:2300"', '').replace('data-i2-g="0"', 'data-i2-g="0" data-dd="2300"') : '';
   const htmlGr = GRv.length ? `<section class="i2-sec rv"><div class="i2-sh"><div><span class="i2-lab">Cómo cambió en 15 años</span><h3 class="i2-st">${esc(may1(lista(GRv.slice(0, 2).map((g, i) => i ? min1(MET[g.k].n) : MET[g.k].n))))}</h3></div>${leyenda(GRv.find(g => g.r) || GRv[0])}</div>
     <div class="i2-charts">${GRv.map((g, i) => fig(g, i + 1, 'rvc', 0)).join('')}</div></section>` : '';
@@ -764,9 +795,9 @@ export function abrirInforme2({ parametros={}, definiciones=[], cont, sim, def =
   const evRow = (e) => { const g = /^game over/i.test(e.titulo), cls = g || e.signo < 0 ? 'mal' : e.signo > 0 ? 'bien' : '';
     return `<div class="i2-ev ${cls}"${e.texto ? ` title="${esc(e.texto)}"` : ''}><div class="i2-ea">Año ${añoDe(e.sem)}</div><div class="i2-eb" aria-label="${e.signo > 0 ? 'bueno' : e.signo < 0 ? 'malo' : 'neutro'}">${icono(g ? 'gameover' : e.tipo)}</div><div class="i2-et">${esc(e.titulo)}</div></div>`; };
   const nBue = EV.filter(e => e.signo > 0).length, nMal = EV.filter(e => e.signo < 0 || /^game over/i.test(e.titulo)).length;
-  const mkS = { bien: '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4.2" fill="#5cbf7a"/></svg>', mal: '<svg viewBox="0 0 10 10"><path d="M.4 1h9.2L5 9.4z" fill="#e0665a"/></svg>', neu: '<svg viewBox="0 0 10 10"><rect x="1.4" y="1.4" width="7.2" height="7.2" rx="1" fill="#8d939b"/></svg>' };
-  const htmlTl = `<div class="i2-tl i2-panel" data-a style="--d:2500"><div class="i2-cmph" style="margin:0"><span class="i2-lab">Línea de tiempo · avisos del modelo</span><span>${EV.length} avisos · ${nBue} buenos · ${nMal} malos</span></div>
-    <div class="i2-tlw" data-i2-tl><div class="i2-tip"></div></div><div class="i2-tll"><span>${mkS.bien}Bueno</span><span>${mkS.mal}Malo</span><span>${mkS.neu}Neutro</span>${go ? '<span><svg viewBox="0 0 10 10"><path d="M5 0v10" stroke="#e0665a" stroke-dasharray="2 2"/></svg>Game over</span>' : ''}</div></div>`;
+  const mkS = { bien: '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4.2" fill="#4fd1c5"/></svg>', mal: '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4.2" fill="#f2694a"/></svg>', neu: '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4.2" fill="#8c929c"/></svg>' };
+  const htmlTl = `<div class="i2-tl i2-panel" data-a style="--d:2500"><div class="i2-cmph" style="margin:0"><span class="i2-lab">Línea de tiempo · avisos del modelo por año</span><span>${EV.length} avisos · ${nBue} buenos · ${nMal} malos · área de la burbuja ∝ avisos</span></div>
+    <div class="i2-tlw" data-i2-tl><div class="i2-tip"></div></div><div class="i2-tll"><span>${mkS.bien}Bueno</span><span>${mkS.mal}Malo</span><span>${mkS.neu}Neutro</span>${go ? '<span><svg viewBox="0 0 10 10"><path d="M5 0v10" stroke="#ff4f7b" stroke-dasharray="2 2"/></svg>Game over</span>' : ''}</div></div>`;
   const htmlEv = `<section class="i2-sec rv"><div class="i2-sh"><div><span class="i2-lab">Por plazo</span><h3 class="i2-st">Lo que pasó</h3></div>
       <div class="i2-leg"><span><span class="i2-eb bien">${icono('sube')}</span>${nBue} buenos</span><span><span class="i2-eb mal">${icono('baja')}</span>${nMal} malos</span><span>${EV.length} avisos del modelo</span></div></div>
     <div class="i2-fases">${FASES.map(F => { const es = EV.filter(e => { const a = añoDe(e.sem); return a >= F.a0 && a <= F.a1; });
@@ -797,7 +828,7 @@ export function abrirInforme2({ parametros={}, definiciones=[], cont, sim, def =
     <h1 class="i2-tit" id="i2-titulo" aria-label="${esc(V.big)}: ${esc(titulo)}"><span class="i2-eye" data-a style="--d:200">${esc(V.eye)}</span><span class="i2-big" style="--len:${Math.max(7, V.big.length)}" aria-hidden="true">${letras}</span>
       <span class="i2-sub" data-a style="--d:1000"><b>${esc(titulo)}</b>${def.pregunta ? `<span>${esc(def.pregunta)}</span>` : ''}</span></h1>
     <div class="i2-ver i2-panel" data-a style="--d:1200">${go ? htmlRegla : `<div class="i2-vlab">Veredicto · ${esc(V.t)}</div><p class="i2-vf">${esc(frase)}</p>`}
-      <div class="i2-vs"><span class="i2-cnt bien">${icono('sube')}<b>${mejor.length}</b> mejoran</span><span class="i2-cnt mal">${icono('baja')}<b>${peor.length}</b> empeoran</span><span class="i2-cnt">${icono('igual')}<b>${igual.length}</b> casi iguales</span><span class="i2-cntt">de ${comps.length} indicadores clave, ${esc(frente)}</span></div>${alerta}</div>
+      <div class="i2-vs">${donaVer(mejor.length, peor.length, igual.length)}<span class="i2-cnt bien">${icono('sube')}<b>${mejor.length}</b> mejoran</span><span class="i2-cnt mal">${icono('baja')}<b>${peor.length}</b> empeoran</span><span class="i2-cnt">${icono('igual')}<b>${igual.length}</b> casi iguales</span><span class="i2-cntt">de ${comps.length} indicadores clave, ${esc(frente)}</span></div>${alerta}</div>
     ${C01 ? C01.html : ''}${acciones('m')}${htmlKpis}${htmlMain}${htmlCad}${htmlTl}</section>`;
 
   cont.scrollTop = 0;
@@ -833,6 +864,7 @@ export function abrirInforme2({ parametros={}, definiciones=[], cont, sim, def =
   function pintarGraficas() {
     const figs = [...root.querySelectorAll('[data-i2-g]')], anchos = figs.map(f => f.querySelector('[data-i2-svg]').clientWidth);
     figs.forEach((fig, k) => { const g = CH[+fig.dataset.i2G]; if (!g) return; const box = fig.querySelector('[data-i2-svg]'), W = Math.max(260, Math.floor(anchos[k] || 320));
+      if (+fig.dataset.i2G > 0) { reloj(fig, box, g, W); return; }
       const R = grafica(g, W); box.innerHTML = R.svg; if (fig.dataset.dd) box.firstElementChild.style.setProperty('--dd', fig.dataset.dd);
       const svg = box.firstElementChild, cr = svg.querySelector('.i2-x'), ln = cr.firstElementChild, dt = cr.lastElementChild, tip = fig.querySelector('.i2-tip');
       const mover = (ev) => { const bb = svg.getBoundingClientRect(), px = (ev.clientX - bb.left) * (W / bb.width); const w = (px - R.L) / R.pw * FIN; if (w < 0 || w > FIN) { salir(); return; }
@@ -847,13 +879,21 @@ export function abrirInforme2({ parametros={}, definiciones=[], cont, sim, def =
     if (tb) { const W = Math.max(280, Math.floor(tb.clientWidth || 600)), T = lineaTiempo(EV, W, go), tip = tb.querySelector('.i2-tip');
       tb.querySelectorAll('svg').forEach(s => s.remove()); tb.insertAdjacentHTML('afterbegin', T.svg); const svg = tb.querySelector('svg');
       svg.addEventListener('pointermove', (ev) => { const bb = svg.getBoundingClientRect(), px = (ev.clientX - bb.left) * (W / bb.width), py = (ev.clientY - bb.top) * (W / bb.width);
-        let best = null, bd = 18; for (const p of T.pts) { const d = Math.hypot(p.x - px, (p.y - py) * 0.6); if (d < bd) { bd = d; best = p; } }
+        let best = null, bd = Infinity; for (const p of T.pts) { const d = Math.hypot(p.x - px, p.y - py) - (p.r || 0); if (d < Math.min(bd, 10)) { bd = d; best = p; } }
         if (!best) { tip.style.display = 'none'; return; }
-        tip.innerHTML = `<b>Año ${añoDe(best.e.sem)}</b> · semana ${nf(best.e.sem)}<br>${esc(best.e.titulo)}`; tip.style.display = 'block';
-        const tw = tip.offsetWidth, fx = best.x * (bb.width / W); tip.style.left = Math.max(0, Math.min(tb.clientWidth - tw, fx - tw / 2)) + 'px'; tip.style.top = Math.max(-40, best.y * (bb.width / W) - 56) + 'px'; });
+        tip.innerHTML = best.e.lista ? `<b>Año ${añoDe(best.e.sem)}</b> · ${esc(best.e.titulo)}<br>${best.e.lista.map(esc).join('<br>')}` : `<b>Año ${añoDe(best.e.sem)}</b> · semana ${nf(best.e.sem)}<br>${esc(best.e.titulo)}`; tip.style.display = 'block';
+        const tw = tip.offsetWidth, fx = best.x * (bb.width / W); tip.style.left = Math.max(0, Math.min(tb.clientWidth - tw, fx - tw / 2)) + 'px'; tip.style.top = Math.max(-40, (best.y - (best.r || 0)) * (bb.width / W) - tip.offsetHeight - 6) + 'px'; });
       svg.addEventListener('pointerleave', () => { tip.style.display = 'none'; }); }
     if (C01) try { C01.pintar(root); } catch (e) { console.warn('conclusión del par 01:', e); }
   }
+  /* reloj de 15 años (graficas_arte.js): una vuelta = 15 años, radio = valor; esta corrida con área y línea, la pareja punteada */
+  function reloj(fig, box, g, W) {
+    box.innerHTML = ''; const tipEl = fig.querySelector('.i2-tip');
+    const tipF = (html, cx, cy) => { if (html == null) { tipEl.style.display = 'none'; return; } tipEl.innerHTML = html; tipEl.style.display = 'block'; const fb = fig.getBoundingClientRect(), tw = tipEl.offsetWidth;
+      tipEl.style.left = Math.max(4, Math.min(fig.clientWidth - tw - 4, cx - fb.left + 14)) + 'px'; tipEl.style.top = Math.max(4, cy - fb.top - tipEl.offsetHeight - 10) + 'px'; };
+    const TR = new TiempoRadial(box, { n: g.t, max: 340, fmt: (v) => (v == null ? '—' : g.fy(v)), tip: tipF });
+    const xs = g.s.map((p) => p[0]), a = g.s.map((p) => p[1]), rm = new Map((g.r || []).map((p) => [p[0], p[1]])), b = xs.map((w) => (rm.has(w) ? rm.get(w) : null));
+    TR.update({ W, FIN, xs, con: conProp ? a : b, sin: conProp ? b : a, run: conProp ? 'con' : 'sin' }); }
   let RD = null;
   function pintarRed() {
     const box = root.querySelector('[data-i2-red]'); if (!box || !RD) return;

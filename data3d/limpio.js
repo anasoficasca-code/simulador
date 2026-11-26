@@ -10,7 +10,7 @@
    [SUP] METRO_MENOS_CARROS = 0,10: no hay cifra oficial de cuánto tráfico quita la Línea 1. */
 import { RELOJ } from './reloj.js?v=5';
 import { crearSlides } from './slides_sim.js?v=4';
-import { iniciarSimUI } from './sim_ui.js?v=112';
+import { iniciarSimUI } from './sim_ui.js?v=113';
 
 export const METRO_SEM_OP = 114;
 export const SEMANAS_FIN = 780; /* 15 años */
@@ -389,7 +389,7 @@ export function iniciarLimpio({ T3 }) {
           A[d] = R; A[d + 1] = 0; A[d + 2] = 0; A[d + 3] = 0; A[d + 4] = 0; A[d + 5] = 1; A[d + 6] = 0; A[d + 7] = 0; A[d + 8] = 0; A[d + 9] = 0; A[d + 10] = R; A[d + 11] = 0; A[d + 12] = B[s + 12]; A[d + 13] = Y; A[d + 14] = B[s + 14]; A[d + 15] = 1; k++; } }); }
       halo.count = k; halo.instanceMatrix.needsUpdate = true; }); }
   /* PRECARGA: los módulos de las simulaciones se bajan mientras está la portada, para que nada cargue (ni trabe) al darle play */
-  for (const m of ['./basura.js?v=2', './cierre_gradual.js?v=5', './predio_trafico.js?v=4', './caminos_instituto.js?v=1', './degradacion.js?v=1', './indicadores.js?v=12', './informe.js?v=6', './capas_pares.js?v=1', './lugares.js?v=4', './abasto_contenedor.js?v=8']) import(m).catch(() => {});
+  for (const m of ['./basura.js?v=2', './cierre_gradual.js?v=5', './predio_trafico.js?v=4', './caminos_instituto.js?v=1', './degradacion.js?v=1', './indicadores.js?v=12', './informe.js?v=7', './capas_pares.js?v=1', './lugares.js?v=4', './abasto_contenedor.js?v=8']) import(m).catch(() => {});
 
   /* al entrar queda escogida la simulación 1 (estado actual), en el año 1 y en pausa: la misma vista y el mismo panel que al darle «Simulación 1» */
   const autoUno = () => { if (ESC.activo) return; const L = document.getElementById('loader');

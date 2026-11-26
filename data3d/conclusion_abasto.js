@@ -100,10 +100,17 @@ export function conclusionAbasto({ H, B = null, go = null, def = {}, parametros 
     let s = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="Oferta frente a demanda de Kennedy en 15 años">`;
     const pasoY = mx > 600 ? 200 : 100; for (let v = 0; v <= mx; v += pasoY) s += `<line x1="${pl}" x2="${w - pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--grid)"/><text x="${pl - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${nf(v)}</text>`;
     s += ejeX(x, w, h);
-    s += `<polygon points="${capa(() => 0, U => U.coraK)}" fill="#00a888" fill-opacity=".55"/><polygon points="${capa(U => U.coraK, U => U.coraK + U.mercT)}" fill="#d28e05" fill-opacity=".7"/><polygon points="${capa(U => U.coraK + U.mercT, U => U.coraK + U.mercT + U.autoT)}" fill="#9887ef" fill-opacity=".7"/>`;
+    s += `<defs><linearGradient id="c01-g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#7d6bff" stop-opacity=".75"/><stop offset="1" stop-color="#304ffe" stop-opacity=".3"/></linearGradient></defs>`;
+    s += `<polygon points="${capa(() => 0, U => U.coraK)}" fill="url(#c01-g1)"/><polygon points="${capa(U => U.coraK, U => U.coraK + U.mercT)}" fill="#c08f1c" fill-opacity=".8"/><polygon points="${capa(U => U.coraK + U.mercT, U => U.coraK + U.mercT + U.autoT)}" fill="#22a89d" fill-opacity=".85"/>`;
     s += `<path d="${lin(U => U.demK)}" fill="none" stroke="var(--ink)" stroke-width="1.8"/><path d="${lin(U => 0.8 * U.demK)}" fill="none" stroke="var(--s-lim)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
-    if (go) s += `<line x1="${x(go.sem).toFixed(1)}" x2="${x(go.sem).toFixed(1)}" y1="${pt}" y2="${pt + ih}" stroke="var(--s-lim)" stroke-dasharray="2 3"/><text x="${(x(go.sem) + (x(go.sem) < pl + 90 ? 4 : -4)).toFixed(1)}" y="${pt + 10}" text-anchor="${x(go.sem) < pl + 90 ? 'start' : 'end'}" fill="var(--mal)">game over</text>`;
-    return s + '</svg>' + `<div class="c01-ley"><span><i style="background:#00a888"></i>Corabastos</span><span><i style="background:#d28e05"></i>Mercados</span><span><i style="background:#9887ef"></i>Autoconsumo</span><span><i class="l"></i>Demanda</span><span><i class="l r"></i>80 % de la demanda</span></div>`;
+    if (go) s += `<line x1="${x(go.sem).toFixed(1)}" x2="${x(go.sem).toFixed(1)}" y1="${pt}" y2="${pt + ih}" stroke="var(--s-crit)" stroke-dasharray="2 3"/><text x="${(x(go.sem) + (x(go.sem) < pl + 90 ? 4 : -4)).toFixed(1)}" y="${pt + 10}" text-anchor="${x(go.sem) < pl + 90 ? 'start' : 'end'}" fill="var(--mal)">game over</text>`;
+    const tot = sCor + sMer + sAut || 1, seg = [[sCor, '#7d6bff', 'Corabastos'], [sMer, '#c08f1c', 'Mercados'], [sAut, '#22a89d', 'Autoconsumo']];
+    let a0 = -Math.PI / 2, dona = '<svg viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="Quién cubrió la demanda en toda la corrida">';
+    const Pp = (r, a) => `${(48 + r * Math.cos(a)).toFixed(2)} ${(48 + r * Math.sin(a)).toFixed(2)}`;
+    for (const [v, c, n] of seg) { if (!(v > 0)) continue; const a1 = a0 + v / tot * Math.PI * 2 - (v >= tot ? 1e-3 : 0), L = a1 - a0 > Math.PI ? 1 : 0; dona += `<path d="M${Pp(44, a0)}A44 44 0 ${L} 1 ${Pp(44, a1)}L${Pp(29, a1)}A29 29 0 ${L} 0 ${Pp(29, a0)}Z" fill="${c}" stroke="var(--bg)" stroke-width="1.5"><title>${n}: ${nf(v / tot * 100, 1)} %</title></path>`; a0 = a1; }
+    dona += `<text x="48" y="47" text-anchor="middle" class="c01-dn">${nf(sCor / tot * 100)}%</text><text x="48" y="59" text-anchor="middle" class="c01-dl">Corabastos</text></svg>`;
+    const parte = `<div class="c01-part">${dona}<ul>${seg.map(([v, c, n]) => `<li><i style="background:${c}"></i>${n}<b>${nf(v / tot * 100, 1)} %</b></li>`).join('')}</ul></div>`;
+    return s + '</svg>' + parte + `<div class="c01-ley"><span><i style="background:#7d6bff"></i>Corabastos</span><span><i style="background:#c08f1c"></i>Mercados</span><span><i style="background:#22a89d"></i>Autoconsumo</span><span><i class="l"></i>Demanda</span><span><i class="l r"></i>80 % de la demanda</span></div>`;
   }
   function fig2(w) {
     const h = 200, pl = 42, pr = 10, pt = 10, pb = 22, iw = w - pl - pr, ih = h - pt - pb;
@@ -114,12 +121,12 @@ export function conclusionAbasto({ H, B = null, go = null, def = {}, parametros 
     for (let v = mn; v <= mx; v += 20) s += `<line x1="${pl}" x2="${w - pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--grid)"/><text x="${pl - 6}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end">${v} %</text>`;
     s += ejeX(x, w, h);
     s += `<rect x="${pl}" y="${pt}" width="${iw}" height="${Math.max(0, y(100) - pt).toFixed(1)}" fill="var(--s-lim)" fill-opacity=".08"/><line x1="${pl}" x2="${w - pr}" y1="${y(100).toFixed(1)}" y2="${y(100).toFixed(1)}" stroke="var(--s-lim)" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${w - pr}" y="${(y(100) - 4).toFixed(1)}" text-anchor="end" fill="var(--mal)">tope</text>`;
-    if (muestraB) s += `<path d="${lin(muestraB, U => U.carga * 100)}" fill="none" stroke="${prop ? '#e76624' : '#338ced'}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
-    s += `<path d="${lin(muestra, U => U.carga * 100)}" fill="none" stroke="${prop ? '#338ced' : '#e76624'}" stroke-width="2"/>`;
-    if (usoN) s += `<path d="${lin(muestra, U => (U.mercCap ? U.mercT / U.mercCap * 100 : null))}" fill="none" stroke="#d28e05" stroke-width="1.6"/>`;
+    if (muestraB) s += `<path d="${lin(muestraB, U => U.carga * 100)}" fill="none" stroke="${prop ? '#f2694a' : '#7d6bff'}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    s += `<path d="${lin(muestra, U => U.carga * 100)}" fill="none" stroke="${prop ? '#7d6bff' : '#f2694a'}" stroke-width="2"/>`;
+    if (usoN) s += `<path d="${lin(muestra, U => (U.mercCap ? U.mercT / U.mercCap * 100 : null))}" fill="none" stroke="#c08f1c" stroke-width="1.6"/>`;
     s += '</svg>';
-    const barras = peores.map(p => `<div class="c01-b"><span>${esc(p.n)}</span><i><b style="width:${Math.max(2, Math.min(100, p.v)).toFixed(1)}%;background:${p.v < 80 ? 'var(--s-lim)' : p.v < 87 ? 'var(--amb)' : 'var(--s-con)'}"></b><em style="left:80%"></em></i><span>${nf(p.v, 1)} % · año ${añoDe(p.sem)}</span></div>`).join('');
-    return s + `<div class="c01-ley"><span><i class="l" style="border-color:${prop ? '#338ced' : '#e76624'}"></i>Corabastos (${prop ? 'con' : 'sin'} propuesta)</span>${muestraB ? `<span><i class="l d" style="border-color:${prop ? '#e76624' : '#338ced'}"></i>${prop ? 'Sin' : 'Con'} propuesta</span>` : ''}${usoN ? '<span><i class="l" style="border-color:#d28e05"></i>Uso de los mercados</span>' : ''}<span><i class="l r"></i>Tope</span></div><div class="c01-bs"><small>Sectores peor servidos (mínimo de la corrida; raya = 80 %)</small>${barras}</div>`;
+    const barras = peores.map(p => `<div class="c01-b"><span>${esc(p.n)}</span><i><b style="width:${Math.max(2, Math.min(100, p.v)).toFixed(1)}%;background:${p.v < 80 ? 'var(--s-crit)' : p.v < 87 ? 'var(--amb)' : 'var(--s-con)'}"></b><em style="left:80%"></em></i><span>${nf(p.v, 1)} % · año ${añoDe(p.sem)}</span></div>`).join('');
+    return s + `<div class="c01-ley"><span><i class="l" style="border-color:${prop ? '#7d6bff' : '#f2694a'}"></i>Corabastos (${prop ? 'con' : 'sin'} propuesta)</span>${muestraB ? `<span><i class="l d" style="border-color:${prop ? '#f2694a' : '#7d6bff'}"></i>${prop ? 'Sin' : 'Con'} propuesta</span>` : ''}${usoN ? '<span><i class="l" style="border-color:#c08f1c"></i>Uso de los mercados</span>' : ''}<span><i class="l r"></i>Tope</span></div><div class="c01-bs"><small>Sectores peor servidos (mínimo de la corrida; raya = 80 %)</small>${barras}</div>`;
   }
   function pintar(root) { if (!document.getElementById('c01-css')) { const st = document.createElement('style'); st.id = 'c01-css'; st.textContent = CSS; document.head.appendChild(st); }
     root.querySelectorAll('[data-c01]').forEach(el => { const w = Math.max(260, Math.floor(el.clientWidth || 320)); el.innerHTML = el.dataset.c01 === '1' ? fig1(w) : fig2(w); }); }
@@ -130,12 +137,18 @@ export function conclusionAbasto({ H, B = null, go = null, def = {}, parametros 
 const CSS = `
 .inf2 .c01 { margin-top: 18px; grid-column: 1 / -1; min-width: 0; }
 .inf2 .c01-h { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
-.inf2 .c01-v { margin: 0; font: 500 clamp(20px, 2.4vw, 28px)/1.1 var(--num); letter-spacing: .04em; text-transform: uppercase; }
-.inf2 .c01-v.go { color: var(--mal); } .inf2 .c01-v.sostenible { color: var(--bien); } .inf2 .c01-v.plausible { color: var(--amb); }
+.inf2 .c01-v { margin: 0; font: 300 clamp(26px, 3vw, 40px)/1 var(--num); letter-spacing: .04em; text-transform: uppercase; }
+.inf2 .c01-v.go { color: #ff7a59; } .inf2 .c01-v.sostenible { color: #d5ff3f; } .inf2 .c01-v.plausible { color: #ffd27a; }
+.inf2 .c01-part { display: flex; align-items: center; gap: 16px; margin: 10px 0 2px; padding: 10px 12px; border-radius: 14px; background: rgba(125,107,255,.07); border: 1px solid rgba(169,156,255,.14); }
+.inf2 .c01-part svg { flex: none; }
+.inf2 .c01-part ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; color: var(--ink2); flex: 1; min-width: 0; }
+.inf2 .c01-part li { display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: center; }
+.inf2 .c01-part li i { width: 10px; height: 10px; border-radius: 50%; } .inf2 .c01-part li b { font: 300 20px/1 var(--num); color: var(--ink); }
+.inf2 .c01-fig text.c01-dn { font: 200 22px var(--num); fill: var(--ink); } .inf2 .c01-fig text.c01-dl { font: 600 6.6px Geist, Inter, sans-serif; letter-spacing: .04em; text-transform: uppercase; fill: var(--mut); }
 .inf2 .c01-g { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 @media (max-width: 900px) { .inf2 .c01-g { grid-template-columns: 1fr; } }
-.inf2 .c01-c { padding: 16px 18px 14px; border-radius: 16px; min-width: 0; }
-.inf2 .c01-c h4 { margin: 0; font: 500 20px/1.15 var(--num); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+.inf2 .c01-c { padding: 16px 18px 14px; border-radius: 18px; min-width: 0; border-top: 2px solid rgba(125,107,255,.55); }
+.inf2 .c01-c h4 { margin: 0; font: 300 26px/1.1 var(--num); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
 .inf2 .c01-s { font-size: 12.5px; color: var(--mut); margin: 4px 0 10px; }
 .inf2 .c01-fig svg { display: block; max-width: 100%; height: auto; overflow: visible; }
 .inf2 .c01-fig text { font: 11px Geist, Inter, system-ui, sans-serif; fill: var(--mut); font-variant-numeric: tabular-nums; }

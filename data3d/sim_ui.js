@@ -785,7 +785,7 @@ export async function iniciarSimUI({ T3, SIMS_UI }) {
   document.head.append(styleSeguimiento);
   const panelEvaluacion = crearPanelEvaluacion({ T3 });
   /* el tablero estadístico en tiempo real vive en la columna derecha, aside#lp-tablero (panel_datos.js + graficas_vivas.js) */
-  import('./panel_indicadores.js?v=1').then(m => m.iniciarPanelIndicadores({ R, getM: () => M, getFIN: () => FIN })).catch(e => console.warn('panel de indicadores:', e)); /* reemplaza a panel_datos.js (tablero viejo por sistemas) */
+  import('./panel_indicadores.js?v=2').then(m => m.iniciarPanelIndicadores({ R, getM: () => M, getFIN: () => FIN })).catch(e => console.warn('panel de indicadores:', e)); /* reemplaza a panel_datos.js (tablero viejo por sistemas) */
   /* gráfica de cada indicador (como las de antes): área bajo la curva de esta corrida, la «sin propuesta» punteada, líneas de los años
      5 y 10, punto blanco en el valor de ahora; eje x = los 15 años */
   function chispaT(a, b, col) { const W = 268, H = 64, n = Math.ceil(FIN / 4), all = a.concat(b).filter(v => v != null); if (!all.length) return '';
@@ -950,7 +950,7 @@ export async function iniciarSimUI({ T3, SIMS_UI }) {
      red de interacciones en bola y lo que pasó año por año. Si no carga, queda el informe anterior (abrirInformeViejo). */
   async function abrirInforme() {
     const H = R.hist, corrida=R.s; if (!H.length) return;
-    try { const { abrirInforme2 } = await import('./informe.js?v=6');
+    try { const { abrirInforme2 } = await import('./informe.js?v=7');
       if(corrida!==R.s || H!==R.hist)return;
       // cadena causa → efecto del par con los valores finales (frente al año 1)
       const I = H[H.length - 1], I1 = H[Math.min(H.length - 1, 51)];

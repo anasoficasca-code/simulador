@@ -6,9 +6,12 @@
    · rampa secuencial azul #1757ac → #cce3fd (mapa de calor, ordinal): PASA (monótona, un solo tono, extremo claro 2,25:1 sobre la superficie)
    · estados (reservados, siempre con ícono + texto): sano #0aac23, en riesgo #fbb315, crítico #dc3c3d */
 
-export const COL = { con: '#338ced', sin: '#e76624', lim: '#dc3c3d' };
-export const CAT = ['#00a888', '#d28e05', '#9887ef', '#e24d8b'];
-export const SEQ = ['#1757ac', '#2370cd', '#338ced', '#6aabf1', '#9dc8f7', '#cce3fd'];
+/* 2026-11-25: paleta URBIA + morados de la portada (graficas_arte.js, validada con el mismo validador sobre #1e2422 y #14161b):
+   con propuesta #7d6bff (continua) / sin propuesta #f2694a (punteada): PASA · límite #ffd27a (rotulado, punteado) · categórica #7d6bff #c08f1c #22a89d #f2694a: PASA
+   · rampa morada #4c46cf → #d4ceff: PASA (monótona, un tono). Las cifras del comentario de arriba son de la paleta anterior (azul/naranja). */
+export const COL = { con: '#7d6bff', sin: '#f2694a', lim: '#ffd27a' };
+export const CAT = ['#7d6bff', '#c08f1c', '#22a89d', '#f2694a'];
+export const SEQ = ['#4c46cf', '#5b4bff', '#7d6bff', '#a99cff', '#d4ceff'];
 export const ESTADO = { sano: { n: 'Sano', c: '#0aac23' }, riesgo: { n: 'En riesgo', c: '#fbb315' }, critico: { n: 'Crítico', c: '#dc3c3d' } };
 const ICONO = { sano: '<circle cx="5" cy="5" r="4"/>', riesgo: '<path d="M5 .8 9.4 9H.6z"/>', critico: '<path d="M5 .4 9.6 5 5 9.6.4 5z"/>' };
 export const icono = (k, t = 10) => `<svg class="tb-ico" viewBox="0 0 10 10" width="${t}" height="${t}" aria-hidden="true" fill="${ESTADO[k].c}">${ICONO[k]}</svg>`;
@@ -78,8 +81,10 @@ export class Linea {
   constructor(host, op) {
     this.op = op; this.alto = op.alto || 92; this.D = null; this.i = -1;
     const s = this.svg = nodo('svg', { class: 'tb-svg tb-lin', height: this.alto, tabindex: 0, role: 'img' }, host);
+    const gid = 'tbG' + (++Linea.n), df = nodo('defs', {}, s), lg = nodo('linearGradient', { id: gid, x1: 0, x2: 0, y1: 0, y2: 1 }, df);
+    this.stops = [nodo('stop', { offset: 0, 'stop-opacity': 0.42 }, lg), nodo('stop', { offset: 1, 'stop-opacity': 0 }, lg)];
     this.gBan = nodo('g', {}, s); this.gY = nodo('g', { class: 'tb-ejey' }, s); this.gX = nodo('g', { class: 'tb-ejex' }, s);
-    this.pArea = nodo('path', { 'fill-opacity': '.1' }, s);
+    this.pArea = nodo('path', { fill: `url(#${gid})` }, s);
     this.lLim = nodo('line', { stroke: COL.lim, 'stroke-width': 1.5, 'stroke-dasharray': '4 3', visibility: 'hidden' }, s);
     this.tLim = nodo('text', { class: 'tb-tn', 'text-anchor': 'end', visibility: 'hidden' }, s);
     this.pSin = nodo('path', { fill: 'none', stroke: COL.sin, 'stroke-width': 2, 'stroke-dasharray': '5 3', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, s);
@@ -128,7 +133,7 @@ export class Linea {
     if (this.gBan.innerHTML !== ban) this.gBan.innerHTML = ban;
     const run = D.run === 'con' ? con : sin, colRun = D.run === 'con' ? COL.con : COL.sin;
     let k0 = run.findIndex((v) => v != null), k1 = run.length - 1; while (k1 >= 0 && run[k1] == null) k1--;
-    if (k0 >= 0 && k1 > k0) { let d = `M${X(xs[k0]).toFixed(1)} ${pt + ih}`; for (let i = k0; i <= k1; i++) if (run[i] != null) d += `L${X(xs[i]).toFixed(1)} ${Y(run[i]).toFixed(1)}`; d += `L${X(xs[k1]).toFixed(1)} ${pt + ih}Z`; fija(this.pArea, { d, fill: colRun }); }
+    if (k0 >= 0 && k1 > k0) { let d = `M${X(xs[k0]).toFixed(1)} ${pt + ih}`; for (let i = k0; i <= k1; i++) if (run[i] != null) d += `L${X(xs[i]).toFixed(1)} ${Y(run[i]).toFixed(1)}`; d += `L${X(xs[k1]).toFixed(1)} ${pt + ih}Z`; fija(this.pArea, { d }); for (const st of this.stops) fija(st, { 'stop-color': colRun }); }
     else fija(this.pArea, { d: '' });
     fija(this.pSin, { d: camino(xs, sin, X, Y) }); fija(this.pCon, { d: camino(xs, con, X, Y) });
     if (k1 >= 0) fija(this.cFin, { cx: X(xs[k1]).toFixed(1), cy: Y(run[k1]).toFixed(1), fill: colRun, visibility: 'visible' }); else fija(this.cFin, { visibility: 'hidden' });
@@ -149,6 +154,7 @@ export class Linea {
   }
   quitar() { this.i = -1; for (const e of [this.xL, this.xA, this.xB]) fija(e, { visibility: 'hidden' }); tip().ocultar(); }
 }
+Linea.n = 0;
 
 /* =========================================================================================================
    ÁREA APILADA de 15 años (una corrida): capas con 10 % de lavado + borde de 2 px, línea de referencia (p. ej. la demanda).
