@@ -113,7 +113,7 @@ const CSS = `
 #lp-tablero.pi-montado{padding:0!important}
 .pi{--pi-pad:14px;--pi-sur:#1e2422;--tb-sur:#1b1f24;--tb-grid:rgba(255,255,255,.06);--tb-axis:rgba(255,255,255,.2);--pi-v:#7d6bff;--pi-v2:#a99cff;--pi-v3:#d4ceff;--pi-ink:#f4f3ef;--pi-num:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;font:400 12px/1.45 var(--ui-sans,'Inter',system-ui,sans-serif);color:var(--ui-tx,#f1f3ee);font-variant-numeric:tabular-nums;text-shadow:none;min-width:0}
 .pi *{box-sizing:border-box}
-.pi-hd{position:sticky;top:0;z-index:4;padding:12px var(--pi-pad) 0;background:linear-gradient(180deg,rgba(22,24,32,.97),rgba(20,22,28,.93));border-bottom:1px solid rgba(169,156,255,.14);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.pi-hd{position:sticky;top:0;z-index:4;padding:12px var(--pi-pad) 0;background:linear-gradient(180deg,rgba(24,26,34,.58),rgba(20,22,28,.42));border-bottom:1px solid rgba(255,255,255,.14);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8)}
 .pi-l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .pi-tit{font:500 15px/1.1 var(--ui-tit,'Barlow Condensed',sans-serif);letter-spacing:.14em;text-transform:uppercase}
 .pi-sem{font:400 10.5px/1.2 var(--ui-mono,'JetBrains Mono',monospace);color:var(--ui-tx2,#c9cfc4);white-space:nowrap}

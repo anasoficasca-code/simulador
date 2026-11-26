@@ -25,10 +25,15 @@ html:root{
 }
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
  html:root{
-  --ui-glass:radial-gradient(120% 60% at 10% 0%,rgba(255,255,255,.10),rgba(255,255,255,0) 55%),linear-gradient(160deg,rgba(30,36,34,.50),rgba(12,15,14,.62))!important;
-  --ui-glass-fx:blur(22px) saturate(1.6) brightness(.86)!important;
+  /* más vidrioso (pedido de la autora): menos tinte, más desenfoque y saturación, brillo arriba más marcado */
+  --ui-glass:radial-gradient(120% 60% at 10% 0%,rgba(255,255,255,.17),rgba(255,255,255,0) 58%),linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.015) 40%),linear-gradient(160deg,rgba(26,31,34,.30),rgba(10,12,14,.42))!important;
+  --ui-glass-fx:blur(28px) saturate(1.9) brightness(.94)!important;
+  --ui-glass-bd:rgba(255,255,255,.24)!important;
+  --ui-glass-sh:0 18px 44px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.34),inset 0 -1px 0 rgba(255,255,255,.06),inset 1px 0 0 rgba(255,255,255,.08)!important;
  }
 }
+/* el texto sobre el vidrio más claro se sigue leyendo sobre la foto satelital */
+html.limpio body :is(#gs-izq,#lp-tablero,#lp-esc,#lp-anos,#lp-slides,#su-feed,#ojo-t){text-shadow:0 1px 2px rgba(0,0,0,.38)}
 @media(prefers-reduced-transparency:reduce){html:root{--ui-glass:rgba(22,27,25,.95)!important;--ui-glass-fx:none!important}}
 
 #urbia-brand{position:fixed;top:14px;left:20px;z-index:48;display:flex;align-items:center;gap:12px;pointer-events:none;filter:drop-shadow(0 2px 6px #0006)}
